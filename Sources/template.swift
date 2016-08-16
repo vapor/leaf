@@ -23,17 +23,25 @@ let context: [String: Any] = [
 ]
 
 protocol Context {
+    var raw: Bytes? { get }
     func get(_ key: String) -> Context?
 }
 
 extension Context {
+    var raw: Bytes? {
+        guard let cs = self as? CustomStringConvertible else { return nil }
+        return cs.description.bytes
+    }
+
     func get(_ key: String) -> Context? {
-        return nil
+        guard key == "self" else { return nil }
+        return self
     }
 }
 
 extension Dictionary: Context {
     func get(_ key: String) -> Context? {
+        if key == "self" { return self }
         guard let k = key as? Key else { return nil }
         return self[k] as? Context
     }
@@ -129,17 +137,21 @@ enum TemplateComponent {
 }
 
 extension String: Context {}
+extension String: CustomStringConvertible {
+    public var description: String { return self }
+}
 
 protocol Command {
     var name: String { get }
-    func process(arguments: [Any]) throws -> Context?
+    func process(arguments: [Any?]) throws -> Context?
 }
 
-let COMMANDS: [Command] = [ Var() ]
+let varCommand = Var()
+let COMMANDS: [String: Command] = [ varCommand.name: varCommand ]
 
 struct Var: Command {
     let name = ""
-    func process(arguments: [Any]) throws -> Context? {
+    func process(arguments: [Any?]) throws -> Context? {
         guard arguments.count == 1 else { throw "invalid var argument" }
         guard let stringable = arguments.first as? CustomStringConvertible else { throw "variable command requires CustomStringConvertible" }
         return stringable.description
@@ -192,12 +204,12 @@ extension BufferProtocol where Element == Byte {
 
         // check if body
         moveForward()
-        guard current == .space, next == .openCurly else { return Instruction(name: name, arguments: arguments, body: "@(self)") }
+        guard current == .space, next == .openCurly else { return try Instruction(name: name, arguments: arguments, body: nil) }
         moveForward() // queue up `{`
 
         // TODO: Body should be template components
         let body = try extractBody()
-        return Instruction(name: name, arguments: arguments, body: body)
+        return try Instruction(name: name, arguments: arguments, body: body)
     }
 
     mutating func extractInstructionName() throws -> String {
@@ -281,8 +293,23 @@ class Template {
         self.components = try buffer.components()
     }
 
-    func render(with context: Context) {
+    func render(with context: Context) throws -> Bytes {
+        var buffer = Bytes()
 
+        try components.forEach { component in
+            switch component {
+            case let .raw(r):
+                buffer += r.bytes
+            case let .instruction(i):
+                guard let command = COMMANDS[i.name] else { fatalError("unsupported command") }
+                let input = try i.makeCommandInput(from: context)
+                buffer += try command.process(arguments: input)
+                    .flatMap { try i.body?.render(with: $0) ?? $0.raw }
+                    ?? []
+            }
+        }
+
+        return buffer
     }
 }
 
@@ -303,11 +330,26 @@ struct Instruction {
     let name: String
     let arguments: [InstructionArgument]
 
-    let body: String
+    let body: Template?
 
-    func makeCommandInput(from context: Context) throws -> [Any] {
-        var input = [Any]()
+    init(name: String, arguments: [InstructionArgument], body: String?) throws {
+        self.name = name
+        self.arguments = arguments
+        self.body = try body.flatMap { try Template(raw: $0) }
+    }
 
+    func makeCommandInput(from context: Context) throws -> [Any?] {
+        var input = [Optional<Any>]()
+        arguments.forEach { arg in
+            switch arg {
+            case let .key(k):
+                if let exists = context.get(k) { input.append(exists) }
+                else { input.append(nil) }
+            case let .value(v):
+                input.append(v)
+            }
+        }
+        return input
     }
 }
 
@@ -331,9 +373,7 @@ enum Section {
     case raw(String)
     case command(Context)
 }
-extension IteratorProtocol where Element == Character {
 
-}
 
 func doStuff(input: String) {
     //    let buffer = StaticDataBuffer(bytes: input.bytes)

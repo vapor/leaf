@@ -14,12 +14,11 @@ class templateTests: XCTestCase {
         ("testExample", testExample),
     ]
 
-    func testExample() {
-
+    func testExample() throws {
         let helloData = NSData(contentsOfFile: workDir + "hello-test.vt")!
         var bytes = Bytes(repeating: 0, count: helloData.length)
         helloData.getBytes(&bytes, length: bytes.count)
-        let template = Template(raw: bytes.string)
+        let template = try Template(raw: bytes.string)
         print("GOT: \(template)")
         print("")
     }
@@ -45,7 +44,7 @@ class templateTests: XCTestCase {
         let instruction = try instructionBuffer.extractInstruction()
         XCTAssert(instruction.name == "instruction")
         XCTAssert(instruction.arguments == [.key("variable"), .value("argument")])
-        XCTAssert(instruction.body == "here's a body @(sub-var)", "got body: \(instruction.body)")
+        XCTAssert("\(instruction.body)" == "Optional(template.Template)")
     }
 
     func testComponents1() throws {
@@ -53,7 +52,7 @@ class templateTests: XCTestCase {
         var withCommandBuffer = Buffer(withCommand.bytes)
         let comps = try withCommandBuffer.components()
         XCTAssert("\(comps[0])" == "raw(\"raw component followed by \")")
-        XCTAssert("\(comps[1])" == "instruction(template.Instruction(name: \"command\", arguments: [template.InstructionArgument.key(\"self\")], body: \"@(self)\"))")
+        XCTAssert("\(comps[1])" == "instruction(template.Instruction(name: \"command\", arguments: [template.InstructionArgument.key(\"self\")], body: nil))")
     }
 
     func testHelloTemplateComponents() throws {
@@ -64,5 +63,38 @@ class templateTests: XCTestCase {
         var comps = try template.components()
         print("Comps: \(comps)")
         print("")
+    }
+
+    func testBasicRender() throws {
+        let templatecontents = "Hello, @(self)!"
+        let template = try Template(raw: templatecontents)
+
+        let contextTests = [
+            "World",
+            "@@",
+            "!*7D0"
+        ]
+
+        try contextTests.forEach { ctxt in
+            let rendered = try template.render(with: ctxt)
+            XCTAssert(rendered.string == "Hello, \(ctxt)!")
+        }
+    }
+
+    func testBasicKeyValueRender() throws {
+        let templatecontents = "Hello, @(name)!"
+        let template = try Template(raw: templatecontents)
+
+        let contextTests: [[String: Any]] = [
+            ["name": "World"],
+            ["name": "@@"],
+            ["name": "!*7D0"]
+        ]
+
+        try contextTests.forEach { ctxt in
+            let rendered = try template.render(with: ctxt)
+            let name = ctxt["name"] as? String ?? "[fail]"
+            XCTAssert(rendered.string == "Hello, \(name)!")
+        }
     }
 }
