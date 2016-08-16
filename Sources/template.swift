@@ -22,40 +22,59 @@ let context: [String: Any] = [
     ]
 ]
 
-protocol Context {
+// temporary global
+
+import Foundation
+
+var FUNCTIONS: [String: (RenderContext) throws -> RenderContext?] = [
+    "capitalized": { input in
+        guard let cs = input as? CustomStringConvertible else { return nil }
+        let chars = cs.description.characters
+        let first = chars.first.flatMap {
+            return String([$0]).uppercased()
+        }
+        let combo = (first ?? "") + String(chars.dropFirst().array)
+        return combo
+    }
+]
+
+protocol RenderContext {
     var raw: Bytes? { get }
-    func get(_ key: String) -> Context?
+    // var functions: [String: RenderContext] { get }
+    func get(_ key: String) -> RenderContext?
 }
 
-extension Context {
+extension RenderContext {
+    var functions: [String: RenderContext] { return [:] }
+
     var raw: Bytes? {
         guard let cs = self as? CustomStringConvertible else { return nil }
         return cs.description.bytes
     }
 
-    func get(_ key: String) -> Context? {
+    func get(_ key: String) -> RenderContext? {
         guard key == "self" else { return nil }
         return self
     }
 }
 
-extension Dictionary: Context {
-    func get(_ key: String) -> Context? {
+extension Dictionary: RenderContext {
+    func get(_ key: String) -> RenderContext? {
         if key == "self" { return self }
         guard let k = key as? Key else { return nil }
-        return self[k] as? Context
+        return self[k] as? RenderContext
     }
 }
 
-extension Context {
-    var functions: [String: (Context) -> Context] { return [:] }
+extension RenderContext {
+    // var functions: [String: (RenderContext) -> RenderContext] { return [:] }
 }
 // typealias Loader = (arguments: [Context]) -> String
 
 
 enum Token {
     case variable(contents: String)
-    case function(name: String, arguments: [Context], contents: String)
+    case function(name: String, arguments: [RenderContext], contents: String)
 }
 
 enum Either<A,B> {
@@ -136,25 +155,55 @@ enum TemplateComponent {
     // case chain([Instruction])
 }
 
-extension String: Context {}
+extension String: RenderContext {}
 extension String: CustomStringConvertible {
     public var description: String { return self }
 }
 
 protocol Command {
     var name: String { get }
-    func process(arguments: [Any?]) throws -> Context?
+    func process(arguments: [Any?]) throws -> RenderContext?
 }
 
+// TODO: Arguments self filter w/ `()`, so template: "Hello, @(name.capitalized())"
 let varCommand = Var()
 let COMMANDS: [String: Command] = [ varCommand.name: varCommand ]
 
 struct Var: Command {
     let name = ""
-    func process(arguments: [Any?]) throws -> Context? {
+    func process(arguments: [Any?]) throws -> RenderContext? {
+        /*
+         Currently ALL '@' signs are interpreted as instructions.  This means to escape in 
+         
+         name@email.com
+         
+         We'd have to do:
+         
+         name@("@")email.com
+         
+         or more pretty
+         
+         contact-email@("@email.com")
+         
+         By having this uncommented, we could allow
+         
+         name@()email.com
+        */
+        // if arguments.isEmpty return { "@" } // temporary escaping mechani
         guard arguments.count == 1 else { throw "invalid var argument" }
-        guard let stringable = arguments.first as? CustomStringConvertible else { throw "variable command requires CustomStringConvertible" }
-        return stringable.description
+        return arguments.first as? RenderContext
+
+        // TODO: Should variable allow body, or throw here? I think throw, but here for test
+        /*
+        guard let stringable = arguments.first as? CustomStringConvertible else {
+            let r = arguments.first as? RenderContext
+            print("not custom string convertible: \(r) first: \(arguments.first) type: \(arguments.first?.dynamicType)")
+            return r
+        }
+        let varref = stringable.description
+        print("VARREF: \(varref)")
+        return varref
+        */
     }
 }
 
@@ -204,11 +253,14 @@ extension BufferProtocol where Element == Byte {
 
         // check if body
         moveForward()
-        guard current == .space, next == .openCurly else { return try Instruction(name: name, arguments: arguments, body: nil) }
+        guard current == .space, next == .openCurly else {
+            return try Instruction(name: name, arguments: arguments, body: nil)
+        }
         moveForward() // queue up `{`
 
         // TODO: Body should be template components
         let body = try extractBody()
+        moveForward()
         return try Instruction(name: name, arguments: arguments, body: body)
     }
 
@@ -289,26 +341,39 @@ class Template {
 
     init(raw: String) throws {
         self.raw = raw
-        var buffer = Buffer(raw.bytes)
+        var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
         self.components = try buffer.components()
     }
 
-    func render(with context: Context) throws -> Bytes {
+    func render(with context: RenderContext) throws -> Bytes {
+        print("Rendering with: \(context)")
         var buffer = Bytes()
 
         try components.forEach { component in
             switch component {
             case let .raw(r):
+                print("Appending: \(r)")
                 buffer += r.bytes
             case let .instruction(i):
                 guard let command = COMMANDS[i.name] else { fatalError("unsupported command") }
                 let input = try i.makeCommandInput(from: context)
-                buffer += try command.process(arguments: input)
-                    .flatMap { try i.body?.render(with: $0) ?? $0.raw }
+                let rendered: Bytes = try command.process(arguments: input)
+                    .flatMap {
+                        print("Sub render: \(i.body?.raw) with: \($0)")
+                        let r =  try i.body?.render(with: $0) ?? $0.raw
+                        print("R: \(r?.string)")
+                        print("")
+                        return r
+                    }
                     ?? []
+
+                print("RENDERED: \(rendered.string)")
+                print("")
+                buffer += rendered
             }
         }
 
+        print("Collected buffer: \(buffer.string)")
         return buffer
     }
 }
@@ -323,8 +388,8 @@ struct Instruction {
      - String: -- String to use
      - nil: omit usage
     */
-    typealias ProcessArguments = (context: Context, arguments: [String]) -> Context?
-    typealias EvaluateBody = (context: Context) -> String
+    typealias ProcessArguments = (context: RenderContext, arguments: [String]) -> RenderContext?
+    typealias EvaluateBody = (context: RenderContext) -> String
 
 
     let name: String
@@ -335,15 +400,16 @@ struct Instruction {
     init(name: String, arguments: [InstructionArgument], body: String?) throws {
         self.name = name
         self.arguments = arguments
-        self.body = try body.flatMap { try Template(raw: $0) }
+        self.body = try body.flatMap { print("RAW: \($0)"); return try Template(raw: $0) }
     }
 
-    func makeCommandInput(from context: Context) throws -> [Any?] {
+    func makeCommandInput(from context: RenderContext) throws -> [Any?] {
         var input = [Optional<Any>]()
         arguments.forEach { arg in
             switch arg {
             case let .key(k):
                 if let exists = context.get(k) { input.append(exists) }
+                    // TODO: Should this just be the key instead of append nil.
                 else { input.append(nil) }
             case let .value(v):
                 input.append(v)
@@ -355,7 +421,7 @@ struct Instruction {
 
 struct ___Instruction {
     let name: String
-    let handler: ([InstructionArgument]) throws -> Context?
+    let handler: ([InstructionArgument]) throws -> RenderContext?
 }
 
 let ifInstruction = ___Instruction(name: "if") { args in
@@ -371,7 +437,7 @@ let ifInstruction = ___Instruction(name: "if") { args in
 
 enum Section {
     case raw(String)
-    case command(Context)
+    case command(RenderContext)
 }
 
 

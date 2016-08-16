@@ -9,6 +9,13 @@ var workDir: String {
     return path
 }
 
+func loadResource(named: String) -> Bytes {
+    let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
+    var bytes = Bytes(repeating: 0, count: helloData.length)
+    helloData.getBytes(&bytes, length: bytes.count)
+    return bytes
+}
+
 class templateTests: XCTestCase {
     static let allTests = [
         ("testExample", testExample),
@@ -96,5 +103,45 @@ class templateTests: XCTestCase {
             let name = ctxt["name"] as? String ?? "[fail]"
             XCTAssert(rendered.string == "Hello, \(name)!")
         }
+    }
+
+    func testBasicBodyRender() throws {
+        let bodyTest = loadResource(named: "body-test")
+        let template = try Template(raw: bodyTest.string)
+
+        let contextTests: [[String: Any]] = [
+            ["name": "World"],
+            ["name": "@@"],
+            ["name": "!*7D0"]
+        ]
+
+        try contextTests.forEach { ctxt in
+            let rendered = try template.render(with: ctxt)
+            let name = ctxt["name"] as? String ?? "[fail]"
+            XCTAssert(rendered.string == "Hello, \(name)!", "got: **\(rendered.string)** expected: **\("Hello, \(name)!")**")
+        }
+    }
+
+    func testNestedBodyRender() throws {
+        let bodyTest = loadResource(named: "nested-body")
+        let template = try Template(raw: bodyTest.string)
+
+        let contextTests: [[String: Any]] = [
+            ["best-friend": ["name": "World"]],
+            ["best-friend": ["name": "@@"]],
+            ["best-friend": ["name": "!*7D0"]]
+        ]
+
+        do {
+            try contextTests.forEach { ctxt in
+                let rendered = try template.render(with: ctxt)
+                let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
+                XCTAssert(rendered.string == "Hello, \(name)!", "got: **\(rendered.string)** expected: **\("Hello, \(name)!")**")
+            }
+        } catch {
+            XCTFail("GOT ERROR: \(error)")
+        }
+
+        print("")
     }
 }
