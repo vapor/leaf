@@ -23,13 +23,26 @@ let context: [String: Any] = [
 ]
 
 protocol Context {
+    func get(_ key: String) -> Context?
+}
 
+extension Context {
+    func get(_ key: String) -> Context? {
+        return nil
+    }
+}
+
+extension Dictionary: Context {
+    func get(_ key: String) -> Context? {
+        guard let k = key as? Key else { return nil }
+        return self[k] as? Context
+    }
 }
 
 extension Context {
     var functions: [String: (Context) -> Context] { return [:] }
 }
-typealias Loader = (arguments: [Context]) -> String
+// typealias Loader = (arguments: [Context]) -> String
 
 
 enum Token {
@@ -49,26 +62,6 @@ extension Byte {
     }
 }
 
-class TemplateRenderer {
-    let rawTemplate: String
-    var instructions: [(Context) throws -> Either<String, Context>] = []
-
-    init(rawTemplate: String) {
-        self.rawTemplate = rawTemplate
-    }
-
-    private func loadTemplate() {
-        let buffer = StaticDataBuffer(bytes: rawTemplate.bytes)
-        
-        var iterator = rawTemplate.bytes.makeIterator()
-
-        var currentBuffer = [Character]()
-        while let next = iterator.next() {
-            // Assert wasn't lead by `\` escaped
-
-        }
-    }
-}
 
 protocol BufferProtocol {
     associatedtype Element
@@ -77,10 +70,10 @@ protocol BufferProtocol {
     var next: Element? { get }
 
     @discardableResult
-    func moveForward() -> Element?
+    mutating func moveForward() -> Element?
 }
 
-class Buffer<T>: BufferProtocol {
+struct Buffer<T>: BufferProtocol {
     typealias Element = T
 
     private(set) var previous: T? = nil
@@ -97,7 +90,7 @@ class Buffer<T>: BufferProtocol {
     }
 
     @discardableResult
-    func moveForward() -> T? {
+    mutating func moveForward() -> T? {
         previous = current
         current = next
         next = buffer.next()
@@ -112,38 +105,119 @@ extension Byte {
     static let closedCurly = "}".bytes.first!
 }
 
+enum InstructionArgument {
+    case key(String)
+    case value(String)
+}
+
+extension InstructionArgument: Equatable {}
+func == (lhs: InstructionArgument, rhs: InstructionArgument) -> Bool {
+    switch (lhs, rhs) {
+    case let (.key(l), .key(r)):
+        return l == r
+    case let (.value(l), .value(r)):
+        return l == r
+    default:
+        return false
+    }
+}
+
+enum TemplateComponent {
+    case raw(String)
+    case instruction(Instruction)
+    // case chain([Instruction])
+}
+
+extension String: Context {}
+
+protocol Command {
+    var name: String { get }
+    func process(arguments: [Any]) throws -> Context?
+}
+
+let COMMANDS: [Command] = [ Var() ]
+
+struct Var: Command {
+    let name = ""
+    func process(arguments: [Any]) throws -> Context? {
+        guard arguments.count == 1 else { throw "invalid var argument" }
+        guard let stringable = arguments.first as? CustomStringConvertible else { throw "variable command requires CustomStringConvertible" }
+        return stringable.description
+    }
+}
+
+extension BufferProtocol where Element == Byte {
+    mutating func components() throws -> [TemplateComponent] {
+        var comps = [TemplateComponent]()
+        while let next = try nextComponent() {
+            comps.append(next)
+        }
+        return comps
+    }
+
+    mutating func nextComponent() throws -> TemplateComponent? {
+        guard let token = current else { return nil }
+        if token == .at {
+            let instruction = try extractInstruction()
+            return .instruction(instruction)
+        } else {
+            let raw = extractUntil { (byte) -> Bool in
+                return byte == .at && previous != .backSlash
+            }
+            return .raw(raw.string)
+        }
+    }
+
+
+    mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
+        var collection = Bytes()
+        if let current = current { collection.append(current) }
+        while let value = moveForward(), !until(value) {
+            collection.append(value)
+        }
+
+        return collection
+    }
+}
+
 /*
  Syntax
  
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
  */
 extension BufferProtocol where Element == Byte {
-    func extractInstruction() throws -> (name: String, arguments: String, body: String?) {
+    mutating func extractInstruction() throws -> Instruction {
         let name = try extractInstructionName()
         let arguments = try extractArguments()
+
         // check if body
-        guard current == .space, next == .openCurly else { return (name.string, arguments.string, nil) }
+        moveForward()
+        guard current == .space, next == .openCurly else { return Instruction(name: name, arguments: arguments, body: "@(self)") }
         moveForward() // queue up `{`
+
+        // TODO: Body should be template components
         let body = try extractBody()
-        return (name.string, arguments.string, body.string)
+        return Instruction(name: name, arguments: arguments, body: body)
     }
 
-    func extractInstructionName() throws -> Bytes {
+    mutating func extractInstructionName() throws -> String {
         // TODO: Validate alphanumeric
         return try extractSection(opensWith: .at, closesWith: .openParenthesis)
+            .string
     }
 
-    func extractArguments() throws -> Bytes {
+    mutating func extractArguments() throws -> [InstructionArgument] {
         return try extractSection(opensWith: .openParenthesis, closesWith: .closedParenthesis)
+            .extractArguments()
     }
 
-    func extractBody() throws -> Bytes {
+    mutating func extractBody() throws -> String {
         return try extractSection(opensWith: .openCurly, closesWith: .closedCurly)
             .trimmed(.whitespace)
-            .array
+            .string
     }
 
-    func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
+    mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
         guard current ==  opener else {
             throw "invalid body, missing opener: \([opener].string)"
         }
@@ -151,6 +225,7 @@ extension BufferProtocol where Element == Byte {
         var subBodies = 0
         var body = Bytes()
         while let value = moveForward() {
+            // TODO: Account for escaping `\`
             if value == closer && subBodies == 0 { break }
             if value == opener { subBodies += 1 }
             if value == closer { subBodies -= 1 }
@@ -165,6 +240,30 @@ extension BufferProtocol where Element == Byte {
     }
 }
 
+extension Byte {
+    static let quotationMark = "\"".bytes.first!
+}
+
+extension InstructionArgument {
+    init(_ bytes: BytesSlice) throws {
+        guard !bytes.isEmpty else { throw "invalid argument: empty" }
+        if bytes.first == .quotationMark {
+            guard bytes.last == .quotationMark else { throw "invalid argument: missing-trailing-quotation" }
+            self = .value(bytes.dropFirst().dropLast().string)
+        } else {
+            self = .key(bytes.string)
+        }
+    }
+}
+
+extension Sequence where Iterator.Element == Byte {
+    func extractArguments() throws -> [InstructionArgument] {
+        return try split(separator: .comma)
+            .map { $0.array.trimmed(.whitespace) }
+            .map { try InstructionArgument($0) }
+    }
+}
+
 extension Sequence where Iterator.Element == Byte {
     static var whitespace: Bytes {
         return [ .space, .newLine, .carriageReturn, .horizontalTab]
@@ -174,32 +273,15 @@ extension Sequence where Iterator.Element == Byte {
 
 class Template {
     let raw: String
-    var instructions: [Any] = []
+    let components: [TemplateComponent]
 
-    init(raw: String) {
+    init(raw: String) throws {
         self.raw = raw
+        var buffer = Buffer(raw.bytes)
+        self.components = try buffer.components()
     }
 
-    private func loadInstructions() {
-        let characters = Buffer(raw.characters)
-
-        var currentBuffer = [Character]()
-        while let value = characters.moveForward() {
-            if value == "@" {
-                if characters.previous == "/" {
-                    currentBuffer.removeLast()
-                    currentBuffer.append("@")
-                } else if characters.next == "@" {
-                    // chain command
-                    fatalError("Chain command not implemented")
-                } else {
-
-                }
-
-            } else {
-                currentBuffer.append(value)
-            }
-        }
+    func render(with context: Context) {
 
     }
 }
@@ -216,10 +298,29 @@ struct Instruction {
     */
     typealias ProcessArguments = (context: Context, arguments: [String]) -> Context?
     typealias EvaluateBody = (context: Context) -> String
+
+
     let name: String
-    let processArguments: ProcessArguments
-    let evaluateBody: EvaluateBody
+    let arguments: [InstructionArgument]
+
+    let body: String
+
+    func makeCommandInput(from context: Context) throws -> [Any] {
+        var input = [Any]()
+
+    }
 }
+
+struct ___Instruction {
+    let name: String
+    let handler: ([InstructionArgument]) throws -> Context?
+}
+
+let ifInstruction = ___Instruction(name: "if") { args in
+    // guard args.count == 1, let statement =
+    return nil
+}
+
 // class TemplateRenderer {
 //
 // }

@@ -1,0 +1,5 @@
+Hello, @(variable)!
+
+```
+result of @ command is either passed to sub-template, or passed directly. Default sub-template is `{ \(self) }`
+```

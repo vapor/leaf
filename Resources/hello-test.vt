@@ -1,3 +1,3 @@
 Hello, @(name)!
 
-Your friends are @loop(friends) { @(name), aged @(age) }
+Your best friend is @(best-friend.name)!
