@@ -37,77 +37,12 @@ var FUNCTIONS: [String: (RenderContext) throws -> RenderContext?] = [
 
 protocol RenderContext {
     var raw: Bytes? { get }
-    // var functions: [String: RenderContext] { get }
-    func get(_ key: String) -> RenderContext?
-}
-
-import PathIndexable
-
-public protocol FuzzyAccessible {
-    func get(key: String) -> Any?
-}
-
-extension Dictionary: FuzzyAccessible {
-    public func get(key: String) -> Any? {
-        // TODO: Throw if invalid key?
-        guard let key = key as? Key else { return nil }
-        let value: Value? = self[key]
-        return value
-    }
-}
-
-extension Array: FuzzyAccessible {
-    public func get(key: String) -> Any? {
-        guard let idx = Int(key), idx < count else { return nil }
-        return self[idx]
-    }
-}
-
-extension FuzzyAccessible {
-    public func get(path: String) -> Any? {
-        let components = path.components(separatedBy: ".")
-        return get(path: components)
-    }
-
-    public func get(path: [String]) -> Any? {
-        let first: Optional<Any> = self
-        return path.reduce(first) { next, index in
-            guard let next = next as? FuzzyAccessible else { return nil }
-            return next.get(key: index)
-        }
-    }
 }
 
 extension RenderContext {
-    func access(_ path: PathIndex) {
-
-    }
-}
-
-extension RenderContext {
-    var functions: [String: RenderContext] { return [:] }
-
     var raw: Bytes? {
-        guard let cs = self as? CustomStringConvertible else { return nil }
+        guard let cs = self as? CustomStringConvertible else { return "\(self)".bytes }
         return cs.description.bytes
-    }
-
-    func get(_ key: String) -> RenderContext? {
-        guard key == "self" else { return nil }
-        return self
-    }
-}
-
-extension Dictionary: RenderContext {
-    func get(_ key: String) -> RenderContext? {
-        print("Getting in dictionary: \(self.dynamicType)")
-        if key == "self" { return self }
-        guard let k = key as? Key else { return nil }
-        guard let value = self[k] else { return nil }
-        print("Dictionary Got value type(\(value.dynamicType)): \(value)")
-        let rc = value as? RenderContext
-        print("Dictionary value as context: \(rc)")
-        return rc
     }
 }
 
@@ -190,66 +125,13 @@ func == (lhs: InstructionArgument, rhs: InstructionArgument) -> Bool {
     }
 }
 
-enum TemplateComponent {
-    case raw(String)
-    case instruction(Instruction)
-    // case chain([Instruction])
-}
-
+extension Dictionary: RenderContext {}
 extension String: RenderContext {}
 extension String: CustomStringConvertible {
     public var description: String { return self }
 }
 
 extension NSString: RenderContext {}
-
-protocol Command {
-    var name: String { get }
-    func process(arguments: [Any?]) throws -> RenderContext?
-}
-
-// TODO: Arguments self filter w/ `()`, so template: "Hello, @(name.capitalized())"
-let varCommand = Var()
-let COMMANDS: [String: Command] = [ varCommand.name: varCommand ]
-
-struct Var: Command {
-    let name = ""
-    func process(arguments: [Any?]) throws -> RenderContext? {
-        /*
-         Currently ALL '@' signs are interpreted as instructions.  This means to escape in 
-         
-         name@email.com
-         
-         We'd have to do:
-         
-         name@("@")email.com
-         
-         or more pretty
-         
-         contact-email@("@email.com")
-         
-         By having this uncommented, we could allow
-         
-         name@()email.com
-        */
-        // if arguments.isEmpty return { "@" } // temporary escaping mechani
-        guard arguments.count == 1 else { throw "invalid var argument" }
-        return arguments.first as? RenderContext
-
-        // TODO: Should variable allow body, or throw here? I think throw, but here for test
-        /*
-        guard let stringable = arguments.first as? CustomStringConvertible else {
-            let r = arguments.first as? RenderContext
-            print("not custom string convertible: \(r) first: \(arguments.first) type: \(arguments.first?.dynamicType)")
-            return r
-        }
-        let varref = stringable.description
-        print("VARREF: \(varref)")
-        return varref
-        */
-    }
-}
-
 
 extension BufferProtocol where Element == Byte {
     mutating func components() throws -> [Template.Component] {
@@ -294,7 +176,6 @@ extension BufferProtocol where Element == Byte {
         }
     }
 
-
     mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
         var collection = Bytes()
         if let current = current {
@@ -329,30 +210,17 @@ extension BufferProtocol where Element == Byte {
 
         // TODO: Body should be template components
         let body = try extractBody()
-        print("Extracted body: **\(body)**")
         moveForward()
         return try Template.Component.Instruction(name: name, parameters: parameters, body: body)
     }
 
-    private func logStatus(id: Int) {
-        print("\(id) PREVIOUS: \(previous.flatMap { [$0].string }) CURRENT \(current.flatMap { [$0].string }) NEXT \(next.flatMap { [$0].string })")
-    }
     mutating func extractInstructionName() throws -> String {
-        let ab = false
-        if ab {
-            let ext = try extractSection(opensWith: TOKEN, closesWith: .openParenthesis).string
-            print("Got name: \(ext)")
-            logStatus(id: 0)
-            return ext
-        } else {
-            guard current == TOKEN else { throw "instruction name must lead with token" }
-            moveForward() // drop initial token from name. a secondary token implies chain
-            let name = extractUntil { $0 == .openParenthesis }
-            logStatus(id: 0)
-            print("name: \(name.string)")
-            guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
-            return name.string
-        }
+        // can't extract section because of @@
+        guard current == TOKEN else { throw "instruction name must lead with token" }
+        moveForward() // drop initial token from name. a secondary token implies chain
+        let name = extractUntil { $0 == .openParenthesis }
+        guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
+        return name.string
     }
 
     mutating func extractInstructionParameters() throws -> [Template.Component.Instruction.Parameter] {
@@ -744,47 +612,6 @@ extension Template {
 
         }
         return buffer
-    }
-}
-
-
-struct Instruction {
-    /**
-     
-     RETURN
-     
-     - Context: -- pass context to body
-     - String: -- String to use
-     - nil: omit usage
-    */
-    typealias ProcessArguments = (context: RenderContext, arguments: [String]) -> RenderContext?
-    typealias EvaluateBody = (context: RenderContext) -> String
-
-
-    let name: String
-    let arguments: [InstructionArgument]
-
-    let body: Template?
-
-    init(name: String, arguments: [InstructionArgument], body: String?) throws {
-        self.name = name
-        self.arguments = arguments
-        self.body = try body.flatMap { try Template(raw: $0) }
-    }
-
-    func makeCommandInput(from context: RenderContext) throws -> [Any?] {
-        var input = [Optional<Any>]()
-        arguments.forEach { arg in
-            switch arg {
-            case let .key(k):
-                if let exists = context.get(k) { input.append(exists) }
-                    // TODO: Should this just be the key instead of append nil.
-                else { input.append(nil) }
-            case let .value(v):
-                input.append(v)
-            }
-        }
-        return input
     }
 }
 
