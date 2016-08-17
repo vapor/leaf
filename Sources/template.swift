@@ -1,6 +1,8 @@
 import Core
 import Foundation
 
+let TOKEN: Byte = .at
+
 extension String: Swift.Error {}
 //let _ = "Hello, \\(variable)!"
 
@@ -84,8 +86,7 @@ enum Either<A,B> {
 
 extension Byte {
     var isTemplateToken: Bool {
-        return self == .at
-            || self == .forwardSlash
+        return self == TOKEN
     }
 }
 
@@ -218,13 +219,11 @@ extension BufferProtocol where Element == Byte {
 
     mutating func nextComponent() throws -> TemplateComponent? {
         guard let token = current else { return nil }
-        if token == .at {
+        if token == TOKEN {
             let instruction = try extractInstruction()
             return .instruction(instruction)
         } else {
-            let raw = extractUntil { (byte) -> Bool in
-                return byte == .at && previous != .backSlash
-            }
+            let raw = extractUntil { $0.isTemplateToken }
             return .raw(raw.string)
         }
     }
@@ -266,7 +265,7 @@ extension BufferProtocol where Element == Byte {
 
     mutating func extractInstructionName() throws -> String {
         // TODO: Validate alphanumeric
-        return try extractSection(opensWith: .at, closesWith: .openParenthesis)
+        return try extractSection(opensWith: TOKEN, closesWith: .openParenthesis)
             .string
     }
 
