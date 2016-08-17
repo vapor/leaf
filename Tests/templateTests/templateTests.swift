@@ -116,8 +116,9 @@ class LoopTests: XCTestCase {
             ]
         ]
 
-        try print("[loop] \(template.render(with: context).string)")
-        print("")
+        let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
+        let rendered = try template.render(with: context).string
+        XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
 }
 
