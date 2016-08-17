@@ -91,6 +91,24 @@ class FuzzyAccessibleTests: XCTestCase {
         guard let unwrapped = result else { return }
         XCTAssert("\(unwrapped)" == "Hello!", "have: \(unwrapped), want: Hello!")
     }
+
+    func testFuzzyTemplate() throws {
+        let raw = "Hello, @(path.to.person.0.name)!"
+        let context: [String: Any] = [
+            "path": [
+                "to": [
+                    "person": [
+                        ["name": "World"]
+                    ]
+                ]
+            ]
+        ]
+
+        let template = try Template(raw: raw)
+        let rendered = try template.render(with: context).string
+        let expectation = "Hello, World!"
+        XCTAssert(rendered == expectation)
+    }
 }
 
 class TemplateLoadingTests: XCTestCase {

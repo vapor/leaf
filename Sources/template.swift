@@ -512,19 +512,7 @@ final class Else: CMD {
 
 final class Loop: CMD {
     let name = "loop"
-    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
-        var input = [Argument]()
-        instruction.parameters.forEach { arg in
-            switch arg {
-            case let .variable(key):
-                let value = context.get(key)
-                input.append(.variable(key: key, value: value))
-            case let .constant(c):
-                input.append(.constant(value: c))
-            }
-        }
-        return input
-    }
+
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         print("processing loop: \(arguments)")
         guard arguments.count == 1 else { throw "more than one argument not supported in loop" }
@@ -599,13 +587,21 @@ protocol CMD {
 
 extension CMD {
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
+        let accessible = context as? FuzzyAccessible
         var input = [Argument]()
         instruction.parameters.forEach { arg in
             switch arg {
             case let .variable(key):
-                let value = context.get(key)
-                print("Got: \(value)")
-                input.append(.variable(key: key, value: value))
+                if key == "self" {
+                    input.append(.variable(key: key, value: context))
+                } else if let accessible = accessible {
+                    // TODO: Add filters
+                    let value = accessible.get(path: key)
+                    input.append(.variable(key: key, value: value))
+                } else {
+                    print("Inaccessible context: \(context) key: \(key)")
+                    input.append(.variable(key: key, value: nil))
+                }
             case let .constant(c):
                 input.append(.constant(value: c))
             }
