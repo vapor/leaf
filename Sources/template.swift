@@ -2,6 +2,17 @@ import Core
 import Foundation
 
 /*
+public protocol PathIndexable {
+    /// If self is an array representation, return array
+    var pathIndexableArray: [Self]? { get }
+
+    /// If self is an object representation, return object
+    var pathIndexableObject: [String: Self]? { get }
+}
+*/
+
+
+/*
  // TODO: GLOBAL
  
  - Context tree, so if variable isn't in lowest scope, we can search higher context
@@ -11,29 +22,6 @@ import Foundation
 let TOKEN: Byte = .at
 
 extension String: Swift.Error {}
-//let _ = "Hello, \\(variable)!"
-
-
-// "blah blah @forEach friends { Hello, \(name)! }"
-// =>
-// Hello, Joe! Hello, Jen!
-let forLoop = "blah blah @forEach friends { Hello, \\(name)! }"
-
-let context: [String: Any] = [
-    "name": "Logan",
-    "friends": [
-        [
-            "name": "Joe"
-        ],
-        [
-            "name": "Jen"
-        ]
-    ]
-]
-
-// temporary global
-
-import Foundation
 
 var FUNCTIONS: [String: (RenderContext) throws -> RenderContext?] = [
     "capitalized": { input in
@@ -51,6 +39,49 @@ protocol RenderContext {
     var raw: Bytes? { get }
     // var functions: [String: RenderContext] { get }
     func get(_ key: String) -> RenderContext?
+}
+
+import PathIndexable
+
+public protocol FuzzyAccessible {
+    func get(key: String) -> Any?
+}
+
+extension Dictionary: FuzzyAccessible {
+    public func get(key: String) -> Any? {
+        // TODO: Throw if invalid key?
+        guard let key = key as? Key else { return nil }
+        let value: Value? = self[key]
+        return value
+    }
+}
+
+extension Array: FuzzyAccessible {
+    public func get(key: String) -> Any? {
+        guard let idx = Int(key), idx < count else { return nil }
+        return self[idx]
+    }
+}
+
+extension FuzzyAccessible {
+    public func get(path: String) -> Any? {
+        let components = path.components(separatedBy: ".")
+        return get(path: components)
+    }
+
+    public func get(path: [String]) -> Any? {
+        let first: Optional<Any> = self
+        return path.reduce(first) { next, index in
+            guard let next = next as? FuzzyAccessible else { return nil }
+            return next.get(key: index)
+        }
+    }
+}
+
+extension RenderContext {
+    func access(_ path: PathIndex) {
+
+    }
 }
 
 extension RenderContext {
@@ -92,21 +123,6 @@ extension NSDictionary: RenderContext {
 }
 extension Bool: RenderContext {}
 
-extension RenderContext {
-    // var functions: [String: (RenderContext) -> RenderContext] { return [:] }
-}
-// typealias Loader = (arguments: [Context]) -> String
-
-
-enum Token {
-    case variable(contents: String)
-    case function(name: String, arguments: [RenderContext], contents: String)
-}
-
-enum Either<A,B> {
-    case a(A)
-    case b(B)
-}
 
 extension Byte {
     var isTemplateToken: Bool {
@@ -192,29 +208,6 @@ protocol Command {
     func process(arguments: [Any?]) throws -> RenderContext?
 }
 
-enum CommandInput {
-    case variable(name: String)
-    case value(String)
-}
-
-protocol AltCommand {
-    var name: String { get }
-
-    func process(input: [CommandInput], in context: RenderContext) throws -> RenderContext?
-    func render(template: Template, in context: RenderContext) throws -> Bytes
-}
-
-extension AltCommand {
-    func process(input: [CommandInput], in context: RenderContext) throws -> RenderContext? {
-        
-        return nil
-    }
-
-    func render(template: Template, in context: RenderContext) throws -> Bytes {
-        return try template.render(with: context)
-    }
-}
-
 // TODO: Arguments self filter w/ `()`, so template: "Hello, @(name.capitalized())"
 let varCommand = Var()
 let COMMANDS: [String: Command] = [ varCommand.name: varCommand ]
@@ -283,30 +276,6 @@ extension BufferProtocol where Element == Byte {
 
                     if !loop { break }
                 }
-/*
-                let chain = comps.enumerated().reversed()
-                var toRemove: [Int] = []
-                for (idx, comp) in chain {
-                    var loop = true
-                    switch comp {
-                    // skip whitespace
-                    case let .raw(raw) where raw.trimmed(.whitespace).isEmpty:
-                        toRemove.append(idx)
-                        continue
-                    default:
-                        var mutable = comp
-                        try mutable.addToChain(i)
-                        comps[idx] = mutable
-                        loop = false
-                    }
-
-                    if !loop { break }
-                }
-*/
-                // let lastIdx = comps.count - 1
-                // var last = comps[lastIdx]
-                // try last.addToChain(i)
-                // comps[lastIdx] = last
             } else {
                 comps.append(next)
             }
@@ -384,16 +353,6 @@ extension BufferProtocol where Element == Byte {
             guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
             return name.string
         }
-        /*
-        // TODO: Validate alphanumeric? Also allows preceeding token
-        guard current == TOKEN else { throw "instruction name must lead with token" }
-        moveForward() // drop initial token from name. a secondary token implies chain
-        let name = extractUntil { $0 == .openParenthesis }
-        logStatus(id: 0)
-        print("name: \(name.string)")
-        guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
-        return name.string
-         */
     }
 
     mutating func extractInstructionParameters() throws -> [Template.Component.Instruction.Parameter] {
@@ -767,44 +726,6 @@ extension Template {
 
                 guard let bytes = renderedComponent else { return }
                 buffer += bytes
-
-
-                /*
-                print("Subcontext: \(subcontext)")
-                print("Instruction body: \(instruction.body)")
-
-                guard
-                    let bytes = try instruction.body?.render(with: subcontext!) ?? subcontext!.raw
-                    else { return }
-
-                print("Appending: \(bytes.string)")
-                buffer += bytes
-                print("Appended : \(buffer.string)")
-                print("")
-                 */
-
-                // guard let subcontext = try command.process(arguments: arguments) else {
-                // buffer +=  try subcontext.flatMap { ctxt in
-                //  return instruction.body?.render(with: ctxt) ?? ctxt.raw
-                // }
-
-                /*
-                guard let command = COMMANDS[i.name] else { fatalError("unsupported command") }
-                let input = try i.makeCommandInput(from: context)
-                let rendered: Bytes = try command.process(arguments: input)
-                    .flatMap {
-                        print("Sub render: \(i.body?.raw) with: \($0)")
-                        let r =  try i.body?.render(with: $0) ?? $0.raw
-                        print("R: \(r?.string)")
-                        print("")
-                        return r
-                    }
-                    ?? []
-
-                print("RENDERED: \(rendered.string)")
-                print("")
-                buffer += rendered
-                 */
             case let .chain(chain):
                 for instruction in chain {
                     guard let command = _commands[instruction.name] else { throw "unsupported command" }
@@ -870,37 +791,6 @@ struct Instruction {
         return input
     }
 }
-
-struct ___Instruction {
-    let name: String
-    let handler: ([InstructionArgument]) throws -> RenderContext?
-}
-
-let ifInstruction = ___Instruction(name: "if") { args in
-    // guard args.count == 1, let statement =
-    return nil
-}
-
-// class TemplateRenderer {
-//
-// }
-
-
-
-enum Section {
-    case raw(String)
-    case command(RenderContext)
-}
-
-
-func doStuff(input: String) {
-    //    let buffer = StaticDataBuffer(bytes: input.bytes)
-
-    //var iterator = input.bytes.makeIterator()
-    //while let n = iterator.next() {
-    //}
-}
-
 
 extension Template.Component {
     mutating func addToChain(_ chainedInstruction: Instruction) throws {

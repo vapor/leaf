@@ -16,14 +16,82 @@ func loadTemplate(named: String) throws -> Template {
     return try Template(raw: bytes.string)
 }
 
-/*
-extension Template {
-    init(raw: String, components: [Component]) {
-        self.raw = raw
-        self.components = components
+class FuzzyAccessibleTests: XCTestCase {
+    func testSingleDictionary() {
+        let object: [String: Any] = [
+            "hello": "world"
+        ]
+        let result = object.get(key: "hello")
+        XCTAssertNotNil(result)
+        guard let unwrapped = result else { return }
+        XCTAssert("\(unwrapped)" == "world")
+    }
+
+    func testSingleArray() {
+        let object: [Any] = [
+            "hello",
+            "world"
+        ]
+
+        let assertions: [String: String] = [
+            "0": "Optional(\"hello\")",
+            "1": "Optional(\"world\")",
+            "2": "nil",
+            "notidx": "nil"
+        ]
+        assertions.forEach { key, expectation in
+            let result = object.get(key: key)
+            print("\(result)")
+            XCTAssert("\(result)" == expectation)
+        }
+    }
+
+    func testLinkedDictionary() {
+        let object: [String: Any] = [
+            "hello": [
+                "subpath": [
+                    "to": [
+                        "value": "Hello!"
+                    ]
+                ]
+            ]
+        ]
+
+        let result = object.get(path: "hello.subpath.to.value")
+        XCTAssertNotNil(result)
+        guard let unwrapped = result else { return }
+        XCTAssert("\(unwrapped)" == "Hello!")
+    }
+
+    func testLinkedArray() {
+        let object: [Any] = [
+            // 0
+            [Any](arrayLiteral:
+                [Any](),
+                // 1
+                [Any](arrayLiteral:
+                    [Any](),
+                    [Any](),
+                     //2
+                    [Any](arrayLiteral:
+                        // 0
+                        [Any](arrayLiteral:
+                            "",
+                            "",
+                            "",
+                            "Hello!" // 3
+                        )
+                    )
+                )
+            )
+        ]
+
+        let result = object.get(path: "0.1.2.0.3")
+        XCTAssertNotNil(result)
+        guard let unwrapped = result else { return }
+        XCTAssert("\(unwrapped)" == "Hello!", "have: \(unwrapped), want: Hello!")
     }
 }
-*/
 
 class TemplateLoadingTests: XCTestCase {
     func testBasicRawOnly() throws {
