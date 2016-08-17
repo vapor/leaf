@@ -37,14 +37,38 @@ extension NSDictionary: FuzzyAccessible {
 
 extension Array: FuzzyAccessible {
     public func get(key: String) -> Any? {
-        guard let idx = Int(key), idx < count else { return nil }
-        return self[idx]
+        if let idx = Int(key), idx < count { return self[idx] }
+
+        switch key {
+        case "self":
+            return self
+        case "first":
+            return self.first
+        case "last":
+            return self.last
+        case "count":
+            return self.count
+        default:
+            return nil
+        }
     }
 }
 
 extension NSArray: FuzzyAccessible {
     public func get(key: String) -> Any? {
-        guard let idx = Int(key), idx < count else { return nil }
-        return self.object(at: idx)
+        if let idx = Int(key), idx < count { return self[idx] }
+
+        switch key {
+        case "self":
+            return self
+        case "first":
+            return self.firstObject
+        case "last":
+            return self.lastObject
+        case "count":
+            return self.count
+        default:
+            return nil
+        }
     }
 }
