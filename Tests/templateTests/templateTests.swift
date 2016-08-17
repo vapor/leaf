@@ -28,7 +28,7 @@ extension Template {
 class TemplateLoadingTests: XCTestCase {
     func testBasicRawOnly() throws {
         let template = try loadTemplate(named: "template-basic-raw")
-        XCTAssert(template.components ==  [.raw("Hello, World!\n".bytes)])
+        XCTAssert(template.components ==  [.raw("Hello, World!".bytes)])
     }
 
     func testBasicInstructions() throws {
@@ -42,8 +42,7 @@ class TemplateLoadingTests: XCTestCase {
 
         let expectation: [Template.Component] = [
             .raw("Some raw text here. ".bytes),
-            .instruction(instruction),
-            .raw("\n".bytes)
+            .instruction(instruction)
         ]
         XCTAssert(template.components ==  expectation)
     }
@@ -68,13 +67,47 @@ class TemplateLoadingTests: XCTestCase {
 
         let expectation: [Template.Component] = [
             .raw("Here's a basic template and, ".bytes),
-            .instruction(command),
-            .raw("\n".bytes)
+            .instruction(command)
         ]
         XCTAssert(template.components ==  expectation)
     }
 }
 
+class TemplateRenderTests: XCTestCase {
+    func testBasicRender() throws {
+        let template = try loadTemplate(named: "basic-render")
+        let contexts = ["a", "ab9***", "ajcm301kc,s--11111", "World", "👾"]
+
+        try contexts.forEach { context in
+            let expectation = "Hello, \(context)!"
+            let rendered = try template.render(with: context)
+                .string
+            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+        }
+    }
+
+    func testNestedBodyRender() throws {
+        let template = try loadTemplate(named: "nested-body")
+
+        let contextTests: [[String: Any]] = [
+            ["best-friend": ["name": "World"]],
+            ["best-friend": ["name": "@@"]],
+            ["best-friend": ["name": "!*7D0"]]
+        ]
+
+        do {
+            try contextTests.forEach { ctxt in
+                let rendered = try template.render(with: ctxt)
+                let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
+                XCTAssert(rendered.string == "Hello, \(name)!", "got: **\(rendered.string)** expected: **\("Hello, \(name)!")**")
+            }
+        } catch {
+            XCTFail("GOT ERROR: \(error)")
+        }
+
+        print("")
+    }
+}
 /*
 class templateTests: XCTestCase {
     static let allTests = [

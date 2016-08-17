@@ -173,6 +173,7 @@ enum CommandInput {
 
 protocol AltCommand {
     var name: String { get }
+
     func process(input: [CommandInput], in context: RenderContext) throws -> RenderContext?
     func render(template: Template, in context: RenderContext) throws -> Bytes
 }
@@ -360,7 +361,7 @@ extension Sequence where Iterator.Element == Byte {
 }
 
 
-class Template {
+final class Template {
     // TODO: Bytes?
     // reference only
     let raw: String
@@ -368,7 +369,7 @@ class Template {
 
     init(raw: String) throws {
         self.raw = raw
-        var buffer = Buffer(raw.bytes.array)
+        var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
         self.components = try buffer.components()
     }
 }
@@ -397,6 +398,73 @@ extension Template {
         case instruction(Instruction)
     }
 }
+
+enum Argument {
+    case variable(key: String, value: Any?)
+    case constant(value: String)
+}
+
+
+final class Variable: CMD {
+    let name = "" // empty name, ie: @(variable)
+    func process(arguments: [Argument]) throws -> RenderContext? {
+        /*
+         Currently ALL '@' signs are interpreted as instructions.  This means to escape in
+
+         name@email.com
+
+         We'd have to do:
+
+         name@("@")email.com
+
+         or more pretty
+
+         contact-email@("@email.com")
+
+         By having this uncommented, we could allow
+
+         name@()email.com
+         */
+        // if arguments.isEmpty return { "@" } // temporary escaping mechani
+        guard arguments.count == 1 else { throw "invalid var argument" }
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value
+        case let .variable(key: _, value: value):
+            return value as? RenderContext
+        }
+    }
+}
+
+var _commands: [String: CMD] = [
+    "": Variable()
+]
+
+protocol CMD {
+    var name: String { get }
+    func process(arguments: [Argument]) throws -> RenderContext?
+
+    // Optional
+    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument]
+}
+
+extension CMD {
+    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
+        var input = [Argument]()
+        instruction.parameters.forEach { arg in
+            switch arg {
+            case let .variable(key):
+                let value = context.get(key)
+                input.append(.variable(key: key, value: value))
+            case let .constant(c):
+                input.append(.constant(value: c))
+            }
+        }
+        return input
+    }
+}
+
 
 extension Template: CustomStringConvertible {
     var description: String {
@@ -487,12 +555,35 @@ extension Template {
         print("Rendering with: \(context)")
         var buffer = Bytes()
 
+        print("Components: \(components)")
+        print("")
         try components.forEach { component in
             switch component {
             case let .raw(r):
-                print("Appending: \(r)")
                 buffer += r
-            case let .instruction(i):
+            case let .instruction(instruction):
+                print("Instruction: \(instruction)")
+                guard let command = _commands[instruction.name] else { throw "unsupported command" }
+                let arguments = command.preprocess(instruction: instruction, with: context)
+                print("Arguments: \(arguments)")
+                // empty is ok -- on chains, chain here
+                let subcontext = try command.process(arguments: arguments)
+                print("Subcontext: \(subcontext)")
+                print("Instruction body: \(instruction.body)")
+
+                guard
+                    let bytes = try instruction.body?.render(with: subcontext!) ?? subcontext!.raw
+                    else { return }
+
+                print("Appending: \(bytes.string)")
+                buffer += bytes
+                print("Appended : \(buffer.string)")
+                print("")
+                // guard let subcontext = try command.process(arguments: arguments) else {
+                // buffer +=  try subcontext.flatMap { ctxt in
+                //  return instruction.body?.render(with: ctxt) ?? ctxt.raw
+                // }
+
                 /*
                 guard let command = COMMANDS[i.name] else { fatalError("unsupported command") }
                 let input = try i.makeCommandInput(from: context)
@@ -510,11 +601,8 @@ extension Template {
                 print("")
                 buffer += rendered
                  */
-                fatalError()
             }
         }
-
-        print("Collected buffer: \(buffer.string)")
         return buffer
     }
 }
