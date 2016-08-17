@@ -238,11 +238,59 @@ struct Var: Command {
     }
 }
 
+
 extension BufferProtocol where Element == Byte {
     mutating func components() throws -> [Template.Component] {
         var comps: [Template.Component] = []
         while let next = try nextComponent() {
-            comps.append(next)
+            print("Got component: \(next)")
+            print("")
+            if case let .instruction(i) = next, i.isChain {
+                guard comps.count > 0 else { throw "invalid chain component w/o preceeding instruction" }
+                while let last = comps.last {
+                    var loop = true
+
+                    comps.removeLast()
+                    switch last {
+                    // skip whitespace
+                    case let .raw(raw) where raw.trimmed(.whitespace).isEmpty:
+                        continue
+                    default:
+                        var mutable = last
+                        try mutable.addToChain(i)
+                        comps.append(mutable)
+                        loop = false
+                    }
+
+                    if !loop { break }
+                }
+/*
+                let chain = comps.enumerated().reversed()
+                var toRemove: [Int] = []
+                for (idx, comp) in chain {
+                    var loop = true
+                    switch comp {
+                    // skip whitespace
+                    case let .raw(raw) where raw.trimmed(.whitespace).isEmpty:
+                        toRemove.append(idx)
+                        continue
+                    default:
+                        var mutable = comp
+                        try mutable.addToChain(i)
+                        comps[idx] = mutable
+                        loop = false
+                    }
+
+                    if !loop { break }
+                }
+*/
+                // let lastIdx = comps.count - 1
+                // var last = comps[lastIdx]
+                // try last.addToChain(i)
+                // comps[lastIdx] = last
+            } else {
+                comps.append(next)
+            }
         }
         return comps
     }
@@ -261,7 +309,10 @@ extension BufferProtocol where Element == Byte {
 
     mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
         var collection = Bytes()
-        if let current = current { collection.append(current) }
+        if let current = current {
+            guard !until(current) else { return [] }
+            collection.append(current)
+        }
         while let value = moveForward(), !until(value) {
             collection.append(value)
         }
@@ -278,6 +329,7 @@ extension BufferProtocol where Element == Byte {
 extension BufferProtocol where Element == Byte {
     mutating func extractInstruction() throws -> Template.Component.Instruction {
         let name = try extractInstructionName()
+        print("Got name: \(name)")
         let parameters = try extractInstructionParameters()
 
         // check if body
@@ -289,14 +341,40 @@ extension BufferProtocol where Element == Byte {
 
         // TODO: Body should be template components
         let body = try extractBody()
+        print("Extracted body: **\(body)**")
         moveForward()
         return try Template.Component.Instruction(name: name, parameters: parameters, body: body)
     }
 
+    private func logStatus(id: Int) {
+        print("\(id) PREVIOUS: \(previous.flatMap { [$0].string }) CURRENT \(current.flatMap { [$0].string }) NEXT \(next.flatMap { [$0].string })")
+    }
     mutating func extractInstructionName() throws -> String {
-        // TODO: Validate alphanumeric
-        return try extractSection(opensWith: TOKEN, closesWith: .openParenthesis)
-            .string
+        let ab = false
+        if ab {
+            let ext = try extractSection(opensWith: TOKEN, closesWith: .openParenthesis).string
+            print("Got name: \(ext)")
+            logStatus(id: 0)
+            return ext
+        } else {
+            guard current == TOKEN else { throw "instruction name must lead with token" }
+            moveForward() // drop initial token from name. a secondary token implies chain
+            let name = extractUntil { $0 == .openParenthesis }
+            logStatus(id: 0)
+            print("name: \(name.string)")
+            guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
+            return name.string
+        }
+        /*
+        // TODO: Validate alphanumeric? Also allows preceeding token
+        guard current == TOKEN else { throw "instruction name must lead with token" }
+        moveForward() // drop initial token from name. a secondary token implies chain
+        let name = extractUntil { $0 == .openParenthesis }
+        logStatus(id: 0)
+        print("name: \(name.string)")
+        guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
+        return name.string
+         */
     }
 
     mutating func extractInstructionParameters() throws -> [Template.Component.Instruction.Parameter] {
@@ -326,7 +404,7 @@ extension BufferProtocol where Element == Byte {
         }
 
         guard current == closer else {
-            throw "invalid body, missing closer: \([closer].string)"
+            throw "invalid body, missing closer: \([closer].string), got \([current])"
         }
 
         return body
@@ -390,8 +468,19 @@ extension Template {
 
             let body: Template?
 
+            fileprivate var isChain: Bool
+
             init(name: String, parameters: [Parameter], body: String?) throws {
-                self.name = name
+                // we strip leading token, if another one is there, 
+                // that means we've found a chain element, ie: @@else {
+                if name.bytes.first == TOKEN {
+                    self.isChain = true
+                    self.name = name.bytes.dropFirst().string
+                } else {
+                    self.isChain = false
+                    self.name = name
+                }
+
                 self.parameters = parameters
                 self.body = try body.flatMap { try Template(raw: $0) }
             }
@@ -399,6 +488,7 @@ extension Template {
 
         case raw(Bytes)
         case instruction(Instruction)
+        case chain([Instruction])
     }
 }
 
@@ -422,14 +512,23 @@ final class If: CMD {
         case let .variable(key: _, value: value as String):
             let bool = Bool(value)
             return bool == true ? parent : nil
-        case let .variable(key: _, value: value as Int) where value == 1:
-            return parent
-        case let .variable(key: _, value: value as Double) where value == 1.0:
-            return parent
+        case let .variable(key: _, value: value as Int):
+            return value == 1 ? parent : nil
+        case let .variable(key: _, value: value as Double):
+            return value == 1.0 ? parent: nil
         case let .variable(key: _, value: value):
-            throw "Unable to interpret \(value) as bool"
+            return value != nil ? parent : nil
         }
-        return nil
+    }
+}
+
+final class Else: CMD {
+    let name = "else"
+
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
+        guard arguments.isEmpty else { throw "else expects 0 arguments" }
+        // else is a path through to parent context
+        return parent
     }
 }
 
@@ -505,7 +604,8 @@ final class Variable: CMD {
 var _commands: [String: CMD] = [
     "": Variable(),
     "loop": Loop(),
-    "if": If()
+    "if": If(),
+    "else": Else()
 ]
 
 protocol CMD {
@@ -554,6 +654,8 @@ extension Template.Component: CustomStringConvertible {
             return ".raw(\(r.string))"
         case let .instruction(i):
             return ".instruction(\(i))"
+        case let .chain(chain):
+            return ".chain(\(chain))"
         }
     }
 }
@@ -683,7 +785,26 @@ extension Template {
                 print("")
                 buffer += rendered
                  */
+            case let .chain(chain):
+                for instruction in chain {
+                    guard let command = _commands[instruction.name] else { throw "unsupported command" }
+                    let arguments = try command.preprocess(instruction: instruction, with: context)
+                    print("Arguments: \(arguments)")
+                    // empty is ok -- on chains, chain here
+                    guard let subcontext = try command.process(arguments: arguments, parent: context) else { continue }
+                    let renderedComponent = try instruction.body
+                        .flatMap { subtemplate in
+                            // command MUST do render here for things like 'loop', consider top-level change as well
+                            return try command.render(context: subcontext, with: subtemplate)
+                        }
+                        ?? subcontext.raw
+
+                    guard let bytes = renderedComponent else { continue }
+                    buffer += bytes
+                    break // break loop if we found a component
+                }
             }
+
         }
         return buffer
     }
@@ -758,4 +879,18 @@ func doStuff(input: String) {
     //var iterator = input.bytes.makeIterator()
     //while let n = iterator.next() {
     //}
+}
+
+
+extension Template.Component {
+    mutating func addToChain(_ chainedInstruction: Instruction) throws {
+        switch self {
+        case .raw(_):
+            throw "unable to chain \(chainedInstruction) w/o preceding instruction"
+        case let .instruction(current):
+            self = .chain([current, chainedInstruction])
+        case let .chain(chain):
+            self = .chain(chain + [chainedInstruction])
+        }
+    }
 }

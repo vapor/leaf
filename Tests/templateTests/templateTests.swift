@@ -140,6 +140,41 @@ class IfTests: XCTestCase {
         let expectation = ""
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
+
+    func testBasicIfElse() throws {
+        let template = try loadTemplate(named: "basic-if-else")
+        let helloContext: [String: Any] = [
+            "entering": true,
+            "friend-name": "World"
+        ]
+        let renderedHello = try template.render(with: helloContext).string
+        let expectedHello = "Hello, World!"
+        XCTAssert(renderedHello == expectedHello, "have: \(renderedHello) want: \(expectedHello)")
+
+        let goodbyeContext: [String: Any] = [
+            "entering": false,
+            "friend-name": "World"
+        ]
+        let renderedGoodbye = try template.render(with: goodbyeContext).string
+        let expectedGoodbye = "Goodbye, World!"
+        XCTAssert(renderedGoodbye == expectedGoodbye, "have: \(renderedGoodbye) want: \(expectedGoodbye)")
+    }
+
+    func testNestedIfElse() throws {
+        let template = try loadTemplate(named: "nested-if-else")
+        let expectations: [(input: [String: Any], expectation: String)] = [
+            (input: ["a": true], expectation: "Got a."),
+            (input: ["b": true], expectation: "Got b."),
+            (input: ["c": true], expectation: "Got c."),
+            (input: ["d": true], expectation: "Got d."),
+            (input: [:], expectation: "Got e.")
+        ]
+
+        try expectations.forEach { input, expectation in
+            let rendered = try template.render(with: input).string
+            XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
+        }
+    }
 }
 
 

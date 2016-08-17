@@ -1,0 +1,11 @@
+@if(a) {
+    Got a.
+} @@if(b) {
+    Got b.
+} @@if(c) {
+    Got c.
+} @@if(d) {
+    Got d.
+} @@else() {
+    Got e.
+}
