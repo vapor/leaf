@@ -276,8 +276,7 @@ extension InstructionArgument {
 extension Sequence where Iterator.Element == Byte {
     func extractParameters() throws -> [Template.Component.Instruction.Parameter] {
         return try split(separator: .comma)
-            .map { $0.array.trimmed(.whitespace) }
-            .map { try Template.Component.Instruction.Parameter($0) }
+            .map { try Template.Component.Instruction.Parameter.init($0) }
     }
 }
 
@@ -304,6 +303,16 @@ final class Template {
 extension Template {
     enum Component {
         final class Instruction {
+            enum Param {
+                enum PathComponent {
+                    case key(String)
+                    case filter(String)
+                }
+
+                case variable(path: [PathComponent])
+                case constant(value: String)
+            }
+
             enum Parameter {
                 case variable(String)
                 case constant(String)
@@ -343,7 +352,7 @@ enum Argument {
     case constant(value: String)
 }
 
-final class If: CMD {
+final class If: Command {
     let name = "if"
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
@@ -368,7 +377,7 @@ final class If: CMD {
     }
 }
 
-final class Else: CMD {
+final class Else: Command {
     let name = "else"
 
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
@@ -378,7 +387,7 @@ final class Else: CMD {
     }
 }
 
-final class Loop: CMD {
+final class Loop: Command {
     let name = "loop"
 
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
@@ -403,7 +412,7 @@ final class Loop: CMD {
     }
 }
 
-final class Variable: CMD {
+final class Variable: Command {
     let name = "" // empty name, ie: @(variable)
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         /*
@@ -435,14 +444,14 @@ final class Variable: CMD {
     }
 }
 
-var _commands: [String: CMD] = [
+var _commands: [String: Command] = [
     "": Variable(),
     "loop": Loop(),
     "if": If(),
     "else": Else()
 ]
 
-protocol CMD {
+protocol Command {
     var name: String { get }
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext?
 
@@ -453,7 +462,7 @@ protocol CMD {
     func render(context: RenderContext, with template: Template) throws -> Bytes
 }
 
-extension CMD {
+extension Command {
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
         let accessible = context as? FuzzyAccessible
         var input = [Argument]()
@@ -556,8 +565,33 @@ func == (lhs: Template.Component.Instruction.Parameter, rhs: Template.Component.
     }
 }
 
+extension Template.Component.Instruction.Param.PathComponent {
+    init(_ slice: BytesSlice) {
+        if slice.suffix(2) == [.openParenthesis, .closedParenthesis] {
+            self = .filter(slice.dropLast(2).string)
+        } else {
+            self = .key(slice.string)
+        }
+    }
+}
+
+extension Template.Component.Instruction.Param {
+    init(alt bytes: BytesSlice) throws {
+        let bytes = bytes.array.trimmed(.whitespace)
+        guard !bytes.isEmpty else { throw "invalid argument: empty" }
+        if bytes.first == .quotationMark {
+            guard bytes.count > 1 && bytes.last == .quotationMark else { throw "invalid argument: missing-trailing-quotation" }
+            self = .constant(value: bytes.dropFirst().dropLast().string)
+        } else {
+            let params = bytes.split(separator: .period, omittingEmptySubsequences: true)
+                .map { PathComponent($0) }
+            self = .variable(path: params)
+        }
+    }
+}
+
 extension Template.Component.Instruction.Parameter {
-    init(_ bytes: BytesSlice) throws {
+    init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw "invalid argument: empty" }
         if bytes.first == .quotationMark {
