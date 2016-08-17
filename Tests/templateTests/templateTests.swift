@@ -120,6 +120,56 @@ class LoopTests: XCTestCase {
         let rendered = try template.render(with: context).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
+
+    func testComplexLoop() throws {
+        let context: [String: Any] = [
+            "friends": [
+                [
+                    "name": "Venus",
+                    "age": 12345
+                ],
+                [
+                    "name": "Pluto",
+                    "age": 888
+                ],
+                [
+                    "name": "Mercury",
+                    "age": 9000
+                ]
+            ]
+        ]
+
+        let template = try loadTemplate(named: "complex-loop")
+        let rendered = try template.render(with: context).string
+        print("RENDERED: \n\(rendered)")
+        print("")
+    }
+
+    func testScratchFun() throws {
+        let context: [String: Any] = [
+            "name": "Test Bot",
+            "best-friend": "Mars",
+            "friends": [
+                [
+                    "name": "Venus",
+                    "age": 12345
+                ],
+                [
+                    "name": "Pluto",
+                    "age": 888
+                ],
+                [
+                    "name": "Mercury",
+                    "age": 9000
+                ]
+            ]
+        ]
+
+        let template = try loadTemplate(named: "scratch")
+        let rendered = try template.render(with: context).string
+        print("RENDERED: \n\(rendered)")
+        print("")
+    }
 }
 
 class IfTests: XCTestCase {

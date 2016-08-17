@@ -1,6 +1,13 @@
 import Core
 import Foundation
 
+/*
+ // TODO: GLOBAL
+ 
+ - Context tree, so if variable isn't in lowest scope, we can search higher context
+ - all instances of as? RenderContext should come with a warning for unsupported types, or take `Any`.
+ */
+
 let TOKEN: Byte = .at
 
 extension String: Swift.Error {}
@@ -66,13 +73,23 @@ extension Dictionary: RenderContext {
         if key == "self" { return self }
         guard let k = key as? Key else { return nil }
         guard let value = self[k] else { return nil }
-        print("Got value: \(value)")
-        return value as? RenderContext
+        print("Dictionary Got value type(\(value.dynamicType)): \(value)")
+        let rc = value as? RenderContext
+        print("Dictionary value as context: \(rc)")
+        return rc
     }
 }
 
 extension Int: RenderContext {}
+extension NSNumber: RenderContext {}
+
 extension Array: RenderContext {}
+extension NSArray: RenderContext {}
+extension NSDictionary: RenderContext {
+    func get(_ key: String) -> RenderContext? {
+        return object(forKey: key) as? RenderContext
+    }
+}
 extension Bool: RenderContext {}
 
 extension RenderContext {
@@ -167,6 +184,8 @@ extension String: RenderContext {}
 extension String: CustomStringConvertible {
     public var description: String { return self }
 }
+
+extension NSString: RenderContext {}
 
 protocol Command {
     var name: String { get }
@@ -626,6 +645,7 @@ extension CMD {
             switch arg {
             case let .variable(key):
                 let value = context.get(key)
+                print("Got: \(value)")
                 input.append(.variable(key: key, value: value))
             case let .constant(c):
                 input.append(.constant(value: c))

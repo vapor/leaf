@@ -1,1 +1,13 @@
-Hello, @()!
+<h1>Welcome, @(name)</h1>
+
+@if(best-friend) {
+    <h3>Best friend: @(best-friend)</h3>
+} @@else() {
+    <h3>Best friend pending!<\h3>
+}
+
+Your entire friend group is
+
+@loop(friends) {
+    <li><b>@(name)</b>: @(age)</li>
+}

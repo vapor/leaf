@@ -1,0 +1,3 @@
+@loop(friends) {
+    <li><b>@(name)</b>: @(age)</li>
+}
