@@ -166,6 +166,32 @@ protocol Command {
     func process(arguments: [Any?]) throws -> RenderContext?
 }
 
+enum CommandInput {
+    case variable(name: String)
+    case value(String)
+}
+
+protocol AltCommand {
+    var name: String { get }
+    func process(input: [CommandInput], in context: RenderContext) throws -> RenderContext?
+    func render(template: Template, in context: RenderContext) throws -> Bytes
+}
+
+extension AltCommand {
+    func process(input: [CommandInput], in context: RenderContext) throws -> RenderContext? {
+        
+        return nil
+    }
+
+    func render(template: Template, in context: RenderContext) throws -> Bytes {
+        return try template.render(with: context)
+    }
+}
+
+struct LoopCommand: AltCommand {
+    let name = "loop"
+}
+
 // TODO: Arguments self filter w/ `()`, so template: "Hello, @(name.capitalized())"
 let varCommand = Var()
 let COMMANDS: [String: Command] = [ varCommand.name: varCommand ]
@@ -209,22 +235,22 @@ struct Var: Command {
 }
 
 extension BufferProtocol where Element == Byte {
-    mutating func components() throws -> [TemplateComponent] {
-        var comps = [TemplateComponent]()
+    mutating func components() throws -> [Template.Component] {
+        var comps: [Template.Component] = []
         while let next = try nextComponent() {
             comps.append(next)
         }
         return comps
     }
 
-    mutating func nextComponent() throws -> TemplateComponent? {
+    mutating func nextComponent() throws -> Template.Component? {
         guard let token = current else { return nil }
         if token == TOKEN {
             let instruction = try extractInstruction()
             return .instruction(instruction)
         } else {
             let raw = extractUntil { $0.isTemplateToken }
-            return .raw(raw.string)
+            return .raw(raw)
         }
     }
 
@@ -246,21 +272,21 @@ extension BufferProtocol where Element == Byte {
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
  */
 extension BufferProtocol where Element == Byte {
-    mutating func extractInstruction() throws -> Instruction {
+    mutating func extractInstruction() throws -> Template.Component.Instruction {
         let name = try extractInstructionName()
-        let arguments = try extractArguments()
+        let parameters = try extractInstructionParameters()
 
         // check if body
         moveForward()
         guard current == .space, next == .openCurly else {
-            return try Instruction(name: name, arguments: arguments, body: nil)
+            return try Template.Component.Instruction(name: name, parameters: parameters, body: nil)
         }
         moveForward() // queue up `{`
 
         // TODO: Body should be template components
         let body = try extractBody()
         moveForward()
-        return try Instruction(name: name, arguments: arguments, body: body)
+        return try Template.Component.Instruction(name: name, parameters: parameters, body: body)
     }
 
     mutating func extractInstructionName() throws -> String {
@@ -269,9 +295,9 @@ extension BufferProtocol where Element == Byte {
             .string
     }
 
-    mutating func extractArguments() throws -> [InstructionArgument] {
+    mutating func extractInstructionParameters() throws -> [Template.Component.Instruction.Parameter] {
         return try extractSection(opensWith: .openParenthesis, closesWith: .closedParenthesis)
-            .extractArguments()
+            .extractParameters()
     }
 
     mutating func extractBody() throws -> String {
@@ -320,10 +346,10 @@ extension InstructionArgument {
 }
 
 extension Sequence where Iterator.Element == Byte {
-    func extractArguments() throws -> [InstructionArgument] {
+    func extractParameters() throws -> [Template.Component.Instruction.Parameter] {
         return try split(separator: .comma)
             .map { $0.array.trimmed(.whitespace) }
-            .map { try InstructionArgument($0) }
+            .map { try Template.Component.Instruction.Parameter($0) }
     }
 }
 
@@ -335,15 +361,128 @@ extension Sequence where Iterator.Element == Byte {
 
 
 class Template {
+    // TODO: Bytes?
+    // reference only
     let raw: String
-    let components: [TemplateComponent]
+    let components: [Component]
 
     init(raw: String) throws {
         self.raw = raw
-        var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
+        var buffer = Buffer(raw.bytes.array)
         self.components = try buffer.components()
     }
+}
 
+extension Template {
+    enum Component {
+        final class Instruction {
+            enum Parameter {
+                case variable(String)
+                case constant(String)
+            }
+
+            let name: String
+            let parameters: [Parameter]
+
+            let body: Template?
+
+            init(name: String, parameters: [Parameter], body: String?) throws {
+                self.name = name
+                self.parameters = parameters
+                self.body = try body.flatMap { try Template(raw: $0) }
+            }
+        }
+
+        case raw(Bytes)
+        case instruction(Instruction)
+    }
+}
+
+extension Template: CustomStringConvertible {
+    var description: String {
+        let components = self.components.map { $0.description } .joined(separator: ", ")
+        return "Template: " + components
+    }
+}
+
+extension Template.Component: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case let .raw(r):
+            return ".raw(\(r.string))"
+        case let .instruction(i):
+            return ".instruction(\(i))"
+        }
+    }
+}
+
+extension Template.Component.Instruction: CustomStringConvertible {
+    var description: String {
+        return "(name: \(name), parameters: \(parameters), body: \(body)"
+    }
+}
+
+extension Template.Component.Instruction.Parameter: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case let .variable(v):
+            return ".variable(\(v))"
+        case let .constant(c):
+            return ".constant(\(c))"
+        }
+    }
+}
+
+extension Template.Component: Equatable {}
+func == (lhs: Template.Component, rhs: Template.Component) -> Bool {
+    switch (lhs, rhs) {
+    case let (.raw(l), .raw(r)):
+        return l == r
+    case let (.instruction(l), .instruction(r)):
+        return l == r
+    default:
+        return false
+    }
+}
+
+extension Template: Equatable {}
+func == (lhs: Template, rhs: Template) -> Bool {
+    return lhs.components == rhs.components
+}
+
+extension Template.Component.Instruction: Equatable {}
+func == (lhs: Template.Component.Instruction, rhs: Template.Component.Instruction) -> Bool {
+    return lhs.name == rhs.name
+        && lhs.parameters == rhs.parameters
+        && lhs.body == rhs.body
+}
+
+extension Template.Component.Instruction.Parameter: Equatable {}
+func == (lhs: Template.Component.Instruction.Parameter, rhs: Template.Component.Instruction.Parameter) -> Bool {
+    switch (lhs, rhs) {
+    case let (.variable(l), .variable(r)):
+        return l == r
+    case let (.constant(l), .constant(r)):
+        return l == r
+    default:
+        return false
+    }
+}
+
+extension Template.Component.Instruction.Parameter {
+    init(_ bytes: BytesSlice) throws {
+        let bytes = bytes.array.trimmed(.whitespace)
+        guard !bytes.isEmpty else { throw "invalid argument: empty" }
+        if bytes.first == .quotationMark {
+            guard bytes.count > 1 && bytes.last == .quotationMark else { throw "invalid argument: missing-trailing-quotation" }
+            self = .constant(bytes.dropFirst().dropLast().string)
+        } else {
+            self = .variable(bytes.string)
+        }
+    }
+}
+
+extension Template {
     func render(with context: RenderContext) throws -> Bytes {
         print("Rendering with: \(context)")
         var buffer = Bytes()
@@ -352,8 +491,9 @@ class Template {
             switch component {
             case let .raw(r):
                 print("Appending: \(r)")
-                buffer += r.bytes
+                buffer += r
             case let .instruction(i):
+                /*
                 guard let command = COMMANDS[i.name] else { fatalError("unsupported command") }
                 let input = try i.makeCommandInput(from: context)
                 let rendered: Bytes = try command.process(arguments: input)
@@ -369,6 +509,8 @@ class Template {
                 print("RENDERED: \(rendered.string)")
                 print("")
                 buffer += rendered
+                 */
+                fatalError()
             }
         }
 
@@ -399,7 +541,7 @@ struct Instruction {
     init(name: String, arguments: [InstructionArgument], body: String?) throws {
         self.name = name
         self.arguments = arguments
-        self.body = try body.flatMap { print("RAW: \($0)"); return try Template(raw: $0) }
+        self.body = try body.flatMap { try Template(raw: $0) }
     }
 
     func makeCommandInput(from context: RenderContext) throws -> [Any?] {

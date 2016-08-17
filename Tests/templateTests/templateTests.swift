@@ -9,13 +9,73 @@ var workDir: String {
     return path
 }
 
-func loadResource(named: String) -> Bytes {
+func loadTemplate(named: String) throws -> Template {
     let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
     var bytes = Bytes(repeating: 0, count: helloData.length)
     helloData.getBytes(&bytes, length: bytes.count)
-    return bytes
+    return try Template(raw: bytes.string)
 }
 
+/*
+extension Template {
+    init(raw: String, components: [Component]) {
+        self.raw = raw
+        self.components = components
+    }
+}
+*/
+
+class TemplateLoadingTests: XCTestCase {
+    func testBasicRawOnly() throws {
+        let template = try loadTemplate(named: "template-basic-raw")
+        XCTAssert(template.components ==  [.raw("Hello, World!\n".bytes)])
+    }
+
+    func testBasicInstructions() throws {
+        let template = try loadTemplate(named: "template-basic-instructions-no-body")
+        // @custom(two, variables, "and one constant")
+        let instruction = try Template.Component.Instruction(
+            name: "custom",
+            parameters: [.variable("two"), .variable("variables"), .constant("and one constant")],
+            body: nil
+        )
+
+        let expectation: [Template.Component] = [
+            .raw("Some raw text here. ".bytes),
+            .instruction(instruction),
+            .raw("\n".bytes)
+        ]
+        XCTAssert(template.components ==  expectation)
+    }
+
+    func testBasicNested() throws {
+        /*
+            Here's a basic template and, @command(parameter) {
+                now we're in the body, which is ALSO a @template("constant") {
+                    and a third sub template with a @(variable)
+                }
+            }
+
+        */
+        let template = try loadTemplate(named: "template-basic-nested")
+
+        let command = try Template.Component.Instruction(
+            name: "command",
+            // TODO: `.variable(name: `
+            parameters: [.variable("parameter")],
+            body: "now we're in the body, which is ALSO a @template(\"constant\") {\n\tand a third sub template with a @(variable)\n\t}"
+        )
+
+        let expectation: [Template.Component] = [
+            .raw("Here's a basic template and, ".bytes),
+            .instruction(command),
+            .raw("\n".bytes)
+        ]
+        XCTAssert(template.components ==  expectation)
+    }
+}
+
+/*
 class templateTests: XCTestCase {
     static let allTests = [
         ("testExample", testExample),
@@ -145,3 +205,4 @@ class templateTests: XCTestCase {
         print("")
     }
 }
+ */
