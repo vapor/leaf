@@ -102,6 +102,26 @@ class TemplateRenderTests: XCTestCase {
         }
     }
 }
+
+class LoopTests: XCTestCase {
+    func testBasicLoop() throws {
+        let template = try loadTemplate(named: "basic-loop")
+
+        let context: [String: [Any]] = [
+            "friends": [
+                "asdf",
+                "🐌",
+                "8***z0-1",
+                12
+            ]
+        ]
+
+        try print("[loop] \(template.render(with: context).string)")
+        print("")
+    }
+}
+
+
 /*
 class templateTests: XCTestCase {
     static let allTests = [

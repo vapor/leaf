@@ -62,11 +62,17 @@ extension RenderContext {
 
 extension Dictionary: RenderContext {
     func get(_ key: String) -> RenderContext? {
+        print("Getting in dictionary: \(self.dynamicType)")
         if key == "self" { return self }
         guard let k = key as? Key else { return nil }
-        return self[k] as? RenderContext
+        guard let value = self[k] else { return nil }
+        print("Got value: \(value)")
+        return value as? RenderContext
     }
 }
+
+extension Int: RenderContext {}
+extension Array: RenderContext {}
 
 extension RenderContext {
     // var functions: [String: (RenderContext) -> RenderContext] { return [:] }
@@ -187,10 +193,6 @@ extension AltCommand {
     func render(template: Template, in context: RenderContext) throws -> Bytes {
         return try template.render(with: context)
     }
-}
-
-struct LoopCommand: AltCommand {
-    let name = "loop"
 }
 
 // TODO: Arguments self filter w/ `()`, so template: "Hello, @(name.capitalized())"
@@ -404,6 +406,43 @@ enum Argument {
     case constant(value: String)
 }
 
+final class Loop: CMD {
+    let name = "loop"
+    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
+        print("Preprocess loop: \(instruction) context: \(context)")
+        var input = [Argument]()
+        instruction.parameters.forEach { arg in
+            switch arg {
+            case let .variable(key):
+                let value = context.get(key)
+                input.append(.variable(key: key, value: value))
+            case let .constant(c):
+                input.append(.constant(value: c))
+            }
+        }
+        return input
+    }
+    func process(arguments: [Argument]) throws -> RenderContext? {
+        print("processing loop: \(arguments)")
+        guard arguments.count == 1 else { throw "more than one argument not supported in loop" }
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value
+        case let .variable(key: _, value: value):
+            print("Got variable: \(value)")
+            return value as? RenderContext
+        }
+    }
+
+    func render(context: RenderContext, with template: Template) throws -> Bytes {
+        guard let array = context as? [RenderContext] else {
+            throw "Not right value for loop, needs: [RenderContext]"
+        }
+
+        return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
+    }
+}
 
 final class Variable: CMD {
     let name = "" // empty name, ie: @(variable)
@@ -438,7 +477,8 @@ final class Variable: CMD {
 }
 
 var _commands: [String: CMD] = [
-    "": Variable()
+    "": Variable(),
+    "loop": Loop()
 ]
 
 protocol CMD {
@@ -446,7 +486,10 @@ protocol CMD {
     func process(arguments: [Argument]) throws -> RenderContext?
 
     // Optional
-    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument]
+    func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) throws -> [Argument]
+
+    // Optional Rendering -- MUST RENDER
+    func render(context: RenderContext, with template: Template) throws -> Bytes
 }
 
 extension CMD {
@@ -462,6 +505,10 @@ extension CMD {
             }
         }
         return input
+    }
+
+    func render(context: RenderContext, with template: Template) throws -> Bytes {
+        return try template.render(with: context)
     }
 }
 
@@ -552,11 +599,7 @@ extension Template.Component.Instruction.Parameter {
 
 extension Template {
     func render(with context: RenderContext) throws -> Bytes {
-        print("Rendering with: \(context)")
         var buffer = Bytes()
-
-        print("Components: \(components)")
-        print("")
         try components.forEach { component in
             switch component {
             case let .raw(r):
@@ -564,10 +607,20 @@ extension Template {
             case let .instruction(instruction):
                 print("Instruction: \(instruction)")
                 guard let command = _commands[instruction.name] else { throw "unsupported command" }
-                let arguments = command.preprocess(instruction: instruction, with: context)
+                let arguments = try command.preprocess(instruction: instruction, with: context)
                 print("Arguments: \(arguments)")
                 // empty is ok -- on chains, chain here
-                let subcontext = try command.process(arguments: arguments)
+                guard let subcontext = try command.process(arguments: arguments) else { return }
+                let renderedComponent = try instruction.body.flatMap { subtemplate in
+                    // command MUST do render here for things like 'loop', consider top-level change as well
+                    return try command.render(context: subcontext, with: subtemplate)
+                } ?? subcontext.raw
+
+                guard let bytes = renderedComponent else { return }
+                buffer += bytes
+
+
+                /*
                 print("Subcontext: \(subcontext)")
                 print("Instruction body: \(instruction.body)")
 
@@ -579,6 +632,8 @@ extension Template {
                 buffer += bytes
                 print("Appended : \(buffer.string)")
                 print("")
+                 */
+
                 // guard let subcontext = try command.process(arguments: arguments) else {
                 // buffer +=  try subcontext.flatMap { ctxt in
                 //  return instruction.body?.render(with: ctxt) ?? ctxt.raw
