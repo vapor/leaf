@@ -73,6 +73,7 @@ extension Dictionary: RenderContext {
 
 extension Int: RenderContext {}
 extension Array: RenderContext {}
+extension Bool: RenderContext {}
 
 extension RenderContext {
     // var functions: [String: (RenderContext) -> RenderContext] { return [:] }
@@ -406,10 +407,35 @@ enum Argument {
     case constant(value: String)
 }
 
+final class If: CMD {
+    let name = "if"
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
+        guard arguments.count == 1 else { throw "invalid if statement arguments" }
+        let argument = arguments[0]
+        // TODO: Polymorphic could help here
+        switch argument {
+        case let .constant(value: value):
+            let bool = Bool(value)
+            return bool == true ? parent : nil
+        case let .variable(key: _, value: value as Bool):
+            return value ? parent : nil
+        case let .variable(key: _, value: value as String):
+            let bool = Bool(value)
+            return bool == true ? parent : nil
+        case let .variable(key: _, value: value as Int) where value == 1:
+            return parent
+        case let .variable(key: _, value: value as Double) where value == 1.0:
+            return parent
+        case let .variable(key: _, value: value):
+            throw "Unable to interpret \(value) as bool"
+        }
+        return nil
+    }
+}
+
 final class Loop: CMD {
     let name = "loop"
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
-        print("Preprocess loop: \(instruction) context: \(context)")
         var input = [Argument]()
         instruction.parameters.forEach { arg in
             switch arg {
@@ -422,7 +448,7 @@ final class Loop: CMD {
         }
         return input
     }
-    func process(arguments: [Argument]) throws -> RenderContext? {
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         print("processing loop: \(arguments)")
         guard arguments.count == 1 else { throw "more than one argument not supported in loop" }
         let argument = arguments[0]
@@ -446,7 +472,7 @@ final class Loop: CMD {
 
 final class Variable: CMD {
     let name = "" // empty name, ie: @(variable)
-    func process(arguments: [Argument]) throws -> RenderContext? {
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         /*
          Currently ALL '@' signs are interpreted as instructions.  This means to escape in
 
@@ -478,12 +504,13 @@ final class Variable: CMD {
 
 var _commands: [String: CMD] = [
     "": Variable(),
-    "loop": Loop()
+    "loop": Loop(),
+    "if": If()
 ]
 
 protocol CMD {
     var name: String { get }
-    func process(arguments: [Argument]) throws -> RenderContext?
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext?
 
     // Optional
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) throws -> [Argument]
@@ -610,7 +637,7 @@ extension Template {
                 let arguments = try command.preprocess(instruction: instruction, with: context)
                 print("Arguments: \(arguments)")
                 // empty is ok -- on chains, chain here
-                guard let subcontext = try command.process(arguments: arguments) else { return }
+                guard let subcontext = try command.process(arguments: arguments, parent: context) else { return }
                 let renderedComponent = try instruction.body.flatMap { subtemplate in
                     // command MUST do render here for things like 'loop', consider top-level change as well
                     return try command.render(context: subcontext, with: subtemplate)

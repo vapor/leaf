@@ -122,6 +122,26 @@ class LoopTests: XCTestCase {
     }
 }
 
+class IfTests: XCTestCase {
+    func testBasicIf() throws {
+        let template = try loadTemplate(named: "basic-if-test")
+
+        let context = ["say-hello": true]
+        let rendered = try template.render(with: context).string
+        let expectation = "Hello, there!"
+        XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+    }
+
+    func testBasicIfFail() throws {
+        let template = try loadTemplate(named: "basic-if-test")
+
+        let context = ["say-hello": false]
+        let rendered = try template.render(with: context).string
+        let expectation = ""
+        XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+    }
+}
+
 
 /*
 class templateTests: XCTestCase {
