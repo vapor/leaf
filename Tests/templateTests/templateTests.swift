@@ -95,17 +95,11 @@ class TemplateRenderTests: XCTestCase {
             ["best-friend": ["name": "!*7D0"]]
         ]
 
-        do {
-            try contextTests.forEach { ctxt in
-                let rendered = try template.render(with: ctxt)
-                let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
-                XCTAssert(rendered.string == "Hello, \(name)!", "got: **\(rendered.string)** expected: **\("Hello, \(name)!")**")
-            }
-        } catch {
-            XCTFail("GOT ERROR: \(error)")
+        try contextTests.forEach { ctxt in
+            let rendered = try template.render(with: ctxt)
+            let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
+            XCTAssert(rendered.string == "Hello, \(name)!", "got: **\(rendered.string)** expected: **\("Hello, \(name)!")**")
         }
-
-        print("")
     }
 }
 /*
