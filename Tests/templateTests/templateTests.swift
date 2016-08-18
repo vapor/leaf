@@ -189,10 +189,10 @@ class FillerTests: XCTestCase {
     }
 }
 
-class FilterTests {
+class FilterTests: XCTestCase {
     func testBasic() throws {
-        // let raw = "@(name) { @uppercased(self) }"
-        let raw = "@uppercased(name)"
+        let raw = "@(name) { @uppercased(self) }"
+        // let raw = "@uppercased(name)"
         let template = try Template(raw: raw)
         let filler = Filler(["name": "hi"])
         let rendered = try template.render(with: filler).string
