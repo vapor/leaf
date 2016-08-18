@@ -7,11 +7,17 @@ var workDir: String {
     return path
 }
 
-func loadTemplate(named: String) throws -> Template {
+func loadTemplate(named name: String) throws -> Template {
+
+    let namespace = NameSpace()
+    let template = try namespace.loadTemplate(named: name)
+    return template
+    /*
     let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
     var bytes = Bytes(repeating: 0, count: helloData.length)
     helloData.getBytes(&bytes, length: bytes.count)
     return try Template(raw: bytes.string)
+    */
 }
 
 func load(path: String) throws -> Bytes {
