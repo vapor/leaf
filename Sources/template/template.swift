@@ -14,6 +14,15 @@ func loadTemplate(named: String) throws -> Template {
     return try Template(raw: bytes.string)
 }
 
+func load(path: String) throws -> Bytes {
+    guard let data = NSData(contentsOfFile: path) else {
+        throw "unable to load bytes"
+    }
+    var bytes = Bytes(repeating: 0, count: data.length)
+    data.getBytes(&bytes, length: bytes.count)
+    return bytes
+}
+
 /*
  // TODO: GLOBAL
 
@@ -23,6 +32,7 @@ func loadTemplate(named: String) throws -> Template {
  */
 
 let TOKEN: Byte = .numberSign
+let SUFFIX = ".vt"
 
 final class Filler {
 
@@ -269,6 +279,11 @@ final class Template {
     let raw: String
     let components: [Component]
 
+    init(raw: String, components: [Component]) {
+        self.raw = raw
+        self.components = components
+    }
+
     init(raw: String) throws {
         self.raw = raw
         var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
@@ -331,7 +346,8 @@ protocol Renderable {
 protocol InstructionDriver {
     var name: String { get }
 
-    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
+    func postCompile(namespace: NameSpace,
+                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
 
     // Optional -- takes template instruction and populates it from fillter
     func preprocess(instruction: Template.Component.Instruction, with filler: Filler) throws -> [Argument]
@@ -344,7 +360,57 @@ protocol InstructionDriver {
     func postrender(filler: Filler) throws
 }
 
+class NameSpace {
+    let workingDirectory: String
+
+    init(workingDirectory: String = workDir) {
+        self.workingDirectory = workingDirectory
+    }
+}
+
+extension NameSpace {
+    func loadTemplate(named name: String) throws -> Template {
+        var subpath = name
+        if subpath.hasPrefix("/") {
+            subpath = String(subpath.characters.dropFirst())
+        }
+        let path = workingDirectory
+            .finished(with: "/") + subpath.finished(with: SUFFIX)
+
+        let raw = try load(path: path).trimmed(.whitespace)
+        var buffer = Buffer(raw)
+        let components = try buffer.components().map(postcompile)
+        let template = Template(raw: raw.string, components: components)
+        return template
+    }
+
+    private func postcompile(_ component: Template.Component) throws -> Template.Component {
+        func commandPostcompile(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+            guard let command = drivers[instruction.name] else { throw "unsupported instruction: \(instruction.name)" }
+            return try command.postCompile(namespace: self,
+                                           instruction: instruction)
+        }
+
+        switch component {
+        case .raw(_):
+            return component
+        case let .instruction(instruction):
+            let updated = try commandPostcompile(instruction)
+            return .instruction(updated)
+        case let .chain(instructions):
+            let mapped = try instructions.map(commandPostcompile)
+            return .chain(mapped)
+        }
+    }
+}
+
 extension InstructionDriver {
+
+    func postCompile(namespace: NameSpace,
+                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+        return instruction
+    }
+
     func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
 
         return instruction
@@ -403,6 +469,25 @@ final class _Include: InstructionDriver {
     // TODO: Use
     var cache: [String: Template] = [:]
 
+    func postCompile(
+        namespace: NameSpace,
+        instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+
+        guard instruction.parameters.count == 1 else { throw "invalid include" }
+        switch instruction.parameters[0] {
+        case let .constant(name): // ok to be subpath, NOT ok to b absolute
+            let body = try namespace.loadTemplate(named: name)
+            return Template.Component.Instruction(
+                name: instruction.name,
+                parameters: [], // no longer need parameters
+                body: body
+            )
+        case let .variable(name):
+            throw "include's must not be dynamic, try `@include(\"\(name)\")"
+        }
+    }
+
+    /*
     func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
         guard instruction.parameters.count == 1 else {
             throw "invalid include statement"
@@ -422,10 +507,11 @@ final class _Include: InstructionDriver {
             throw "include statements are required to be constants"
         }
     }
-
+*/
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        return true
         // TODO: Check if template exists?
-        return arguments.count == 1
+        //       return arguments.count == 1
         /*
         guard arguments.count == 1 else { throw "include requires a single path argument" }
         switch arguments[0] {
@@ -446,37 +532,6 @@ final class _Include: InstructionDriver {
         }
          */
     }
-
-    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) throws -> Template? {
-        guard arguments.count == 1 else { fatalError("this shouldn't happen") }
-        switch arguments[0] {
-        case let .constant(value: value):
-            return try template(named: value)
-        case let .variable(key: _, value: value as String):
-            return try template(named: value)
-        case let .variable(key: _, value: value?):
-            return try template(named: "\(value)")
-        default:
-            return instruction.body
-        }
-    }
-
-    private func template(named name: String) throws -> Template {
-        let template = try cache[name] ?? loadTemplate(named: name)
-        cache[name] = template
-        return template
-    }
-    /*
-    func render(template: Template, with filler: Filler) throws -> Bytes {
-        guard
-            let included = filler.get(key: "include") as? Template
-            else { throw "expected include to be pushed onto stack" }
-
-
-        // included.
-        fatalError("\(included)")
-    }
- */
 }
 
 final class _Loop: InstructionDriver {

@@ -191,11 +191,13 @@ class FilterTests: XCTestCase {
 
 class IncludeTests: XCTestCase {
     func testBasicInclude() throws {
-        let template = try loadTemplate(named: "include-base")
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(named: "include-base")
+        // let template = try loadTemplate(named: "include-base")
         let filler = Filler(["name": "World"])
         let rendered = try template.render(with: filler).string
         let expectation = "Template included: Hello, World!"
-        XCTAssert(rendered == expectation)
+        XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
 }
 
