@@ -264,16 +264,6 @@ final class Template {
 extension Template {
     enum Component {
         final class Instruction {
-            enum Param {
-                enum PathComponent {
-                    case key(String)
-                    case filter(String)
-                }
-
-                case variable(path: [PathComponent])
-                case constant(value: String)
-            }
-
             enum Parameter {
                 case variable(String)
                 case constant(String)
@@ -313,11 +303,11 @@ enum Argument {
     case constant(value: String)
 }
 
-protocol _Renderable {
+protocol Renderable {
     func rendered() throws -> Bytes
 }
 
-protocol _InstructionDriver {
+protocol InstructionDriver {
     var name: String { get }
 
     // Optional -- takes template instruction and populates it from fillter
@@ -331,7 +321,7 @@ protocol _InstructionDriver {
 }
 
 
-extension _InstructionDriver {
+extension InstructionDriver {
     func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
         var input = [Argument]()
         instruction.parameters.forEach { arg in
@@ -375,7 +365,7 @@ extension _InstructionDriver {
     func postrender(filler: Filler) throws {}
 }
 
-final class _Loop: _InstructionDriver {
+final class _Loop: InstructionDriver {
     let name = "loop"
 
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
@@ -419,7 +409,7 @@ final class _Loop: _InstructionDriver {
     }
 }
 
-final class _Uppercased: _InstructionDriver {
+final class _Uppercased: InstructionDriver {
     let name = "uppercased"
 
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
@@ -429,7 +419,7 @@ final class _Uppercased: _InstructionDriver {
             filler.push(["self": value.uppercased()])
         case let .variable(key: _, value: value as String):
             filler.push(["self": value.uppercased()])
-        case let .variable(key: _, value: value as _Renderable):
+        case let .variable(key: _, value: value as Renderable):
             let uppercased = try value.rendered().string.uppercased()
             filler.push(["self": uppercased])
         case let .variable(key: _, value: value?):
@@ -442,7 +432,7 @@ final class _Uppercased: _InstructionDriver {
     }
 }
 
-final class _Else: _InstructionDriver {
+final class _Else: InstructionDriver {
     let name = "else"
 
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
@@ -451,7 +441,7 @@ final class _Else: _InstructionDriver {
     }
 }
 
-final class _If: _InstructionDriver {
+final class _If: InstructionDriver {
     let name = "if"
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
@@ -476,7 +466,7 @@ final class _If: _InstructionDriver {
     }
 }
 
-final class _Variable: _InstructionDriver {
+final class _Variable: InstructionDriver {
     let name = "" // empty name, ie: @(variable)
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         /*
@@ -516,7 +506,7 @@ final class _Variable: _InstructionDriver {
     }
 }
 
-let drivers: [String: _InstructionDriver] = [
+let drivers: [String: InstructionDriver] = [
     "": _Variable(),
     "if": _If(),
     "else": _Else(),
@@ -597,31 +587,6 @@ func == (lhs: Template.Component.Instruction.Parameter, rhs: Template.Component.
     }
 }
 
-extension Template.Component.Instruction.Param.PathComponent {
-    init(_ slice: BytesSlice) {
-        if slice.suffix(2) == [.openParenthesis, .closedParenthesis] {
-            self = .filter(slice.dropLast(2).string)
-        } else {
-            self = .key(slice.string)
-        }
-    }
-}
-
-extension Template.Component.Instruction.Param {
-    init(alt bytes: BytesSlice) throws {
-        let bytes = bytes.array.trimmed(.whitespace)
-        guard !bytes.isEmpty else { throw "invalid argument: empty" }
-        if bytes.first == .quotationMark {
-            guard bytes.count > 1 && bytes.last == .quotationMark else { throw "invalid argument: missing-trailing-quotation" }
-            self = .constant(value: bytes.dropFirst().dropLast().string)
-        } else {
-            let params = bytes.split(separator: .period, omittingEmptySubsequences: true)
-                .map { PathComponent($0) }
-            self = .variable(path: params)
-        }
-    }
-}
-
 extension Template.Component.Instruction.Parameter {
     init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
         let bytes = bytes.array.trimmed(.whitespace)
@@ -638,7 +603,7 @@ extension Template.Component.Instruction.Parameter {
 extension Filler {
     func rendered(path: String) throws -> Bytes? {
         guard let value = self.get(path: path) else { return nil }
-        guard let renderable = value as? _Renderable else { return "\(value)".bytes }
+        guard let renderable = value as? Renderable else { return "\(value)".bytes }
         return try renderable.rendered()
     }
 }
