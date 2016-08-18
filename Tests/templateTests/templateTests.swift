@@ -112,7 +112,7 @@ class FuzzyAccessibleTests: XCTestCase {
 }
 
 class FillerTests: XCTestCase {
-    func __testBasic() throws {
+    func testBasic() throws {
         let template = try Template(raw: "Hello, @(name)!")
         let context: [String: String] = ["name": "World"]
         let filler = Filler(context)
@@ -123,7 +123,7 @@ class FillerTests: XCTestCase {
         } catch { XCTFail("\(error)") }
     }
 
-    func __testNested() throws {
+    func testNested() throws {
         let raw = "@(best-friend) { Hello, @(self.name)! }"
         let template = try Template(raw: raw)
         print("Components: \(template.components)")
@@ -157,6 +157,42 @@ class FillerTests: XCTestCase {
         let rendered = try template.render(with: filler).string
         let expectation = "Let's render Foo is friends with Bar"
         XCTAssert(rendered == expectation)
+    }
+
+    func testMultiScope() throws {
+        let raw = "@(a) { @(self.b) { @(self.c) { @(self.path.1) } } }"
+        let template = try Template(raw: raw)
+        let filler = Filler(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
+        let rendered = try template.render(with: filler).string
+        let expectation = "HEllo"
+        XCTAssert(rendered == expectation)
+    }
+
+    func testIfChain() throws {
+        let raw = "@if(key-zero) { Hi, A! } @@if(key-one) { Hi, B! } @@else() { Hi, C! }"
+        let template = try Template(raw: raw)
+        let cases: [(key: String, bool: Bool, expectation: String)] = [
+            ("key-zero", true, "Hi, A!"),
+            ("key-zero", false, "Hi, C!"),
+            ("key-one", true, "Hi, B!"),
+            ("key-one", false, "Hi, C!"),
+            ("s••z", true, "Hi, C!"),
+            ("$º–%,🍓", true, "Hi, C!"),
+            ("]", true, "Hi, C!"),
+        ]
+
+        try cases.forEach { key, bool, expectation in
+            let filler = Filler([key: bool])
+            let rendered = try template.render(with: filler).string
+            XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
+        }
+    }
+}
+
+class FilterTests {
+    func testBasic() throws {
+        let raw = "@(name.uppercase)"
+        let template = try Template(raw: raw)
     }
 }
 

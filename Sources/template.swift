@@ -605,6 +605,39 @@ final class _Loop: _InstructionDriver {
     }
 }
 
+final class _Else: _InstructionDriver {
+    let name = "else"
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        guard arguments.isEmpty else { throw "else expects 0 arguments" }
+        return true
+    }
+}
+
+final class _If: _InstructionDriver {
+    let name = "if"
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        guard arguments.count == 1 else { throw "invalid if statement arguments" }
+        let argument = arguments[0]
+        // TODO: Polymorphic could help here
+        switch argument {
+        case let .constant(value: value):
+            let bool = Bool(value)
+            return bool == true
+        case let .variable(key: _, value: value as Bool):
+            return value
+        case let .variable(key: _, value: value as String):
+            let bool = Bool(value)
+            return bool == true
+        case let .variable(key: _, value: value as Int):
+            return value == 1
+        case let .variable(key: _, value: value as Double):
+            return value == 1.0
+        case let .variable(key: _, value: value):
+            return value != nil
+        }
+    }
+}
 
 final class _Variable: _InstructionDriver {
     let name = "" // empty name, ie: @(variable)
@@ -648,6 +681,8 @@ final class _Variable: _InstructionDriver {
 
 let drivers: [String: _InstructionDriver] = [
     "": _Variable(),
+    "if": _If(),
+    "else": _Else(),
     "loop": _Loop()
 ]
 
@@ -822,9 +857,9 @@ extension Template {
 
                 let arguments = try command.preprocess(instruction: instruction, with: filler)
                 print(arguments)
-                let shouldContinue = try command.process(arguments: arguments, with: filler)
-                print(shouldContinue)
-                guard shouldContinue else { return }
+                let shouldRender = try command.process(arguments: arguments, with: filler)
+                print(shouldRender)
+                guard shouldRender else { return }
                 if let template = instruction.body {
                     buffer += try command.render(template: template, with: filler)
                 } else if let rendered = try filler.rendered(path: "self") {
@@ -834,13 +869,14 @@ extension Template {
                 for instruction in chain {
                     guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
                     let arguments = try command.preprocess(instruction: instruction, with: filler)
-                    let shouldContinue = try command.process(arguments: arguments, with: filler)
-                    guard shouldContinue else { return }
+                    let shouldRender = try command.process(arguments: arguments, with: filler)
+                    guard shouldRender else { continue }
                     if let template = instruction.body {
                         buffer += try command.render(template: template, with: filler)
                     } else if let rendered = try filler.rendered(path: "self") {
                         buffer += rendered
                     }
+                    return // Once a link in the chain is marked as pass (shouldRender), break scope
                 }
             }
         }
