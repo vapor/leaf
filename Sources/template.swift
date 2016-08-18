@@ -572,7 +572,7 @@ final class _Loop: _InstructionDriver {
         switch (arguments[0], arguments[1]) {
         case let (.variable(key: _, value: value?), .constant(value: innername)):
             let array = value as? [Any] ?? [value]
-            filler.push(["loop": array.map { [innername: $0] }])
+            filler.push(array.map { [innername: $0] })
             return true
         default:
             return false
@@ -580,8 +580,24 @@ final class _Loop: _InstructionDriver {
     }
 
     func render(template: Template, with filler: Filler) throws -> Bytes {
+        guard let array = filler.queue.last as? [Any] else { fatalError() }
 
-        return []
+        // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
+        return try array
+            .map { item -> Bytes in
+                if let i = item as? FuzzyAccessible {
+                    filler.push(i)
+                } else {
+                    filler.push(["self": item])
+                }
+
+                let rendered = try template.render(with: filler)
+                filler.pop()
+                return rendered
+            }
+            .flatMap { $0 + [.newLine] }
+
+        //return []
     }
 
     func postrender(filler: Filler) throws {
@@ -805,7 +821,9 @@ extension Template {
                 guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
 
                 let arguments = try command.preprocess(instruction: instruction, with: filler)
+                print(arguments)
                 let shouldContinue = try command.process(arguments: arguments, with: filler)
+                print(shouldContinue)
                 guard shouldContinue else { return }
                 if let template = instruction.body {
                     buffer += try command.render(template: template, with: filler)
@@ -823,22 +841,6 @@ extension Template {
                     } else if let rendered = try filler.rendered(path: "self") {
                         buffer += rendered
                     }
-                    /*
-                    let arguments = try command.preprocess(instruction: instruction, with: filler)
-                    print("Arguments: \(arguments)")
-                    // empty is ok -- on chains, chain here
-                    guard let subcontext = try command.process(arguments: arguments, parent: context) else { continue }
-                    let renderedComponent = try instruction.body
-                        .flatMap { subtemplate in
-                            // command MUST do render here for things like 'loop', consider top-level change as well
-                            return try command.render(context: subcontext, with: subtemplate)
-                        }
-                        ?? subcontext.raw
-
-                    guard let bytes = renderedComponent else { continue }
-                    buffer += bytes
-                    break // break loop if we found a component
-                    */
                 }
             }
         }

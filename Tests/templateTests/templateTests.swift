@@ -123,14 +123,40 @@ class FillerTests: XCTestCase {
         } catch { XCTFail("\(error)") }
     }
 
-    func testNested() throws {
-        let raw = "@(best-friend) { Hello, @(best-friend.name)! }"
+    func __testNested() throws {
+        let raw = "@(best-friend) { Hello, @(self.name)! }"
         let template = try Template(raw: raw)
         print("Components: \(template.components)")
         let filler = Filler(["best-friend": ["name": "World"]])
         let rendered = try template.render(with: filler).string
-        print("Rendered: \(rendered)")
-        print("")
+        XCTAssert(rendered == "Hello, World!")
+    }
+
+    func testLoop() throws {
+        let raw = "@loop(friends, \"friend\") { Hello, @(friend)! }"
+        let template = try Template(raw: raw)
+        let filler = Filler(["friends": ["a", "b", "c", "#loop"]])
+        let rendered = try template.render(with: filler).string
+        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
+        XCTAssert(rendered == expectation)
+    }
+
+    func testNamedInner() throws {
+        let raw = "@(name) { @(name) }" // redundant, but should render as an inner namespace
+        let template = try Template(raw: raw)
+        let filler = Filler(["name": "foo"])
+        let rendered = try template.render(with: filler).string
+        let expectation = "foo"
+        XCTAssert(rendered == expectation)
+    }
+
+    func testDualContext() throws {
+        let raw = "Let's render @(friend) { @(name) is friends with @(friend.name) } "
+        let template = try Template(raw: raw)
+        let filler = Filler(["name": "Foo", "friend": ["name": "Bar"]])
+        let rendered = try template.render(with: filler).string
+        let expectation = "Let's render Foo is friends with Bar"
+        XCTAssert(rendered == expectation)
     }
 }
 
