@@ -1,23 +1,15 @@
-@include("/path/to/header")
+<!-- Stored in resources/views/layouts/master.blade.php -->
 
-<h1>Welcome, @(name)</h1>
+<html>
+    <head>
+        <title>App Name - @include(title)</title>
+    </head>
+    <body>
+        @include(sidebar)
 
-@if(best-friend) {
-    <h3>Best friend: @(best-friend)</h3>
-} @@else() {
-    <h3>Best friend pending!<\h3>
-}
+        <div class="container">
+            @include(content)
+        </div>
+    </body>
+</html>
 
-Your entire friend group is
-
-@loop(friends, "friend") {
-    <li><b>@(friend.name)</b>: @(friend.name)</li>
-}
-
-
-@forEach(friends, "friend") {
-    <li><b>@(friend.name)</b>: @(friend.age)</li>
-    @forEach(friend.hobbies, "hobbie") {
-        @(friend.name) enjoys @(hobbie)
-    }
-}

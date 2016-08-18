@@ -1,18 +1,33 @@
 import Core
 import Foundation
 
+var workDir: String {
+    let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
+    let path = "/\(parent)/../../Resources/"
+    return path
+}
+
+func loadTemplate(named: String) throws -> Template {
+    let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
+    var bytes = Bytes(repeating: 0, count: helloData.length)
+    helloData.getBytes(&bytes, length: bytes.count)
+    return try Template(raw: bytes.string)
+}
+
 /*
  // TODO: GLOBAL
 
- - Context tree, so if variable isn't in lowest scope, we can search higher context
  - Filler passed into Driver should have same amount in queue as it does AFTER. Warn or Assert
  - Filters/Modifiers are supported longform, consider implementing short form.
+ - Included sections should ALSO be rendered
  */
 
-let TOKEN: Byte = .at
+let TOKEN: Byte = .numberSign
 
 final class Filler {
-    // FILO
+
+    let workingDirectory: String = "./"
+
     private(set) var queue: [FuzzyAccessible]
 
     init(_ fuzzy: FuzzyAccessible) {
@@ -177,7 +192,7 @@ extension BufferProtocol where Element == Byte {
         // check if body
         moveForward()
         guard current == .space, next == .openCurly else {
-            return try Template.Component.Instruction(name: name, parameters: parameters, body: nil)
+            return try Template.Component.Instruction(name: name, parameters: parameters, body: String?.none)
         }
         moveForward() // queue up `{`
 
@@ -276,8 +291,14 @@ extension Template {
 
             fileprivate var isChain: Bool
 
-            init(name: String, parameters: [Parameter], body: String?) throws {
-                // we strip leading token, if another one is there, 
+            convenience init(name: String, parameters: [Parameter], body: String?) throws {
+                let body = try body.flatMap { try Template(raw: $0) }
+                self.init(name: name, parameters: parameters, body: body)
+            }
+
+
+            init(name: String, parameters: [Parameter], body: Template?) {
+                // we strip leading token, if another one is there,
                 // that means we've found a chain element, ie: @@else {
                 if name.bytes.first == TOKEN {
                     self.isChain = true
@@ -288,7 +309,7 @@ extension Template {
                 }
 
                 self.parameters = parameters
-                self.body = try body.flatMap { try Template(raw: $0) }
+                self.body = body
             }
         }
 
@@ -310,18 +331,25 @@ protocol Renderable {
 protocol InstructionDriver {
     var name: String { get }
 
+    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
+
     // Optional -- takes template instruction and populates it from fillter
     func preprocess(instruction: Template.Component.Instruction, with filler: Filler) throws -> [Argument]
     // The processing of arguments within the filler, and returning a new context
     func process(arguments: [Argument], with filler: Filler) throws -> Bool
 
+    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) throws -> Template?
     func render(template: Template, with filler: Filler) throws -> Bytes
 
     func postrender(filler: Filler) throws
 }
 
-
 extension InstructionDriver {
+    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+
+        return instruction
+    }
+
     func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
         var input = [Argument]()
         instruction.parameters.forEach { arg in
@@ -358,11 +386,97 @@ extension InstructionDriver {
         return true // should continue
     }
 
+    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) -> Template? {
+        return instruction.body
+    }
+
     func render(template: Template, with filler: Filler) throws -> Bytes {
         return try template.render(with: filler)
     }
 
     func postrender(filler: Filler) throws {}
+}
+
+final class _Include: InstructionDriver {
+    let name = "include"
+
+    // TODO: Use
+    var cache: [String: Template] = [:]
+
+    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+        guard instruction.parameters.count == 1 else {
+            throw "invalid include statement"
+        }
+        switch instruction.parameters[0] {
+        case let .constant(value):
+            // TEMPORARY
+            // TODO: Use working directory
+            let template = try loadTemplate(named: value)
+            return Template.Component.Instruction(
+                name: instruction.name,
+                parameters: instruction.parameters,
+                body: template
+            )
+        default:
+            // TODO: Allow dynamic load
+            throw "include statements are required to be constants"
+        }
+    }
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        // TODO: Check if template exists?
+        return arguments.count == 1
+        /*
+        guard arguments.count == 1 else { throw "include requires a single path argument" }
+        switch arguments[0] {
+        case let .constant(value: value):
+            //let fullPath = workDir + value + ".vt"
+            // TEMPORARY
+            // TODO: Cache, or ideally render in pre process
+            let template = try loadTemplate(named: value)
+            filler.push(["include": template])
+            return true
+        case let .variable(key: _, value: value?):
+            let template = try loadTemplate(named: "\(value)")
+            filler.push(["include": template])
+            return true
+        default:
+            print("Unable to find include, no value")
+            return false
+        }
+         */
+    }
+
+    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) throws -> Template? {
+        guard arguments.count == 1 else { fatalError("this shouldn't happen") }
+        switch arguments[0] {
+        case let .constant(value: value):
+            return try template(named: value)
+        case let .variable(key: _, value: value as String):
+            return try template(named: value)
+        case let .variable(key: _, value: value?):
+            return try template(named: "\(value)")
+        default:
+            return instruction.body
+        }
+    }
+
+    private func template(named name: String) throws -> Template {
+        let template = try cache[name] ?? loadTemplate(named: name)
+        cache[name] = template
+        return template
+    }
+    /*
+    func render(template: Template, with filler: Filler) throws -> Bytes {
+        guard
+            let included = filler.get(key: "include") as? Template
+            else { throw "expected include to be pushed onto stack" }
+
+
+        // included.
+        fatalError("\(included)")
+    }
+ */
 }
 
 final class _Loop: InstructionDriver {
@@ -511,7 +625,8 @@ let drivers: [String: InstructionDriver] = [
     "if": _If(),
     "else": _Else(),
     "loop": _Loop(),
-    "uppercased": _Uppercased()
+    "uppercased": _Uppercased(),
+    "include": _Include()
 ]
 
 extension Template: CustomStringConvertible {
@@ -610,6 +725,9 @@ extension Filler {
 
 extension Template {
     func render(with filler: Filler) throws -> Bytes {
+        let initialQueue = filler.queue
+        defer { filler.queue = initialQueue }
+
         var buffer = Bytes()
         try components.forEach { component in
             switch component {
@@ -620,10 +738,18 @@ extension Template {
 
                 let arguments = try command.preprocess(instruction: instruction, with: filler)
                 print(arguments)
-                let shouldRender = try command.process(arguments: arguments, with: filler)
+                let shouldRender = try command.process(
+                    arguments: arguments,
+                    with: filler
+                )
                 print(shouldRender)
                 guard shouldRender else { return }
-                if let template = instruction.body {
+                let template = try command.prerender(
+                    instruction: instruction,
+                    arguments: arguments,
+                    with: filler
+                )
+                if let template = template {
                     buffer += try command.render(template: template, with: filler)
                 } else if let rendered = try filler.rendered(path: "self") {
                     buffer += rendered

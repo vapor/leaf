@@ -3,19 +3,6 @@ import Foundation
 import XCTest
 @testable import template
 
-var workDir: String {
-    let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
-    let path = "/\(parent)/../../Resources/"
-    return path
-}
-
-func loadTemplate(named: String) throws -> Template {
-    let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
-    var bytes = Bytes(repeating: 0, count: helloData.length)
-    helloData.getBytes(&bytes, length: bytes.count)
-    return try Template(raw: bytes.string)
-}
-
 class FuzzyAccessibleTests: XCTestCase {
     func testSingleDictionary() {
         let object: [String: Any] = [
@@ -93,7 +80,7 @@ class FuzzyAccessibleTests: XCTestCase {
     }
 
     func testFuzzyTemplate() throws {
-        let raw = "Hello, @(path.to.person.0.name)!"
+        let raw = "Hello, #(path.to.person.0.name)!"
         let context: [String: Any] = [
             "path": [
                 "to": [
@@ -114,7 +101,7 @@ class FuzzyAccessibleTests: XCTestCase {
 
 class FillerTests: XCTestCase {
     func testBasic() throws {
-        let template = try Template(raw: "Hello, @(name)!")
+        let template = try Template(raw: "Hello, #(name)!")
         let context: [String: String] = ["name": "World"]
         let filler = Filler(context)
         do {
@@ -125,7 +112,7 @@ class FillerTests: XCTestCase {
     }
 
     func testNested() throws {
-        let raw = "@(best-friend) { Hello, @(self.name)! }"
+        let raw = "#(best-friend) { Hello, #(self.name)! }"
         let template = try Template(raw: raw)
         print("Components: \(template.components)")
         let filler = Filler(["best-friend": ["name": "World"]])
@@ -134,7 +121,7 @@ class FillerTests: XCTestCase {
     }
 
     func testLoop() throws {
-        let raw = "@loop(friends, \"friend\") { Hello, @(friend)! }"
+        let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
         let template = try Template(raw: raw)
         let filler = Filler(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try template.render(with: filler).string
@@ -143,7 +130,7 @@ class FillerTests: XCTestCase {
     }
 
     func testNamedInner() throws {
-        let raw = "@(name) { @(name) }" // redundant, but should render as an inner namespace
+        let raw = "#(name) { #(name) }" // redundant, but should render as an inner namespace
         let template = try Template(raw: raw)
         let filler = Filler(["name": "foo"])
         let rendered = try template.render(with: filler).string
@@ -152,7 +139,7 @@ class FillerTests: XCTestCase {
     }
 
     func testDualContext() throws {
-        let raw = "Let's render @(friend) { @(name) is friends with @(friend.name) } "
+        let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
         let template = try Template(raw: raw)
         let filler = Filler(["name": "Foo", "friend": ["name": "Bar"]])
         let rendered = try template.render(with: filler).string
@@ -161,7 +148,7 @@ class FillerTests: XCTestCase {
     }
 
     func testMultiScope() throws {
-        let raw = "@(a) { @(self.b) { @(self.c) { @(self.path.1) } } }"
+        let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
         let template = try Template(raw: raw)
         let filler = Filler(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
         let rendered = try template.render(with: filler).string
@@ -170,7 +157,7 @@ class FillerTests: XCTestCase {
     }
 
     func testIfChain() throws {
-        let raw = "@if(key-zero) { Hi, A! } @@if(key-one) { Hi, B! } @@else() { Hi, C! }"
+        let raw = "#if(key-zero) { Hi, A! } ##if(key-one) { Hi, B! } ##else() { Hi, C! }"
         let template = try Template(raw: raw)
         let cases: [(key: String, bool: Bool, expectation: String)] = [
             ("key-zero", true, "Hi, A!"),
@@ -192,12 +179,22 @@ class FillerTests: XCTestCase {
 
 class FilterTests: XCTestCase {
     func testBasic() throws {
-        let raw = "@(name) { @uppercased(self) }"
-        // let raw = "@uppercased(name)"
+        let raw = "#(name) { #uppercased(self) }"
+        // let raw = "#uppercased(name)"
         let template = try Template(raw: raw)
         let filler = Filler(["name": "hi"])
         let rendered = try template.render(with: filler).string
         let expectation = "HI"
+        XCTAssert(rendered == expectation)
+    }
+}
+
+class IncludeTests: XCTestCase {
+    func testBasicInclude() throws {
+        let template = try loadTemplate(named: "include-base")
+        let filler = Filler(["name": "World"])
+        let rendered = try template.render(with: filler).string
+        let expectation = "Template included: Hello, World!"
         XCTAssert(rendered == expectation)
     }
 }
@@ -210,11 +207,11 @@ class TemplateLoadingTests: XCTestCase {
 
     func testBasicInstructions() throws {
         let template = try loadTemplate(named: "template-basic-instructions-no-body")
-        // @custom(two, variables, "and one constant")
+        // #custom(two, variables, "and one constant")
         let instruction = try Template.Component.Instruction(
             name: "custom",
             parameters: [.variable("two"), .variable("variables"), .constant("and one constant")],
-            body: nil
+            body: String?.none
         )
 
         let expectation: [Template.Component] = [
@@ -226,9 +223,9 @@ class TemplateLoadingTests: XCTestCase {
 
     func testBasicNested() throws {
         /*
-            Here's a basic template and, @command(parameter) {
-                now we're in the body, which is ALSO a @template("constant") {
-                    and a third sub template with a @(variable)
+            Here's a basic template and, #command(parameter) {
+                now we're in the body, which is ALSO a #template("constant") {
+                    and a third sub template with a #(variable)
                 }
             }
 
@@ -239,7 +236,7 @@ class TemplateLoadingTests: XCTestCase {
             name: "command",
             // TODO: `.variable(name: `
             parameters: [.variable("parameter")],
-            body: "now we're in the body, which is ALSO a @template(\"constant\") {\n\tand a third sub template with a @(variable)\n\t}"
+            body: "now we're in the body, which is ALSO a #template(\"constant\") {\n\tand a third sub template with a #(variable)\n\t}"
         )
 
         let expectation: [Template.Component] = [
@@ -268,7 +265,7 @@ class TemplateRenderTests: XCTestCase {
 
         let contextTests: [[String: Any]] = [
             ["best-friend": ["name": "World"]],
-            ["best-friend": ["name": "@@"]],
+            ["best-friend": ["name": "##"]],
             ["best-friend": ["name": "!*7D0"]]
         ]
 
