@@ -1,1 +1,1 @@
-@loop(friends) { Hello, @(self) }
+@loop(friends, "friend") { Hello, @(friend) }

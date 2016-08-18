@@ -105,7 +105,8 @@ class FuzzyAccessibleTests: XCTestCase {
         ]
 
         let template = try Template(raw: raw)
-        let rendered = try template.render(with: context).string
+        let filler = Filler(context)
+        let rendered = try template.render(with: filler).string
         let expectation = "Hello, World!"
         XCTAssert(rendered == expectation)
     }
@@ -256,12 +257,9 @@ class TemplateRenderTests: XCTestCase {
 
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
-            let rendered = try template.render(with: context)
-                .string
-            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
             let filler = Filler(["self": context])
-            let fillerRendered = try template.render(with: filler).string
-            XCTAssert(rendered == fillerRendered)
+            let rendered = try template.render(with: filler).string
+            XCTAssert(rendered == expectation)
         }
     }
 
@@ -275,15 +273,10 @@ class TemplateRenderTests: XCTestCase {
         ]
 
         try contextTests.forEach { ctxt in
-            let rendered = try template.render(with: ctxt).string
+            let filler = Filler(ctxt)
+            let rendered = try template.render(with: filler).string
             let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
             XCTAssert(rendered == "Hello, \(name)!", "have: \(rendered) want: Hello, \(name)!")
-
-            /*
-            let filler = Filler(ctxt)
-            let fillerRendered = try template.render(with: filler).string
-            XCTAssert(fillerRendered == rendered, "have: \(fillerRendered) want: \(rendered)")
-             */
         }
     }
 }
@@ -300,9 +293,9 @@ class LoopTests: XCTestCase {
                 12
             ]
         ]
-
+        let filler = Filler(context)
         let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
-        let rendered = try template.render(with: context).string
+        let rendered = try template.render(with: filler).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
 
@@ -325,7 +318,8 @@ class LoopTests: XCTestCase {
         ]
 
         let template = try loadTemplate(named: "complex-loop")
-        let rendered = try template.render(with: context).string
+        let filler = Filler(context)
+        let rendered = try template.render(with: filler).string
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -336,7 +330,8 @@ class IfTests: XCTestCase {
         let template = try loadTemplate(named: "basic-if-test")
 
         let context = ["say-hello": true]
-        let rendered = try template.render(with: context).string
+        let filler = Filler(context)
+        let rendered = try template.render(with: filler).string
         let expectation = "Hello, there!"
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -345,7 +340,8 @@ class IfTests: XCTestCase {
         let template = try loadTemplate(named: "basic-if-test")
 
         let context = ["say-hello": false]
-        let rendered = try template.render(with: context).string
+        let filler = Filler(context)
+        let rendered = try template.render(with: filler).string
         let expectation = ""
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -356,7 +352,8 @@ class IfTests: XCTestCase {
             "entering": true,
             "friend-name": "World"
         ]
-        let renderedHello = try template.render(with: helloContext).string
+        let helloFiller = Filler(helloContext)
+        let renderedHello = try template.render(with: helloFiller).string
         let expectedHello = "Hello, World!"
         XCTAssert(renderedHello == expectedHello, "have: \(renderedHello) want: \(expectedHello)")
 
@@ -364,7 +361,8 @@ class IfTests: XCTestCase {
             "entering": false,
             "friend-name": "World"
         ]
-        let renderedGoodbye = try template.render(with: goodbyeContext).string
+        let goodbyeFiller = Filler(goodbyeContext)
+        let renderedGoodbye = try template.render(with: goodbyeFiller).string
         let expectedGoodbye = "Goodbye, World!"
         XCTAssert(renderedGoodbye == expectedGoodbye, "have: \(renderedGoodbye) want: \(expectedGoodbye)")
     }
@@ -380,7 +378,8 @@ class IfTests: XCTestCase {
         ]
 
         try expectations.forEach { input, expectation in
-            let rendered = try template.render(with: input).string
+            let filler = Filler(input)
+            let rendered = try template.render(with: filler).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }

@@ -1,4 +1,4 @@
-@include("path/to/header")
+@include("/path/to/header")
 
 <h1>Welcome, @(name)</h1>
 
