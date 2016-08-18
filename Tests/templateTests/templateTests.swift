@@ -101,7 +101,8 @@ class FuzzyAccessibleTests: XCTestCase {
 
 class FillerTests: XCTestCase {
     func testBasic() throws {
-        let template = try Template(raw: "Hello, #(name)!")
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: "Hello, #(name)!")
         let context: [String: String] = ["name": "World"]
         let filler = Filler(context)
         do {
@@ -113,7 +114,8 @@ class FillerTests: XCTestCase {
 
     func testNested() throws {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         print("Components: \(template.components)")
         let filler = Filler(["best-friend": ["name": "World"]])
         let rendered = try template.render(with: filler).string
@@ -122,7 +124,8 @@ class FillerTests: XCTestCase {
 
     func testLoop() throws {
         let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let filler = Filler(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try template.render(with: filler).string
         let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
@@ -131,7 +134,8 @@ class FillerTests: XCTestCase {
 
     func testNamedInner() throws {
         let raw = "#(name) { #(name) }" // redundant, but should render as an inner namespace
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let filler = Filler(["name": "foo"])
         let rendered = try template.render(with: filler).string
         let expectation = "foo"
@@ -140,16 +144,18 @@ class FillerTests: XCTestCase {
 
     func testDualContext() throws {
         let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let filler = Filler(["name": "Foo", "friend": ["name": "Bar"]])
         let rendered = try template.render(with: filler).string
         let expectation = "Let's render Foo is friends with Bar"
-        XCTAssert(rendered == expectation)
+        XCTAssert(rendered == expectation, "have: *\(rendered)* want: *\(expectation)*")
     }
 
     func testMultiScope() throws {
         let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let filler = Filler(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
         let rendered = try template.render(with: filler).string
         let expectation = "HEllo"
@@ -158,7 +164,8 @@ class FillerTests: XCTestCase {
 
     func testIfChain() throws {
         let raw = "#if(key-zero) { Hi, A! } ##if(key-one) { Hi, B! } ##else() { Hi, C! }"
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let cases: [(key: String, bool: Bool, expectation: String)] = [
             ("key-zero", true, "Hi, A!"),
             ("key-zero", false, "Hi, C!"),
@@ -181,7 +188,8 @@ class FilterTests: XCTestCase {
     func testBasic() throws {
         let raw = "#(name) { #uppercased(self) }"
         // let raw = "#uppercased(name)"
-        let template = try Template(raw: raw)
+        let namespace = NameSpace()
+        let template = try namespace.loadTemplate(raw: raw)
         let filler = Filler(["name": "hi"])
         let rendered = try template.render(with: filler).string
         let expectation = "HI"

@@ -364,24 +364,32 @@ class NameSpace {
     let workingDirectory: String
 
     init(workingDirectory: String = workDir) {
-        self.workingDirectory = workingDirectory
+        self.workingDirectory = workingDirectory.finished(with: "/")
     }
 }
 
 extension NameSpace {
-    func loadTemplate(named name: String) throws -> Template {
-        var subpath = name
-        if subpath.hasPrefix("/") {
-            subpath = String(subpath.characters.dropFirst())
-        }
-        let path = workingDirectory
-            .finished(with: "/") + subpath.finished(with: SUFFIX)
+    func loadTemplate(raw: String) throws -> Template {
+        return try loadTemplate(raw: raw.bytes)
+    }
 
-        let raw = try load(path: path).trimmed(.whitespace)
+    func loadTemplate(raw: Bytes) throws -> Template {
+        let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
         let components = try buffer.components().map(postcompile)
         let template = Template(raw: raw.string, components: components)
         return template
+    }
+
+    func loadTemplate(named name: String) throws -> Template {
+        var subpath = name.finished(with: SUFFIX)
+        if subpath.hasPrefix("/") {
+            subpath = String(subpath.characters.dropFirst())
+        }
+        let path = workingDirectory + subpath
+
+        let raw = try load(path: path)
+        return try loadTemplate(raw: raw)
     }
 
     private func postcompile(_ component: Template.Component) throws -> Template.Component {
