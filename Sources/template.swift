@@ -3,14 +3,29 @@ import Foundation
 
 final class Filler {
     // FILO
-    private(set) var queue: [FuzzyAccessible]
+    private(set) var queue: [FuzzyAccessible] {
+        didSet {
+            print("Queue updated")
+            let log = queue.map { "[\($0.dynamicType)]:\($0)" } .joined(separator: "\n")
+            print(log)
+            print("")
+        }
+    }
 
     init(_ fuzzy: FuzzyAccessible) {
         self.queue = [fuzzy]
     }
 
     func get(path: String) -> Any? {
-        return queue.lazy.flatMap { $0.get(path: path) } .first
+        print("Path: \(path)")
+        return queue.lazy.reversed().flatMap { next in
+            print("Next: [\(next.dynamicType)]:\(next)")
+            let value = next.get(path: path)
+            print("Value: \(value)")
+            return value
+            // $0.get(path: path)
+            }
+            .first
     }
 
     func push(_ fuzzy: FuzzyAccessible) {
@@ -608,6 +623,10 @@ final class _Variable: _InstructionDriver {
         default:
             return false
         }
+    }
+
+    func postrender(filler: Filler) throws {
+        filler.pop()
     }
 }
 

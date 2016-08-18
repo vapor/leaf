@@ -9,6 +9,7 @@ extension FuzzyAccessible {
         let components = path.characters
             .split(separator: ".", omittingEmptySubsequences: true)
             .map { String($0) }
+        print("Components: \(components)")
         return get(path: components)
     }
 
@@ -23,9 +24,12 @@ extension FuzzyAccessible {
 
 extension Dictionary: FuzzyAccessible {
     public func get(key: String) -> Any? {
+        print("\(self):\(key)")
         // TODO: Throw if invalid key?
-        guard let key = key as? Key else { return nil }
+        guard let key = key as? Key else {
+            return nil }
         let value: Value? = self[key]
+        print("Value: \(value)")
         return value
     }
 }
