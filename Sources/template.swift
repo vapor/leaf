@@ -1,6 +1,29 @@
 import Core
 import Foundation
 
+final class Filler {
+    // FILO
+    private(set) var queue: [FuzzyAccessible]
+
+    init(_ fuzzy: FuzzyAccessible) {
+        self.queue = [fuzzy]
+    }
+
+    func get(path: String) -> Any? {
+        return queue.lazy.flatMap { $0.get(path: path) } .first
+    }
+
+    func push(_ fuzzy: FuzzyAccessible) {
+        queue.append(fuzzy)
+    }
+
+    @discardableResult
+    func pop() -> FuzzyAccessible? {
+        guard !queue.isEmpty else { return nil }
+        return queue.removeLast()
+    }
+}
+
 /*
 public protocol PathIndexable {
     /// If self is an array representation, return array
@@ -17,6 +40,8 @@ public protocol PathIndexable {
  
  - Context tree, so if variable isn't in lowest scope, we can search higher context
  - all instances of as? RenderContext should come with a warning for unsupported types, or take `Any`.
+ 
+ - Filler passed into Driver should have same amount in queue as it does AFTER. Warn or Assert
  */
 
 let TOKEN: Byte = .at
@@ -34,6 +59,8 @@ var FUNCTIONS: [String: (RenderContext) throws -> RenderContext?] = [
         return combo
     }
 ]
+
+extension Filler: RenderContext {}
 
 protocol RenderContext {
     var raw: Bytes? { get }
@@ -352,7 +379,14 @@ enum Argument {
     case constant(value: String)
 }
 
-final class If: Command {
+final class ForEach: InstructionDriver {
+    let name = "foreach"
+    func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
+        fatalError()
+    }
+}
+
+final class If: InstructionDriver {
     let name = "if"
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
@@ -377,7 +411,7 @@ final class If: Command {
     }
 }
 
-final class Else: Command {
+final class Else: InstructionDriver {
     let name = "else"
 
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
@@ -387,7 +421,7 @@ final class Else: Command {
     }
 }
 
-final class Loop: Command {
+final class Loop: InstructionDriver {
     let name = "loop"
 
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
@@ -412,7 +446,7 @@ final class Loop: Command {
     }
 }
 
-final class Variable: Command {
+final class Variable: InstructionDriver {
     let name = "" // empty name, ie: @(variable)
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext? {
         /*
@@ -444,25 +478,155 @@ final class Variable: Command {
     }
 }
 
-var _commands: [String: Command] = [
+var _commands: [String: InstructionDriver] = [
     "": Variable(),
     "loop": Loop(),
     "if": If(),
     "else": Else()
 ]
 
-protocol Command {
+protocol _Renderable {
+    func rendered() throws -> Bytes
+}
+
+protocol _InstructionDriver {
+    var name: String { get }
+    // Optional -- takes template instruction and populates it from fillter
+    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) throws -> [Argument]
+    // The processing of arguments within the filler, and returning a new context
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool
+
+    func render(template: Template, with filler: Filler) throws -> Bytes
+
+    func postrender(filler: Filler) throws
+}
+
+
+extension _InstructionDriver {
+    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
+        var input = [Argument]()
+        instruction.parameters.forEach { arg in
+            switch arg {
+            case let .variable(key):
+                if key == "self" {
+                    input.append(.variable(key: key, value: filler.get(path: "self")))
+                } else {
+                    let value = filler.get(path: key)
+                    input.append(.variable(key: key, value: value))
+                }
+            case let .constant(c):
+                input.append(.constant(value: c))
+            }
+        }
+        return input
+    }
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        guard arguments.count == 1 else {
+            throw "more than one argument not supported, override \(#function) for custom behavior"
+        }
+
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            filler.push(["self": value])
+        case let .variable(key: _, value: value as FuzzyAccessible):
+            filler.push(value)
+        case let .variable(key: _, value: value):
+            filler.push(["self": value])
+        }
+
+        return true // should continue
+    }
+
+    func render(template: Template, with filler: Filler) throws -> Bytes {
+        return try template.render(with: filler)
+    }
+
+    func postrender(filler: Filler) throws {}
+}
+
+final class _Loop: _InstructionDriver {
+    let name = "loop"
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        guard arguments.count == 2 else {
+            throw "loop requires two arguments, var w/ array, and constant w/ sub name"
+        }
+
+        switch (arguments[0], arguments[1]) {
+        case let (.variable(key: _, value: value?), .constant(value: innername)):
+            let array = value as? [Any] ?? [value]
+            filler.push(["loop": array.map { [innername: $0] }])
+            return true
+        default:
+            return false
+        }
+    }
+
+    func render(template: Template, with filler: Filler) throws -> Bytes {
+
+        return []
+    }
+
+    func postrender(filler: Filler) throws {
+        filler.pop()
+    }
+}
+
+
+final class _Variable: _InstructionDriver {
+    let name = "" // empty name, ie: @(variable)
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        /*
+         Currently ALL '@' signs are interpreted as instructions.  This means to escape in
+
+         name@email.com
+
+         We'd have to do:
+
+         name@("@")email.com
+
+         or more pretty
+
+         contact-email@("@email.com")
+
+         By having this uncommented, we could allow
+
+         name@()email.com
+         */
+        // if arguments.isEmpty return { "@" } // temporary escaping mechani
+        guard arguments.count == 1 else { throw "invalid var argument" }
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            filler.push(["self": value])
+            return true
+        case let .variable(key: _, value: value?):
+            filler.push(["self": value])
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+let drivers: [String: _InstructionDriver] = [
+    "": _Variable(),
+    "loop": _Loop()
+]
+
+protocol InstructionDriver {
     var name: String { get }
     func process(arguments: [Argument], parent: RenderContext) throws -> RenderContext?
 
     // Optional
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) throws -> [Argument]
-
     // Optional Rendering -- MUST RENDER
     func render(context: RenderContext, with template: Template) throws -> Bytes
 }
 
-extension Command {
+extension InstructionDriver {
     func preprocess(instruction: Template.Component.Instruction, with context: RenderContext) -> [Argument] {
         let accessible = context as? FuzzyAccessible
         var input = [Argument]()
@@ -603,7 +767,121 @@ extension Template.Component.Instruction.Parameter {
     }
 }
 
+extension Filler {
+    func rendered(path: String) throws -> Bytes? {
+        guard let value = self.get(path: path) else { return nil }
+        guard let renderable = value as? _Renderable else { return "\(value)".bytes }
+        return try renderable.rendered()
+    }
+}
+
 extension Template {
+    func render(with filler: Filler) throws -> Bytes {
+        var buffer = Bytes()
+        try components.forEach { component in
+            switch component {
+            case let .raw(bytes):
+                buffer += bytes
+            case let .instruction(instruction):
+                guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+
+                let arguments = try command.preprocess(instruction: instruction, with: filler)
+                let shouldContinue = try command.process(arguments: arguments, with: filler)
+                guard shouldContinue else { return }
+                if let template = instruction.body {
+                    buffer += try command.render(template: template, with: filler)
+                } else if let rendered = try filler.rendered(path: "self") {
+                    buffer += rendered
+                }
+            case let .chain(chain):
+                for instruction in chain {
+                    guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+                    let arguments = try command.preprocess(instruction: instruction, with: filler)
+                    let shouldContinue = try command.process(arguments: arguments, with: filler)
+                    guard shouldContinue else { return }
+                    if let template = instruction.body {
+                        buffer += try command.render(template: template, with: filler)
+                    } else if let rendered = try filler.rendered(path: "self") {
+                        buffer += rendered
+                    }
+                    /*
+                    let arguments = try command.preprocess(instruction: instruction, with: filler)
+                    print("Arguments: \(arguments)")
+                    // empty is ok -- on chains, chain here
+                    guard let subcontext = try command.process(arguments: arguments, parent: context) else { continue }
+                    let renderedComponent = try instruction.body
+                        .flatMap { subtemplate in
+                            // command MUST do render here for things like 'loop', consider top-level change as well
+                            return try command.render(context: subcontext, with: subtemplate)
+                        }
+                        ?? subcontext.raw
+
+                    guard let bytes = renderedComponent else { continue }
+                    buffer += bytes
+                    break // break loop if we found a component
+                    */
+                }
+            }
+        }
+        return buffer
+        /*
+         
+         @(name) { Hello, @(self)! }
+        try components.forEach { component in
+            switch component {
+            case let .raw(r):
+                buffer += r
+            case let .instruction(instruction):
+                print("Instruction: \(instruction)")
+                guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+
+                let arguments = try command.preprocess(instruction: instruction, with: filler)
+                let shouldContinue = try command.process(arguments: arguments, with: filler)
+                guard shouldContinue else { return }
+                guard let subtemplate = instruction.body else {
+                    if let now = filler.get(path: "self")
+                }
+                try instruction.body.flatMap { subTemplate in
+                    try command.render(template: subTemplate, with: filler)
+                }
+                    ?? (filler.get(path: "self") as? _Renderable)?.rendered()
+
+                // let rendered = try command.render(template: self, with: )
+                // print("Arguments: \(arguments)")
+                // empty is ok -- on chains, chain here
+                // guard let subcontext = try command.process(arguments: arguments, parent: context) else { return }
+                let renderedComponent = try instruction.body.flatMap { subtemplate in
+                    // command MUST do render here for things like 'loop', consider top-level change as well
+                    return try command.render(context: subcontext, with: subtemplate)
+                    } ?? subcontext.raw
+
+                guard let bytes = renderedComponent else { return }
+                buffer += bytes
+            case let .chain(chain):
+                for instruction in chain {
+                    guard let command = _commands[instruction.name] else { throw "unsupported command" }
+                    let arguments = try command.preprocess(instruction: instruction, with: context)
+                    print("Arguments: \(arguments)")
+                    // empty is ok -- on chains, chain here
+                    guard let subcontext = try command.process(arguments: arguments, parent: context) else { continue }
+                    let renderedComponent = try instruction.body
+                        .flatMap { subtemplate in
+                            // command MUST do render here for things like 'loop', consider top-level change as well
+                            return try command.render(context: subcontext, with: subtemplate)
+                        }
+                        ?? subcontext.raw
+
+                    guard let bytes = renderedComponent else { continue }
+                    buffer += bytes
+                    break // break loop if we found a component
+                }
+            }
+            
+        }
+        return buffer
+ */
+    }
+
     func render(with context: RenderContext) throws -> Bytes {
         var buffer = Bytes()
         try components.forEach { component in

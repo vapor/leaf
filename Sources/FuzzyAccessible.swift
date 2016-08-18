@@ -6,7 +6,9 @@ public protocol FuzzyAccessible {
 
 extension FuzzyAccessible {
     public func get(path: String) -> Any? {
-        let components = path.components(separatedBy: ".")
+        let components = path.characters
+            .split(separator: ".", omittingEmptySubsequences: true)
+            .map { String($0) }
         return get(path: components)
     }
 

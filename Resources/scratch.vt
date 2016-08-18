@@ -1,3 +1,5 @@
+@include("path/to/header")
+
 <h1>Welcome, @(name)</h1>
 
 @if(best-friend) {
@@ -8,6 +10,14 @@
 
 Your entire friend group is
 
-@loop(friends) {
-    <li><b>@(name)</b>: @(age)</li>
+@loop(friends, "friend") {
+    <li><b>@(friend.name)</b>: @(friend.name)</li>
+}
+
+
+@forEach(friends, "friend") {
+    <li><b>@(friend.name)</b>: @(friend.age)</li>
+    @forEach(friend.hobbies, "hobbie") {
+        @(friend.name) enjoys @(hobbie)
+    }
 }

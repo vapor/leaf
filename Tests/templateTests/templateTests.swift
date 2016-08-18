@@ -111,6 +111,19 @@ class FuzzyAccessibleTests: XCTestCase {
     }
 }
 
+class FillerTests: XCTestCase {
+    func testBasic() throws {
+        let template = try Template(raw: "Hello, @(name)!")
+        let context: [String: String] = ["name": "World"]
+        let filler = Filler(context)
+        do {
+        let rendered = try template.render(with: filler).string
+        let expectation = "Hello, World!"
+            XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
+        } catch { XCTFail("\(error)") }
+    }
+}
+
 class TemplateLoadingTests: XCTestCase {
     func testBasicRawOnly() throws {
         let template = try loadTemplate(named: "template-basic-raw")
