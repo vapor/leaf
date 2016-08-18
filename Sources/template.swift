@@ -1,6 +1,13 @@
 import Core
 import Foundation
 
+var modifiers: [String: (Any?) -> Any?] = [:]
+
+enum PathComponentType {
+    case key(String)
+    case modifier(String)
+}
+
 final class Filler {
     // FILO
     private(set) var queue: [FuzzyAccessible] {
@@ -16,7 +23,26 @@ final class Filler {
         self.queue = [fuzzy]
     }
 
+    func play() {
+        /*
+        let path: [PathComponentType] = []
+        var last: Any?
+        for p in path {
+            switch p {
+            case .key(k):
+                guard let kaccessible {}
+
+            }
+        }
+ */
+    }
+
+    func get(key: String) -> Any? {
+        return queue.lazy.reversed().flatMap { $0.get(key: key) } .first
+    }
+
     func get(path: String) -> Any? {
+        let components = path.components(separatedBy: ".")
         print("Path: \(path)")
         return queue.lazy.reversed().flatMap { next in
             print("Next: [\(next.dynamicType)]:\(next)")
@@ -28,6 +54,29 @@ final class Filler {
             .first
     }
 
+    public func get(path: [String]) -> Any? {
+        let first: Optional<Any> = self
+        return path.reduce(first) { next, index in
+            guard let next = next as? FuzzyAccessible else { return nil }
+            return next.get(key: index)
+        }
+    }
+
+    /*
+     func get(path: String) -> Any? {
+     let components = path.components(separatedBy: ".")
+     print("Path: \(path)")
+     return queue.lazy.reversed().flatMap { next in
+     print("Next: [\(next.dynamicType)]:\(next)")
+     let value = next.get(path: path)
+     print("Value: \(value)")
+     return value
+     // $0.get(path: path)
+     }
+     .first
+     }
+     */
+    
     func push(_ fuzzy: FuzzyAccessible) {
         queue.append(fuzzy)
     }
@@ -605,6 +654,29 @@ final class _Loop: _InstructionDriver {
     }
 }
 
+final class _Uppercased: _InstructionDriver {
+    let name = "uppercased"
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        guard arguments.count == 1 else { throw "uppercase only accepts single arguments" }
+        switch arguments[0] {
+        case let .constant(value: value):
+            filler.push(["self": value.uppercased()])
+        case let .variable(key: _, value: value as String):
+            filler.push(["self": value.uppercased()])
+        case let .variable(key: _, value: value as _Renderable):
+            let uppercased = try value.rendered().string.uppercased()
+            filler.push(["self": uppercased])
+        case let .variable(key: _, value: value?):
+            filler.push(["self": "\(value)".uppercased()])
+        default:
+            return false
+        }
+
+        return true
+    }
+}
+
 final class _Else: _InstructionDriver {
     let name = "else"
 
@@ -683,7 +755,8 @@ let drivers: [String: _InstructionDriver] = [
     "": _Variable(),
     "if": _If(),
     "else": _Else(),
-    "loop": _Loop()
+    "loop": _Loop(),
+    "uppercased": _Uppercased()
 ]
 
 protocol InstructionDriver {

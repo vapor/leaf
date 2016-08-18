@@ -191,8 +191,13 @@ class FillerTests: XCTestCase {
 
 class FilterTests {
     func testBasic() throws {
-        let raw = "@(name.uppercase)"
+        // let raw = "@(name) { @uppercased(self) }"
+        let raw = "@uppercased(name)"
         let template = try Template(raw: raw)
+        let filler = Filler(["name": "hi"])
+        let rendered = try template.render(with: filler).string
+        let expectation = "HI"
+        XCTAssert(rendered == expectation)
     }
 }
 
