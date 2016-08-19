@@ -420,6 +420,14 @@ typealias Instruction = Template.Component.Instruction
 
 class NameSpace {
     let workingDirectory: String
+    var drivers: [String: InstructionDriver] = [
+        "": _Variable(),
+        "if": _If(),
+        "else": _Else(),
+        "loop": _Loop(),
+        "uppercased": _Uppercased(),
+        "include": _Include()
+    ]
 
     init(workingDirectory: String = workDir) {
         self.workingDirectory = workingDirectory.finished(with: "/")
@@ -495,7 +503,6 @@ final class _Include: InstructionDriver {
     func postCompile(
         namespace: NameSpace,
         instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
-
         guard instruction.parameters.count == 1 else { throw "invalid include" }
         switch instruction.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
@@ -674,15 +681,6 @@ final class _Variable: InstructionDriver {
     }
 }
 
-let drivers: [String: InstructionDriver] = [
-    "": _Variable(),
-    "if": _If(),
-    "else": _Else(),
-    "loop": _Loop(),
-    "uppercased": _Uppercased(),
-    "include": _Include()
-]
-
 extension Template: CustomStringConvertible {
     var description: String {
         let components = self.components.map { $0.description } .joined(separator: ", ")
@@ -784,8 +782,6 @@ extension Filler {
 
 let Default = NameSpace()
 
-// let _drivers: [String: _InstructionDriver] = [:]
-
 extension Template {
     func render(in namespace: NameSpace, with filler: Filler) throws -> Bytes {
         let initialQueue = filler.queue
@@ -797,7 +793,7 @@ extension Template {
             case let .raw(bytes):
                 buffer += bytes
             case let .instruction(instruction):
-                guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+                guard let command = namespace.drivers[instruction.name] else { throw "unsupported instruction" }
                 let arguments = try command.makeArguments(
                     namespace: namespace,
                     filler: filler,
@@ -839,7 +835,7 @@ extension Template {
                 print("Chain: \n\(chain.map { "\($0)" } .joined(separator: "\n"))")
                 for instruction in chain {
                     // TODO: Copy pasta, clean up
-                    guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+                    guard let command = namespace.drivers[instruction.name] else { throw "unsupported instruction" }
                     let arguments = try command.makeArguments(
                         namespace: namespace,
                         filler: filler,
