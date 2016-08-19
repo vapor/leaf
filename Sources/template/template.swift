@@ -352,11 +352,95 @@ protocol Renderable {
 protocol InstructionDriver {
     var name: String { get }
 
+    // after a template is compiled, an instruction will be passed in for validation/modification if necessary
     func postCompile(namespace: NameSpace,
                      instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
 
+    // turn parameters in instruction into concrete arguments
+    func makeArguments(namespace: NameSpace,
+                       filler: Filler,
+                       instruction: Instruction) throws -> [Argument]
+
+
+    // run the driver w/ the specified arguments and returns the value to add to scope or render
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any?
+
+    // whether or not the given value should be rendered. Defaults to `!= nil`
+    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool
+
+    // filler is populated with value at this point
+    // renders a given template, can override for custom behavior. For example, #loop
+    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes
+
+    func aaa()
+}
+
+extension InstructionDriver {
+    func postCompile(namespace: NameSpace,
+                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+        return instruction
+    }
+
+    func makeArguments(namespace: NameSpace,
+                       filler: Filler,
+                       instruction: Instruction) throws -> [Argument]{
+        return instruction.makeArguments(filler: filler)
+    }
+
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        guard arguments.count == 1 else {
+            throw "more than one argument not supported, override \(#function) for custom behavior"
+        }
+
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value
+        case let .variable(key: _, value: value):
+            return value
+        }
+    }
+
+    func shouldRender(namespace: NameSpace,
+                      filler: Filler,
+                      instruction: Instruction,
+                      arguments: [Argument],
+                      value: Any?) -> Bool {
+        return value != nil
+    }
+
+    func render(namespace: NameSpace,
+                filler: Filler,
+                value: Any?,
+                template: Template) throws -> Bytes {
+        return try template.render(in: namespace, with: filler)
+    }
+}
+
+
+typealias Instruction = Template.Component.Instruction
+/*
+protocol InstructionDriver {
+    var name: String { get }
+
+    // after a template is compiled, an instruction will be passed in for validation/modification if necessary
+    func postCompile(namespace: NameSpace,
+                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
+
+    // turn parameters in instruction into concrete arguments
+    func makeArguments(namespace: NameSpace,
+                       instruction: Instruction,
+                       filler: Filler) throws -> [Argument]
+    
     // Optional -- takes template instruction and populates it from fillter
     func preprocess(instruction: Template.Component.Instruction, with filler: Filler) throws -> [Argument]
+
+
+    func run(namespace: NameSpace, instruction: Instruction, arguments: [Argument], filler: Filler) throws -> Any?
+
+    func shouldRender(_ value: Any?) -> Bool
+
+    // func run(namespace: NameSpace, arguments: [Argument], filler: Filler) throws -> Bool
     // The processing of arguments within the filler, and returning a new context
     func process(arguments: [Argument], with filler: Filler) throws -> Bool
 
@@ -365,6 +449,76 @@ protocol InstructionDriver {
 
     func postrender(filler: Filler) throws
 }
+
+extension InstructionDriver {
+    func postCompile(namespace: NameSpace,
+                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+        return instruction
+    }
+
+    func makeArguments(namespace: NameSpace,
+                       instruction: Instruction,
+                       filler: Filler) throws -> [Argument] {
+        return instruction.makeArguments(filler: filler)
+    }
+
+    func run(namespace: NameSpace, instruction: Instruction, arguments: [Argument], filler: Filler) throws -> Any? {
+        guard arguments.count == 1 else {
+            throw "more than one argument not supported, override \(#function) for custom behavior"
+        }
+
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value
+        // filler.push(["self": value])
+            //case let .variable(key: _, value: value as FuzzyAccessible):
+            //return value
+        // filler.push(value)
+        case let .variable(key: _, value: value):
+            //filler.push(["self": value])
+            return value
+        }
+    }
+
+    func shouldRender(_ value: Any?) -> Bool {
+        return value != nil
+    }
+
+    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
+        return instruction.makeArguments(filler: filler)
+    }
+
+    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+        
+        guard arguments.count == 1 else {
+            throw "more than one argument not supported, override \(#function) for custom behavior"
+        }
+
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            filler.push(["self": value])
+        case let .variable(key: _, value: value as FuzzyAccessible):
+            filler.push(value)
+        case let .variable(key: _, value: value):
+            filler.push(["self": value])
+        }
+
+        return true // should continue
+    }
+
+    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) -> Template? {
+        return instruction.body
+    }
+
+    func render(template: Template, with filler: Filler) throws -> Bytes {
+        return try template.render(with: filler)
+    }
+
+    func postrender(filler: Filler) throws {}
+}
+*/
 
 class NameSpace {
     let workingDirectory: String
@@ -418,63 +572,20 @@ extension NameSpace {
     }
 }
 
-extension InstructionDriver {
-
-    func postCompile(namespace: NameSpace,
-                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
-        return instruction
-    }
-
-    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
-
-        return instruction
-    }
-
-    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
+extension Instruction {
+    func makeArguments(filler: Filler) -> [Argument] {
         var input = [Argument]()
-        instruction.parameters.forEach { arg in
+        parameters.forEach { arg in
             switch arg {
             case let .variable(key):
-                if key == "self" {
-                    input.append(.variable(key: key, value: filler.get(path: "self")))
-                } else {
-                    let value = filler.get(path: key)
-                    input.append(.variable(key: key, value: value))
-                }
+                let value = filler.get(path: key)
+                input.append(.variable(key: key, value: value))
             case let .constant(c):
                 input.append(.constant(value: c))
             }
         }
         return input
     }
-
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        guard arguments.count == 1 else {
-            throw "more than one argument not supported, override \(#function) for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            filler.push(["self": value])
-        case let .variable(key: _, value: value as FuzzyAccessible):
-            filler.push(value)
-        case let .variable(key: _, value: value):
-            filler.push(["self": value])
-        }
-
-        return true // should continue
-    }
-
-    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) -> Template? {
-        return instruction.body
-    }
-
-    func render(template: Template, with filler: Filler) throws -> Bytes {
-        return try template.render(with: filler)
-    }
-
-    func postrender(filler: Filler) throws {}
 }
 
 final class _Include: InstructionDriver {
@@ -522,6 +633,20 @@ final class _Include: InstructionDriver {
         }
     }
 */
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        return nil
+    }
+
+    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
+        // throws at precompile, should always render
+        return true
+    }
+
+    func aaa() {
+        //
+    }
+
+    /*
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         return true
         // TODO: Check if template exists?
@@ -546,11 +671,30 @@ final class _Include: InstructionDriver {
         }
          */
     }
+ */
 }
 
 final class _Loop: InstructionDriver {
     let name = "loop"
 
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        guard arguments.count == 2 else {
+            throw "loop requires two arguments, var w/ array, and constant w/ sub name"
+        }
+
+        switch (arguments[0], arguments[1]) {
+        case let (.variable(key: _, value: value?), .constant(value: innername)):
+            let array = value as? [Any] ?? [value]
+            return array.map { [innername: $0] }
+        // return true
+        default:
+            return nil
+            // return false
+        }
+    }
+
+    func aaa() {}
+/*
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         guard arguments.count == 2 else {
             throw "loop requires two arguments, var w/ array, and constant w/ sub name"
@@ -565,7 +709,30 @@ final class _Loop: InstructionDriver {
             return false
         }
     }
+*/
 
+    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes {
+        guard let array = value as? [Any] else { fatalError() }
+
+        // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
+        return try array
+            .map { item -> Bytes in
+                if let i = item as? FuzzyAccessible {
+                    filler.push(i)
+                } else {
+                    filler.push(["self": item])
+                }
+
+                let rendered = try template.render(in: namespace, with: filler)
+
+                filler.pop()
+
+                return rendered
+            }
+            .flatMap { $0 + [.newLine] }
+    }
+
+    /*
     func render(template: Template, with filler: Filler) throws -> Bytes {
         guard let array = filler.queue.last as? [Any] else { fatalError() }
 
@@ -590,10 +757,30 @@ final class _Loop: InstructionDriver {
     func postrender(filler: Filler) throws {
         filler.pop()
     }
+ */
 }
 
 final class _Uppercased: InstructionDriver {
+
     let name = "uppercased"
+
+    func aaa() {}
+
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        guard arguments.count == 1 else { throw "\(self) only accepts single arguments" }
+        switch arguments[0] {
+        case let .constant(value: value):
+            return value.uppercased()
+        case let .variable(key: _, value: value as String):
+            return value.uppercased()
+        case let .variable(key: _, value: value as Renderable):
+            return try value.rendered().string.uppercased()
+        case let .variable(key: _, value: value?):
+            return "\(value)".uppercased()
+        default:
+            return nil
+        }
+    }
 
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         guard arguments.count == 1 else { throw "uppercase only accepts single arguments" }
@@ -617,17 +804,26 @@ final class _Uppercased: InstructionDriver {
 
 final class _Else: InstructionDriver {
     let name = "else"
-
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        guard arguments.isEmpty else { throw "else expects 0 arguments" }
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        return nil
+    }
+    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         return true
     }
+
+    func aaa() {}
 }
 
 final class _If: InstructionDriver {
     let name = "if"
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
+        return nil
+    }
+
+    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
+        guard arguments.count == 1 else { return false }
         let argument = arguments[0]
         // TODO: Polymorphic could help here
         switch argument {
@@ -647,10 +843,52 @@ final class _If: InstructionDriver {
             return value != nil
         }
     }
+
+    func done() {
+        //
+    }
+
+    func aaa() {}
 }
 
 final class _Variable: InstructionDriver {
     let name = "" // empty name, ie: @(variable)
+
+    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+        /*
+         Currently ALL '@' signs are interpreted as instructions.  This means to escape in
+
+         name@email.com
+
+         We'd have to do:
+
+         name@("@")email.com
+
+         or more pretty
+
+         contact-email@("@email.com")
+
+         By having this uncommented, we could allow
+
+         name@()email.com
+         */
+        if arguments.isEmpty { return [TOKEN].string } // temporary escaping mechanism?
+        guard arguments.count == 1 else { throw "invalid var argument" }
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value
+        case let .variable(key: _, value: value):
+            return value
+        }
+    }
+
+    func aaa() {}
+    func done() {
+        //
+    }
+
+    /*
     func process(arguments: [Argument], with filler: Filler) throws -> Bool {
         /*
          Currently ALL '@' signs are interpreted as instructions.  This means to escape in
@@ -687,6 +925,7 @@ final class _Variable: InstructionDriver {
     func postrender(filler: Filler) throws {
         filler.pop()
     }
+     */
 }
 
 let drivers: [String: InstructionDriver] = [
@@ -787,13 +1026,119 @@ extension Template.Component.Instruction.Parameter {
 extension Filler {
     func rendered(path: String) throws -> Bytes? {
         guard let value = self.get(path: path) else { return nil }
-        guard let renderable = value as? Renderable else { return "\(value)".bytes }
+        guard let renderable = value as? Renderable else {
+            let made = "\(value)".bytes
+            print("Made: \(made.string)")
+            print("")
+            return made
+        }
         return try renderable.rendered()
     }
 }
 
+let Default = NameSpace()
+
+// let _drivers: [String: _InstructionDriver] = [:]
+
 extension Template {
-    func render(with filler: Filler) throws -> Bytes {
+    func render(in namespace: NameSpace, with filler: Filler) throws -> Bytes {
+        let initialQueue = filler.queue
+        defer { filler.queue = initialQueue }
+
+        var buffer = Bytes()
+        try components.forEach { component in
+            switch component {
+            case let .raw(bytes):
+                buffer += bytes
+            case let .instruction(instruction):
+                guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+                let arguments = try command.makeArguments(
+                    namespace: namespace,
+                    filler: filler,
+                    instruction: instruction
+                )
+
+                let value = try command.run(namespace: namespace, filler: filler, instruction: instruction, arguments: arguments)
+                let shouldRender = command.shouldRender(
+                    namespace: namespace,
+                    filler: filler,
+                    instruction: instruction,
+                    arguments: arguments,
+                    value: value
+                )
+                guard shouldRender else { return }
+
+                switch value {
+                    //case let fuzzy as FuzzyAccessible:
+                //filler.push(fuzzy)
+                case let val?: // unwrap if possible to remove from printing
+                    filler.push(["self": val])
+                default:
+                    filler.push(["self": value])
+                }
+
+                if let subtemplate = instruction.body {
+                    buffer += try command.render(namespace: namespace, filler: filler, value: value, template: subtemplate)
+                } else if let rendered = try filler.rendered(path: "self") {
+                    buffer += rendered
+                }
+            case let .chain(chain):
+                /**
+                 *********************
+                 ****** WARNING ******
+                 *********************
+                 
+                 Deceptively similar to above, nuance will break e'rything!
+                 **/
+                print("Chain: \n\(chain.map { "\($0)" } .joined(separator: "\n"))")
+                for instruction in chain {
+                    // TODO: Copy pasta, clean up
+                    guard let command = drivers[instruction.name] else { throw "unsupported instruction" }
+                    let arguments = try command.makeArguments(
+                        namespace: namespace,
+                        filler: filler,
+                        instruction: instruction
+                    )
+
+                    let value = try command.run(namespace: namespace, filler: filler, instruction: instruction, arguments: arguments)
+                    let shouldRender = command.shouldRender(
+                        namespace: namespace,
+                        filler: filler,
+                        instruction: instruction,
+                        arguments: arguments,
+                        value: value
+                    )
+                    guard shouldRender else {
+                        // ** WARNING **//
+                        continue
+                    }
+
+                    switch value {
+                        //case let fuzzy as FuzzyAccessible:
+                    //filler.push(fuzzy)
+                    case let val?:
+                        filler.push(["self": val])
+                    default:
+                        filler.push(["self": value])
+                    }
+
+                    if let subtemplate = instruction.body {
+                        buffer += try command.render(namespace: namespace, filler: filler, value: value, template: subtemplate)
+                    } else if let rendered = try filler.rendered(path: "self") {
+                        buffer += rendered
+                    }
+
+                    // NECESSARY TO POP!
+                    filler.pop()
+                    return // Once a link in the chain is marked as pass (shouldRender), break scope
+                }
+            }
+        }
+        return buffer
+    }
+
+/*
+    func _render(with filler: Filler) throws -> Bytes {
         let initialQueue = filler.queue
         defer { filler.queue = initialQueue }
 
@@ -840,6 +1185,7 @@ extension Template {
         }
         return buffer
     }
+ */
 }
 
 extension Template.Component {
