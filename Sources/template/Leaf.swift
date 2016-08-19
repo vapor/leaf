@@ -25,3 +25,15 @@ public final class Leaf {
         self.components = components
     }
 }
+
+extension Leaf: CustomStringConvertible {
+    public var description: String {
+        let components = self.components.map { $0.description } .joined(separator: ", ")
+        return "Leaf: " + components
+    }
+}
+
+extension Leaf: Equatable {}
+public func == (lhs: Leaf, rhs: Leaf) -> Bool {
+    return lhs.raw == rhs.raw
+}

@@ -1,12 +1,21 @@
-final class _If: Tag {
+final class If: Tag {
     let name = "if"
 
-    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(
+        stem: Stem,
+        filler: Scope,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
         return nil
     }
 
-    func shouldRender(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(
+        stem: Stem,
+        filler: Scope,
+        tagTemplate: TagTemplate,
+        arguments: [Argument],
+        value: Any?) -> Bool {
         guard arguments.count == 1 else { return false }
         let argument = arguments[0]
         switch argument {

@@ -1,9 +1,13 @@
 import Core
 
-final class _Loop: Tag {
+final class Loop: Tag {
     let name = "loop"
 
-    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(
+        stem: Stem,
+        filler: Scope,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
         guard arguments.count == 2 else {
             throw "loop requires two arguments, var w/ array, and constant w/ sub name"
         }
@@ -19,10 +23,13 @@ final class _Loop: Tag {
         }
     }
 
-    func render(stem: Stem, filler: Scope, value: Any?, template: Leaf) throws -> Bytes {
+    func render(
+        stem: Stem,
+        filler: Scope,
+        value: Any?,
+        template: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
 
-        // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
         return try array
             .map { item -> Bytes in
                 if let i = item as? FuzzyAccessible {
@@ -31,7 +38,7 @@ final class _Loop: Tag {
                     filler.push(["self": item])
                 }
 
-                let rendered = try template.render(in: stem, with: filler)
+                let rendered = try stem.render(template, with: filler)
 
                 filler.pop()
 

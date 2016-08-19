@@ -1,6 +1,6 @@
 import Core
 
-protocol Tag {
+public protocol Tag {
     var name: String { get }
 
     // after a template is compiled, an tagTemplate will be passed in for validation/modification if necessary
@@ -25,18 +25,18 @@ protocol Tag {
 }
 
 extension Tag {
-    func postCompile(stem: Stem,
+    public func postCompile(stem: Stem,
                      tagTemplate: TagTemplate) throws -> TagTemplate {
         return tagTemplate
     }
 
-    func makeArguments(stem: Stem,
+    public func makeArguments(stem: Stem,
                        filler: Scope,
                        tagTemplate: TagTemplate) throws -> [Argument]{
         return tagTemplate.makeArguments(filler: filler)
     }
 
-    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
+    public func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else {
             throw "more than one argument not supported, override \(#function) for custom behavior"
         }
@@ -50,7 +50,7 @@ extension Tag {
         }
     }
 
-    func shouldRender(stem: Stem,
+    public func shouldRender(stem: Stem,
                       filler: Scope,
                       tagTemplate: TagTemplate,
                       arguments: [Argument],
@@ -58,10 +58,10 @@ extension Tag {
         return value != nil
     }
 
-    func render(stem: Stem,
+    public func render(stem: Stem,
                 filler: Scope,
                 value: Any?,
                 template: Leaf) throws -> Bytes {
-        return try template.render(in: stem, with: filler)
+        return try stem.render(template, with: filler)
     }
 }

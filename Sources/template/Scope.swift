@@ -1,22 +1,21 @@
-final class Scope {
+import Core
 
-    let workingDirectory: String = "./"
+public final class Scope {
+    public internal(set) var queue: [FuzzyAccessible] = []
 
-    internal(set) var queue: [FuzzyAccessible] = []
-
-    init(_ any: Any) {
+    public init(_ any: Any) {
         self.queue.append(["self": any])
     }
 
-    init(_ fuzzy: FuzzyAccessible) {
+    public init(_ fuzzy: FuzzyAccessible) {
         self.queue.append(fuzzy)
     }
 
-    func get(key: String) -> Any? {
+    public func get(key: String) -> Any? {
         return queue.lazy.reversed().flatMap { $0.get(key: key) } .first
     }
 
-    func get(path: String) -> Any? {
+    public func get(path: String) -> Any? {
         let components = path.components(separatedBy: ".")
         return queue.lazy
             .reversed() // bottom up
@@ -32,13 +31,34 @@ final class Scope {
         }
     }
 
-    func push(_ fuzzy: FuzzyAccessible) {
+    public func push(_ fuzzy: FuzzyAccessible) {
         queue.append(fuzzy)
     }
 
     @discardableResult
-    func pop() -> FuzzyAccessible? {
+    public func pop() -> FuzzyAccessible? {
         guard !queue.isEmpty else { return nil }
         return queue.removeLast()
+    }
+}
+
+
+extension Scope {
+    internal func renderedSelf() throws -> Bytes? {
+        guard let value = get(path: "self") else { return nil }
+        guard let renderable = value as? Renderable else { return "\(value)".bytes }
+        return try renderable.rendered()
+    }
+}
+
+extension Leaf.Component: Equatable {}
+public func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
+    switch (lhs, rhs) {
+    case let (.raw(l), .raw(r)):
+        return l == r
+    case let (.tagTemplate(l), .tagTemplate(r)):
+        return l == r
+    default:
+        return false
     }
 }

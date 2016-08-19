@@ -27,3 +27,33 @@ public final class TagTemplate {
         self.body = body
     }
 }
+
+extension TagTemplate {
+    func makeArguments(filler: Scope) -> [Argument] {
+        var input = [Argument]()
+        parameters.forEach { arg in
+            switch arg {
+            case let .variable(key):
+                let value = filler.get(path: key)
+                input.append(.variable(key: key, value: value))
+            case let .constant(c):
+                input.append(.constant(value: c))
+            }
+        }
+        return input
+    }
+}
+
+extension TagTemplate: CustomStringConvertible {
+    public var description: String {
+        return "(name: \(name), parameters: \(parameters), body: \(body)"
+    }
+}
+
+
+extension TagTemplate: Equatable {}
+public func == (lhs: TagTemplate, rhs: TagTemplate) -> Bool {
+    return lhs.name == rhs.name
+        && lhs.parameters == rhs.parameters
+        && lhs.body == rhs.body
+}
