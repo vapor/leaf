@@ -1,6 +1,76 @@
 import Foundation
 import XCTest
+import Mustache
 @testable import Leaf
+
+class Performance: XCTestCase {
+    func testMustache() throws {
+        let raw = "Hello, {{name}}!"
+        let template = try Template(string: raw)
+        let context: [String: Any] = [
+            "name": "World"
+        ]
+        measure {
+            try! (1...500).forEach { _ in
+                let rendered = try template.render(box: context.mustacheBox)
+                XCTAssert(rendered == "Hello, World!")
+            }
+        }
+    }
+
+    func testLeaf() throws {
+        let stem = Stem()
+        let raw = "Hello, #(name)!"
+        let expectation = "Hello, World!".bytes
+        let template = try Leaf(raw: raw)
+        /*
+        let context: [String: Any] = [
+            "name": "World"
+        ]
+         */
+        let ctxt = Context(["name": "World"])
+        measure {
+            try! (1...500).forEach { _ in
+                let rendered = try stem.render(template, with: ctxt)
+                XCTAssert(rendered == expectation)
+            }
+        }
+    }
+
+    func testMustacheB() throws {
+        let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
+        let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
+        let template = try Template(string: raw)
+        let context: [String: Any] = [
+            "name": "World"
+        ]
+        measure {
+            try! (1...5).forEach { _ in
+                let rendered = try template.render(box: context.mustacheBox)
+                XCTAssert(rendered == expectation)
+            }
+        }
+    }
+
+    func testLeafB() throws {
+        let stem = Stem()
+        let raw = [String](repeating: "Hello, #(name)!", count: 1000).joined(separator: ", ")
+        let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
+        let template = try Leaf(raw: raw)
+        /*
+         let context: [String: Any] = [
+         "name": "World"
+         ]
+         */
+        let ctxt = Context(["name": "World"])
+        measure {
+            try! (1...5).forEach { _ in
+                let rendered = try stem.render(template, with: ctxt)
+                XCTAssert(rendered == expectation)
+            }
+        }
+    }
+}
 
 class FuzzyAccessibleTests: XCTestCase {
     func testFuzzyLeaf() throws {
