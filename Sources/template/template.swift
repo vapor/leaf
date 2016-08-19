@@ -371,8 +371,6 @@ protocol InstructionDriver {
     // filler is populated with value at this point
     // renders a given template, can override for custom behavior. For example, #loop
     func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes
-
-    func aaa()
 }
 
 extension InstructionDriver {
@@ -419,106 +417,6 @@ extension InstructionDriver {
 
 
 typealias Instruction = Template.Component.Instruction
-/*
-protocol InstructionDriver {
-    var name: String { get }
-
-    // after a template is compiled, an instruction will be passed in for validation/modification if necessary
-    func postCompile(namespace: NameSpace,
-                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
-
-    // turn parameters in instruction into concrete arguments
-    func makeArguments(namespace: NameSpace,
-                       instruction: Instruction,
-                       filler: Filler) throws -> [Argument]
-    
-    // Optional -- takes template instruction and populates it from fillter
-    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) throws -> [Argument]
-
-
-    func run(namespace: NameSpace, instruction: Instruction, arguments: [Argument], filler: Filler) throws -> Any?
-
-    func shouldRender(_ value: Any?) -> Bool
-
-    // func run(namespace: NameSpace, arguments: [Argument], filler: Filler) throws -> Bool
-    // The processing of arguments within the filler, and returning a new context
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool
-
-    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) throws -> Template?
-    func render(template: Template, with filler: Filler) throws -> Bytes
-
-    func postrender(filler: Filler) throws
-}
-
-extension InstructionDriver {
-    func postCompile(namespace: NameSpace,
-                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
-        return instruction
-    }
-
-    func makeArguments(namespace: NameSpace,
-                       instruction: Instruction,
-                       filler: Filler) throws -> [Argument] {
-        return instruction.makeArguments(filler: filler)
-    }
-
-    func run(namespace: NameSpace, instruction: Instruction, arguments: [Argument], filler: Filler) throws -> Any? {
-        guard arguments.count == 1 else {
-            throw "more than one argument not supported, override \(#function) for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            return value
-        // filler.push(["self": value])
-            //case let .variable(key: _, value: value as FuzzyAccessible):
-            //return value
-        // filler.push(value)
-        case let .variable(key: _, value: value):
-            //filler.push(["self": value])
-            return value
-        }
-    }
-
-    func shouldRender(_ value: Any?) -> Bool {
-        return value != nil
-    }
-
-    func preprocess(instruction: Template.Component.Instruction, with filler: Filler) -> [Argument] {
-        return instruction.makeArguments(filler: filler)
-    }
-
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        
-        guard arguments.count == 1 else {
-            throw "more than one argument not supported, override \(#function) for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            filler.push(["self": value])
-        case let .variable(key: _, value: value as FuzzyAccessible):
-            filler.push(value)
-        case let .variable(key: _, value: value):
-            filler.push(["self": value])
-        }
-
-        return true // should continue
-    }
-
-    func prerender(instruction: Template.Component.Instruction, arguments: [Argument], with filler: Filler) -> Template? {
-        return instruction.body
-    }
-
-    func render(template: Template, with filler: Filler) throws -> Bytes {
-        return try template.render(with: filler)
-    }
-
-    func postrender(filler: Filler) throws {}
-}
-*/
 
 class NameSpace {
     let workingDirectory: String
@@ -612,27 +510,6 @@ final class _Include: InstructionDriver {
         }
     }
 
-    /*
-    func prepare(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
-        guard instruction.parameters.count == 1 else {
-            throw "invalid include statement"
-        }
-        switch instruction.parameters[0] {
-        case let .constant(value):
-            // TEMPORARY
-            // TODO: Use working directory
-            let template = try loadTemplate(named: value)
-            return Template.Component.Instruction(
-                name: instruction.name,
-                parameters: instruction.parameters,
-                body: template
-            )
-        default:
-            // TODO: Allow dynamic load
-            throw "include statements are required to be constants"
-        }
-    }
-*/
     func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         return nil
     }
@@ -641,37 +518,6 @@ final class _Include: InstructionDriver {
         // throws at precompile, should always render
         return true
     }
-
-    func aaa() {
-        //
-    }
-
-    /*
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        return true
-        // TODO: Check if template exists?
-        //       return arguments.count == 1
-        /*
-        guard arguments.count == 1 else { throw "include requires a single path argument" }
-        switch arguments[0] {
-        case let .constant(value: value):
-            //let fullPath = workDir + value + ".vt"
-            // TEMPORARY
-            // TODO: Cache, or ideally render in pre process
-            let template = try loadTemplate(named: value)
-            filler.push(["include": template])
-            return true
-        case let .variable(key: _, value: value?):
-            let template = try loadTemplate(named: "\(value)")
-            filler.push(["include": template])
-            return true
-        default:
-            print("Unable to find include, no value")
-            return false
-        }
-         */
-    }
- */
 }
 
 final class _Loop: InstructionDriver {
@@ -693,24 +539,6 @@ final class _Loop: InstructionDriver {
         }
     }
 
-    func aaa() {}
-/*
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        guard arguments.count == 2 else {
-            throw "loop requires two arguments, var w/ array, and constant w/ sub name"
-        }
-
-        switch (arguments[0], arguments[1]) {
-        case let (.variable(key: _, value: value?), .constant(value: innername)):
-            let array = value as? [Any] ?? [value]
-            filler.push(array.map { [innername: $0] })
-            return true
-        default:
-            return false
-        }
-    }
-*/
-
     func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
 
@@ -731,40 +559,11 @@ final class _Loop: InstructionDriver {
             }
             .flatMap { $0 + [.newLine] }
     }
-
-    /*
-    func render(template: Template, with filler: Filler) throws -> Bytes {
-        guard let array = filler.queue.last as? [Any] else { fatalError() }
-
-        // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
-        return try array
-            .map { item -> Bytes in
-                if let i = item as? FuzzyAccessible {
-                    filler.push(i)
-                } else {
-                    filler.push(["self": item])
-                }
-
-                let rendered = try template.render(with: filler)
-                filler.pop()
-                return rendered
-            }
-            .flatMap { $0 + [.newLine] }
-
-        //return []
-    }
-
-    func postrender(filler: Filler) throws {
-        filler.pop()
-    }
- */
 }
 
 final class _Uppercased: InstructionDriver {
 
     let name = "uppercased"
-
-    func aaa() {}
 
     func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "\(self) only accepts single arguments" }
@@ -810,8 +609,6 @@ final class _Else: InstructionDriver {
     func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         return true
     }
-
-    func aaa() {}
 }
 
 final class _If: InstructionDriver {
@@ -825,7 +622,6 @@ final class _If: InstructionDriver {
     func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         guard arguments.count == 1 else { return false }
         let argument = arguments[0]
-        // TODO: Polymorphic could help here
         switch argument {
         case let .constant(value: value):
             let bool = Bool(value)
@@ -843,12 +639,6 @@ final class _If: InstructionDriver {
             return value != nil
         }
     }
-
-    func done() {
-        //
-    }
-
-    func aaa() {}
 }
 
 final class _Variable: InstructionDriver {
@@ -882,50 +672,6 @@ final class _Variable: InstructionDriver {
             return value
         }
     }
-
-    func aaa() {}
-    func done() {
-        //
-    }
-
-    /*
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
-        /*
-         Currently ALL '@' signs are interpreted as instructions.  This means to escape in
-
-         name@email.com
-
-         We'd have to do:
-
-         name@("@")email.com
-
-         or more pretty
-
-         contact-email@("@email.com")
-
-         By having this uncommented, we could allow
-
-         name@()email.com
-         */
-        // if arguments.isEmpty return { "@" } // temporary escaping mechani
-        guard arguments.count == 1 else { throw "invalid var argument" }
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            filler.push(["self": value])
-            return true
-        case let .variable(key: _, value: value?):
-            filler.push(["self": value])
-            return true
-        default:
-            return false
-        }
-    }
-
-    func postrender(filler: Filler) throws {
-        filler.pop()
-    }
-     */
 }
 
 let drivers: [String: InstructionDriver] = [
