@@ -9,19 +9,19 @@ public protocol Tag {
 
     // turn parameters in template into concrete arguments
     func makeArguments(stem: Stem,
-                       filler: Scope,
+                       context: Context,
                        tagTemplate: TagTemplate) throws -> [Argument]
 
 
-    // run the tag w/ the specified arguments and returns the value to add to scope or render
-    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any?
+    // run the tag w/ the specified arguments and returns the value to add to context or render
+    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any?
 
     // whether or not the given value should be rendered. Defaults to `!= nil`
-    func shouldRender(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool
+    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool
 
-    // filler is populated with value at this point
+    // context is populated with value at this point
     // renders a given template, can override for custom behavior. For example, #loop
-    func render(stem: Stem, filler: Scope, value: Any?, template: Leaf) throws -> Bytes
+    func render(stem: Stem, context: Context, value: Any?, template: Leaf) throws -> Bytes
 }
 
 extension Tag {
@@ -31,12 +31,12 @@ extension Tag {
     }
 
     public func makeArguments(stem: Stem,
-                       filler: Scope,
+                       context: Context,
                        tagTemplate: TagTemplate) throws -> [Argument]{
-        return tagTemplate.makeArguments(filler: filler)
+        return tagTemplate.makeArguments(context: context)
     }
 
-    public func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
+    public func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else {
             throw "more than one argument not supported, override \(#function) for custom behavior"
         }
@@ -51,7 +51,7 @@ extension Tag {
     }
 
     public func shouldRender(stem: Stem,
-                      filler: Scope,
+                      context: Context,
                       tagTemplate: TagTemplate,
                       arguments: [Argument],
                       value: Any?) -> Bool {
@@ -59,9 +59,9 @@ extension Tag {
     }
 
     public func render(stem: Stem,
-                filler: Scope,
+                context: Context,
                 value: Any?,
                 template: Leaf) throws -> Bytes {
-        return try stem.render(template, with: filler)
+        return try stem.render(template, with: context)
     }
 }

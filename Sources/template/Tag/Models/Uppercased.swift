@@ -3,7 +3,7 @@ final class Uppercased: Tag {
 
     func run(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "\(self) only accepts single arguments" }

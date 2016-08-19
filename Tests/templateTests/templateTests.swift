@@ -92,24 +92,22 @@ class FuzzyAccessibleTests: XCTestCase {
         ]
 
         let template = try Leaf(raw: raw)
-        let filler = Scope(context)
-        let rendered = try Stem().render(template, with: filler).string
+        let loadable = Context(context)
+        let rendered = try Stem().render(template, with: loadable).string
         let expectation = "Hello, World!"
         XCTAssert(rendered == expectation)
     }
 }
 
-class ScopeTests: XCTestCase {
+class ContextTests: XCTestCase {
     func testBasic() throws {
         let stem = Stem()
         let template = try stem.loadLeaf(raw: "Hello, #(name)!")
         let context: [String: String] = ["name": "World"]
-        let filler = Scope(context)
-        do {
-            let rendered = try stem.render(template, with: filler).string
+        let loadable = Context(context)
+        let rendered = try stem.render(template, with: loadable).string
         let expectation = "Hello, World!"
-            XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
-        } catch { XCTFail("\(error)") }
+        XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
 
     func testNested() throws {
@@ -117,8 +115,8 @@ class ScopeTests: XCTestCase {
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
         print("Components: \(template.components)")
-        let filler = Scope(["best-friend": ["name": "World"]])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["best-friend": ["name": "World"]])
+        let rendered = try stem.render(template, with: context).string
         XCTAssert(rendered == "Hello, World!")
     }
 
@@ -126,8 +124,8 @@ class ScopeTests: XCTestCase {
         let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
-        let filler = Scope(["friends": ["a", "b", "c", "#loop"]])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["friends": ["a", "b", "c", "#loop"]])
+        let rendered = try stem.render(template, with: context).string
         let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
         XCTAssert(rendered == expectation)
     }
@@ -136,8 +134,8 @@ class ScopeTests: XCTestCase {
         let raw = "#(name) { #(name) }" // redundant, but should render as an inner stem
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
-        let filler = Scope(["name": "foo"])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["name": "foo"])
+        let rendered = try stem.render(template, with: context).string
         let expectation = "foo"
         XCTAssert(rendered == expectation)
     }
@@ -146,18 +144,18 @@ class ScopeTests: XCTestCase {
         let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
-        let filler = Scope(["name": "Foo", "friend": ["name": "Bar"]])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["name": "Foo", "friend": ["name": "Bar"]])
+        let rendered = try stem.render(template, with: context).string
         let expectation = "Let's render Foo is friends with Bar"
         XCTAssert(rendered == expectation, "have: *\(rendered)* want: *\(expectation)*")
     }
 
-    func testMultiScope() throws {
+    func testMultiContext() throws {
         let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
-        let filler = Scope(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
+        let rendered = try stem.render(template, with: context).string
         let expectation = "HEllo"
         XCTAssert(rendered == expectation)
     }
@@ -177,8 +175,8 @@ class ScopeTests: XCTestCase {
         ]
 
         try cases.forEach { key, bool, expectation in
-            let filler = Scope([key: bool])
-            let rendered = try stem.render(template, with: filler).string
+            let context = Context([key: bool])
+            let rendered = try stem.render(template, with: context).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }
@@ -190,8 +188,8 @@ class FilterTests: XCTestCase {
         // let raw = "#uppercased(name)"
         let stem = Stem()
         let template = try stem.loadLeaf(raw: raw)
-        let filler = Scope(["name": "hi"])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["name": "hi"])
+        let rendered = try stem.render(template, with: context).string
         let expectation = "HI"
         XCTAssert(rendered == expectation)
     }
@@ -202,8 +200,8 @@ class IncludeTests: XCTestCase {
         let stem = Stem()
         let template = try stem.loadLeaf(named: "include-base")
         // let template = try loadLeaf(named: "include-base")
-        let filler = Scope(["name": "World"])
-        let rendered = try stem.render(template, with: filler).string
+        let context = Context(["name": "World"])
+        let rendered = try stem.render(template, with: context).string
         let expectation = "Leaf included: Hello, World!"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -268,8 +266,8 @@ class LeafRenderTests: XCTestCase {
 
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
-            let filler = Scope(["self": context])
-            let rendered = try Stem().render(template, with: filler).string
+            let context = Context(["self": context])
+            let rendered = try Stem().render(template, with: context).string
             XCTAssert(rendered == expectation)
         }
     }
@@ -284,8 +282,8 @@ class LeafRenderTests: XCTestCase {
         ]
 
         try contextTests.forEach { ctxt in
-            let filler = Scope(ctxt)
-            let rendered = try Stem().render(template, with: filler).string
+            let context = Context(ctxt)
+            let rendered = try Stem().render(template, with: context).string
             let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
             XCTAssert(rendered == "Hello, \(name)!", "have: \(rendered) want: Hello, \(name)!")
         }
@@ -304,9 +302,9 @@ class LoopTests: XCTestCase {
                 12
             ]
         ]
-        let filler = Scope(context)
+        let loadable = Context(context)
         let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
-        let rendered = try Stem().render(template, with: filler).string
+        let rendered = try Stem().render(template, with: loadable).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
 
@@ -329,8 +327,8 @@ class LoopTests: XCTestCase {
         ]
 
         let template = try loadLeaf(named: "complex-loop")
-        let filler = Scope(context)
-        let rendered = try Stem().render(template, with: filler).string
+        let loadable = Context(context)
+        let rendered = try Stem().render(template, with: loadable).string
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -341,8 +339,8 @@ class IfTests: XCTestCase {
         let template = try loadLeaf(named: "basic-if-test")
 
         let context = ["say-hello": true]
-        let filler = Scope(context)
-        let rendered = try Stem().render(template, with: filler).string
+        let loadable = Context(context)
+        let rendered = try Stem().render(template, with: loadable).string
         let expectation = "Hello, there!"
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -351,8 +349,8 @@ class IfTests: XCTestCase {
         let template = try loadLeaf(named: "basic-if-test")
 
         let context = ["say-hello": false]
-        let filler = Scope(context)
-        let rendered = try Stem().render(template, with: filler).string
+        let loadable = Context(context)
+        let rendered = try Stem().render(template, with: loadable).string
         let expectation = ""
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -364,8 +362,8 @@ class IfTests: XCTestCase {
             "entering": true,
             "friend-name": "World"
         ]
-        let helloScope = Scope(helloContext)
-        let renderedHello = try Stem().render(template, with: helloScope).string
+        let hello = Context(helloContext)
+        let renderedHello = try Stem().render(template, with: hello).string
         let expectedHello = "Hello, World!"
         XCTAssert(renderedHello == expectedHello, "have: \(renderedHello) want: \(expectedHello)")
 
@@ -373,8 +371,8 @@ class IfTests: XCTestCase {
             "entering": false,
             "friend-name": "World"
         ]
-        let goodbyeScope = Scope(goodbyeContext)
-        let renderedGoodbye = try Stem().render(template, with: goodbyeScope).string
+        let goodbye = Context(goodbyeContext)
+        let renderedGoodbye = try Stem().render(template, with: goodbye).string
         let expectedGoodbye = "Goodbye, World!"
         XCTAssert(renderedGoodbye == expectedGoodbye, "have: \(renderedGoodbye) want: \(expectedGoodbye)")
     }
@@ -390,8 +388,8 @@ class IfTests: XCTestCase {
         ]
 
         try expectations.forEach { input, expectation in
-            let filler = Scope(input)
-            let rendered = try Stem().render(template, with: filler).string
+            let context = Context(input)
+            let rendered = try Stem().render(template, with: context).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }

@@ -23,7 +23,7 @@ final class Include: Tag {
 
     func run(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]) throws -> Any? {
         return nil
@@ -31,7 +31,7 @@ final class Include: Tag {
 
     func shouldRender(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
         value: Any?) -> Bool {

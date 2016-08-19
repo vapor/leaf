@@ -29,12 +29,12 @@ public final class TagTemplate {
 }
 
 extension TagTemplate {
-    func makeArguments(filler: Scope) -> [Argument] {
+    func makeArguments(context: Context) -> [Argument] {
         var input = [Argument]()
         parameters.forEach { arg in
             switch arg {
             case let .variable(key):
-                let value = filler.get(path: key)
+                let value = context.get(path: key)
                 input.append(.variable(key: key, value: value))
             case let .constant(c):
                 input.append(.constant(value: c))

@@ -5,7 +5,7 @@ final class Loop: Tag {
 
     func run(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]) throws -> Any? {
         guard arguments.count == 2 else {
@@ -25,7 +25,7 @@ final class Loop: Tag {
 
     func render(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         value: Any?,
         template: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
@@ -33,14 +33,14 @@ final class Loop: Tag {
         return try array
             .map { item -> Bytes in
                 if let i = item as? FuzzyAccessible {
-                    filler.push(i)
+                    context.push(i)
                 } else {
-                    filler.push(["self": item])
+                    context.push(["self": item])
                 }
 
-                let rendered = try stem.render(template, with: filler)
+                let rendered = try stem.render(template, with: context)
 
-                filler.pop()
+                context.pop()
 
                 return rendered
             }

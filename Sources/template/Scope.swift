@@ -1,6 +1,6 @@
 import Core
 
-public final class Scope {
+public final class Context {
     public internal(set) var queue: [FuzzyAccessible] = []
 
     public init(_ any: Any) {
@@ -43,7 +43,7 @@ public final class Scope {
 }
 
 
-extension Scope {
+extension Context {
     internal func renderedSelf() throws -> Bytes? {
         guard let value = get(path: "self") else { return nil }
         guard let renderable = value as? Renderable else { return "\(value)".bytes }

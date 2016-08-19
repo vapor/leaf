@@ -3,7 +3,7 @@ final class If: Tag {
 
     func run(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
@@ -12,7 +12,7 @@ final class If: Tag {
 
     func shouldRender(
         stem: Stem,
-        filler: Scope,
+        context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
         value: Any?) -> Bool {
