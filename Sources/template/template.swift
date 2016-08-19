@@ -31,123 +31,15 @@ func load(path: String) throws -> Bytes {
     return bytes
 }
 
-
-/*
-    Potentially expose in future
-*/
-let TOKEN: Byte = .numberSign
-let SUFFIX = ".leaf"
-
-final class Filler {
-
-    let workingDirectory: String = "./"
-
-    private(set) var queue: [FuzzyAccessible]
-
-    init(_ fuzzy: FuzzyAccessible) {
-        self.queue = [fuzzy]
-    }
-
-    func get(key: String) -> Any? {
-        return queue.lazy.reversed().flatMap { $0.get(key: key) } .first
-    }
-
-    func get(path: String) -> Any? {
-        let components = path.components(separatedBy: ".")
-        return queue.lazy.reversed().flatMap { next in
-            print("Next: [\(next.dynamicType)]:\(next)")
-            let value = next.get(path: components)
-            print("Value: \(value)")
-            return value
-            // $0.get(path: path)
-            }
-            .first
-    }
-
-    public func get(path: [String]) -> Any? {
-        let first: Optional<Any> = self
-        return path.reduce(first) { next, index in
-            guard let next = next as? FuzzyAccessible else { return nil }
-            return next.get(key: index)
-        }
-    }
-
-    func push(_ fuzzy: FuzzyAccessible) {
-        queue.append(fuzzy)
-    }
-
-    @discardableResult
-    func pop() -> FuzzyAccessible? {
-        guard !queue.isEmpty else { return nil }
-        return queue.removeLast()
-    }
-}
-
-extension String: Swift.Error {}
-
-
-extension Byte {
-    var isLeafToken: Bool {
-        return self == TOKEN
-    }
-}
-
-extension Byte {
-    static let openParenthesis = "(".bytes.first!
-    static let closedParenthesis = ")".bytes.first!
-    static let openCurly = "{".bytes.first!
-    static let closedCurly = "}".bytes.first!
-}
-
-extension Byte {
-    static let quotationMark = "\"".bytes.first!
-}
-
-extension Sequence where Iterator.Element == Byte {
-    static var whitespace: Bytes {
-        return [ .space, .newLine, .carriageReturn, .horizontalTab]
-    }
-}
-
 public enum Parameter {
     case variable(String)
     case constant(String)
 }
 
-public final class TagTemplate {
-    public let name: String
-    public let parameters: [Parameter]
-
-    public let body: Leaf?
-
-    internal let isChain: Bool
-
-    internal convenience init(name: String, parameters: [Parameter], body: String?) throws {
-        let body = try body.flatMap { try Leaf(raw: $0) }
-        self.init(name: name, parameters: parameters, body: body)
-    }
-
-
-    internal init(name: String, parameters: [Parameter], body: Leaf?) {
-        // we strip leading token, if another one is there,
-        // that means we've found a chain element, ie: @@else {
-        if name.bytes.first == TOKEN {
-            self.isChain = true
-            self.name = name.bytes.dropFirst().string
-        } else {
-            self.isChain = false
-            self.name = name
-        }
-
-        self.parameters = parameters
-        self.body = body
-    }
-}
-
 extension Leaf {
     public enum Component {
         case raw(Bytes)
-        case instruction(TagTemplate)
+        case tagTemplate(TagTemplate)
         case chain([TagTemplate])
     }
 }
@@ -160,73 +52,6 @@ enum Argument {
 // TODO: Should optional be renderable, and render underlying?
 protocol Renderable {
     func rendered() throws -> Bytes
-}
-
-
-protocol Tag {
-    var name: String { get }
-
-    // after a template is compiled, an instruction will be passed in for validation/modification if necessary
-    func postCompile(stem: Stem,
-                     instruction: TagTemplate) throws -> TagTemplate
-
-    // turn parameters in instruction into concrete arguments
-    func makeArguments(stem: Stem,
-                       filler: Filler,
-                       instruction: TagTemplate) throws -> [Argument]
-
-
-    // run the tag w/ the specified arguments and returns the value to add to scope or render
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any?
-
-    // whether or not the given value should be rendered. Defaults to `!= nil`
-    func shouldRender(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument], value: Any?) -> Bool
-
-    // filler is populated with value at this point
-    // renders a given template, can override for custom behavior. For example, #loop
-    func render(stem: Stem, filler: Filler, value: Any?, template: Leaf) throws -> Bytes
-}
-
-extension Tag {
-    func postCompile(stem: Stem,
-                     instruction: TagTemplate) throws -> TagTemplate {
-        return instruction
-    }
-
-    func makeArguments(stem: Stem,
-                       filler: Filler,
-                       instruction: TagTemplate) throws -> [Argument]{
-        return instruction.makeArguments(filler: filler)
-    }
-
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
-        guard arguments.count == 1 else {
-            throw "more than one argument not supported, override \(#function) for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            return value
-        case let .variable(key: _, value: value):
-            return value
-        }
-    }
-
-    func shouldRender(stem: Stem,
-                      filler: Filler,
-                      instruction: TagTemplate,
-                      arguments: [Argument],
-                      value: Any?) -> Bool {
-        return value != nil
-    }
-
-    func render(stem: Stem,
-                filler: Filler,
-                value: Any?,
-                template: Leaf) throws -> Bytes {
-        return try template.render(in: stem, with: filler)
-    }
 }
 
 extension Stem {
@@ -254,27 +79,27 @@ extension Stem {
     }
 
     private func postcompile(_ component: Leaf.Component) throws -> Leaf.Component {
-        func commandPostcompile(_ instruction: TagTemplate) throws -> TagTemplate {
-            guard let command = tags[instruction.name] else { throw "unsupported instruction: \(instruction.name)" }
+        func commandPostcompile(_ tagTemplate: TagTemplate) throws -> TagTemplate {
+            guard let command = tags[tagTemplate.name] else { throw "unsupported tagTemplate: \(tagTemplate.name)" }
             return try command.postCompile(stem: self,
-                                           instruction: instruction)
+                                           tagTemplate: tagTemplate)
         }
 
         switch component {
         case .raw(_):
             return component
-        case let .instruction(instruction):
-            let updated = try commandPostcompile(instruction)
-            return .instruction(updated)
-        case let .chain(instructions):
-            let mapped = try instructions.map(commandPostcompile)
+        case let .tagTemplate(tagTemplate):
+            let updated = try commandPostcompile(tagTemplate)
+            return .tagTemplate(updated)
+        case let .chain(tagTemplates):
+            let mapped = try tagTemplates.map(commandPostcompile)
             return .chain(mapped)
         }
     }
 }
 
 extension TagTemplate {
-    func makeArguments(filler: Filler) -> [Argument] {
+    func makeArguments(filler: Scope) -> [Argument] {
         var input = [Argument]()
         parameters.forEach { arg in
             switch arg {
@@ -297,13 +122,13 @@ final class _Include: Tag {
 
     func postCompile(
         stem: Stem,
-        instruction: TagTemplate) throws -> TagTemplate {
-        guard instruction.parameters.count == 1 else { throw "invalid include" }
-        switch instruction.parameters[0] {
+        tagTemplate: TagTemplate) throws -> TagTemplate {
+        guard tagTemplate.parameters.count == 1 else { throw "invalid include" }
+        switch tagTemplate.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
             let body = try stem.loadLeaf(named: name)
             return TagTemplate(
-                name: instruction.name,
+                name: tagTemplate.name,
                 parameters: [], // no longer need parameters
                 body: body
             )
@@ -312,11 +137,11 @@ final class _Include: Tag {
         }
     }
 
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         return nil
     }
 
-    func shouldRender(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
         // throws at precompile, should always render
         return true
     }
@@ -325,7 +150,7 @@ final class _Include: Tag {
 final class _Loop: Tag {
     let name = "loop"
 
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 2 else {
             throw "loop requires two arguments, var w/ array, and constant w/ sub name"
         }
@@ -341,7 +166,7 @@ final class _Loop: Tag {
         }
     }
 
-    func render(stem: Stem, filler: Filler, value: Any?, template: Leaf) throws -> Bytes {
+    func render(stem: Stem, filler: Scope, value: Any?, template: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
 
         // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
@@ -367,7 +192,7 @@ final class _Uppercased: Tag {
 
     let name = "uppercased"
 
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "\(self) only accepts single arguments" }
         switch arguments[0] {
         case let .constant(value: value):
@@ -383,7 +208,7 @@ final class _Uppercased: Tag {
         }
     }
 
-    func process(arguments: [Argument], with filler: Filler) throws -> Bool {
+    func process(arguments: [Argument], with filler: Scope) throws -> Bool {
         guard arguments.count == 1 else { throw "uppercase only accepts single arguments" }
         switch arguments[0] {
         case let .constant(value: value):
@@ -405,10 +230,10 @@ final class _Uppercased: Tag {
 
 final class _Else: Tag {
     let name = "else"
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         return nil
     }
-    func shouldRender(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
         return true
     }
 }
@@ -416,12 +241,12 @@ final class _Else: Tag {
 final class _If: Tag {
     let name = "if"
 
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
         return nil
     }
 
-    func shouldRender(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool {
         guard arguments.count == 1 else { return false }
         let argument = arguments[0]
         switch argument {
@@ -446,9 +271,9 @@ final class _If: Tag {
 final class _Variable: Tag {
     let name = "" // empty name, ie: @(variable)
 
-    func run(stem: Stem, filler: Filler, instruction: TagTemplate, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Scope, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         /*
-         Currently ALL '@' signs are interpreted as instructions.  This means to escape in
+         Currently ALL '@' signs are interpreted as tagTemplates.  This means to escape in
 
          name@email.com
 
@@ -488,8 +313,8 @@ extension Leaf.Component: CustomStringConvertible {
         switch self {
         case let .raw(r):
             return ".raw(\(r.string))"
-        case let .instruction(i):
-            return ".instruction(\(i))"
+        case let .tagTemplate(i):
+            return ".tagTemplate(\(i))"
         case let .chain(chain):
             return ".chain(\(chain))"
         }
@@ -518,7 +343,7 @@ public func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
     switch (lhs, rhs) {
     case let (.raw(l), .raw(r)):
         return l == r
-    case let (.instruction(l), .instruction(r)):
+    case let (.tagTemplate(l), .tagTemplate(r)):
         return l == r
     default:
         return false
@@ -562,7 +387,7 @@ extension Parameter {
     }
 }
 
-extension Filler {
+extension Scope {
     func rendered(path: String) throws -> Bytes? {
         guard let value = self.get(path: path) else { return nil }
         guard let renderable = value as? Renderable else {
@@ -578,7 +403,7 @@ extension Filler {
 let Default = Stem()
 
 extension Leaf {
-    func render(in stem: Stem, with filler: Filler) throws -> Bytes {
+    func render(in stem: Stem, with filler: Scope) throws -> Bytes {
         let initialQueue = filler.queue
         defer { filler.queue = initialQueue }
 
@@ -587,19 +412,19 @@ extension Leaf {
             switch component {
             case let .raw(bytes):
                 buffer += bytes
-            case let .instruction(instruction):
-                guard let command = stem.tags[instruction.name] else { throw "unsupported instruction" }
+            case let .tagTemplate(tagTemplate):
+                guard let command = stem.tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
                 let arguments = try command.makeArguments(
                     stem: stem,
                     filler: filler,
-                    instruction: instruction
+                    tagTemplate: tagTemplate
                 )
 
-                let value = try command.run(stem: stem, filler: filler, instruction: instruction, arguments: arguments)
+                let value = try command.run(stem: stem, filler: filler, tagTemplate: tagTemplate, arguments: arguments)
                 let shouldRender = command.shouldRender(
                     stem: stem,
                     filler: filler,
-                    instruction: instruction,
+                    tagTemplate: tagTemplate,
                     arguments: arguments,
                     value: value
                 )
@@ -614,7 +439,7 @@ extension Leaf {
                     filler.push(["self": value])
                 }
 
-                if let subtemplate = instruction.body {
+                if let subtemplate = tagTemplate.body {
                     buffer += try command.render(stem: stem, filler: filler, value: value, template: subtemplate)
                 } else if let rendered = try filler.rendered(path: "self") {
                     buffer += rendered
@@ -628,20 +453,20 @@ extension Leaf {
                  Deceptively similar to above, nuance will break e'rything!
                  **/
                 print("Chain: \n\(chain.map { "\($0)" } .joined(separator: "\n"))")
-                for instruction in chain {
+                for tagTemplate in chain {
                     // TODO: Copy pasta, clean up
-                    guard let command = stem.tags[instruction.name] else { throw "unsupported instruction" }
+                    guard let command = stem.tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
                     let arguments = try command.makeArguments(
                         stem: stem,
                         filler: filler,
-                        instruction: instruction
+                        tagTemplate: tagTemplate
                     )
 
-                    let value = try command.run(stem: stem, filler: filler, instruction: instruction, arguments: arguments)
+                    let value = try command.run(stem: stem, filler: filler, tagTemplate: tagTemplate, arguments: arguments)
                     let shouldRender = command.shouldRender(
                         stem: stem,
                         filler: filler,
-                        instruction: instruction,
+                        tagTemplate: tagTemplate,
                         arguments: arguments,
                         value: value
                     )
@@ -659,7 +484,7 @@ extension Leaf {
                         filler.push(["self": value])
                     }
 
-                    if let subtemplate = instruction.body {
+                    if let subtemplate = tagTemplate.body {
                         buffer += try command.render(stem: stem, filler: filler, value: value, template: subtemplate)
                     } else if let rendered = try filler.rendered(path: "self") {
                         buffer += rendered
@@ -675,7 +500,7 @@ extension Leaf {
     }
 
 /*
-    func _render(with filler: Filler) throws -> Bytes {
+    func _render(with filler: Scope) throws -> Bytes {
         let initialQueue = filler.queue
         defer { filler.queue = initialQueue }
 
@@ -684,10 +509,10 @@ extension Leaf {
             switch component {
             case let .raw(bytes):
                 buffer += bytes
-            case let .instruction(instruction):
-                guard let command = tags[instruction.name] else { throw "unsupported instruction" }
+            case let .tagTemplate(tagTemplate):
+                guard let command = tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
 
-                let arguments = try command.preprocess(instruction: instruction, with: filler)
+                let arguments = try command.preprocess(tagTemplate: tagTemplate, with: filler)
                 print(arguments)
                 let shouldRender = try command.process(
                     arguments: arguments,
@@ -696,7 +521,7 @@ extension Leaf {
                 print(shouldRender)
                 guard shouldRender else { return }
                 let template = try command.prerender(
-                    instruction: instruction,
+                    tagTemplate: tagTemplate,
                     arguments: arguments,
                     with: filler
                 )
@@ -706,12 +531,12 @@ extension Leaf {
                     buffer += rendered
                 }
             case let .chain(chain):
-                for instruction in chain {
-                    guard let command = tags[instruction.name] else { throw "unsupported instruction" }
-                    let arguments = try command.preprocess(instruction: instruction, with: filler)
+                for tagTemplate in chain {
+                    guard let command = tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
+                    let arguments = try command.preprocess(tagTemplate: tagTemplate, with: filler)
                     let shouldRender = try command.process(arguments: arguments, with: filler)
                     guard shouldRender else { continue }
-                    if let template = instruction.body {
+                    if let template = tagTemplate.body {
                         buffer += try command.render(template: template, with: filler)
                     } else if let rendered = try filler.rendered(path: "self") {
                         buffer += rendered
@@ -729,8 +554,8 @@ extension Leaf.Component {
     mutating func addToChain(_ chainedInstruction: TagTemplate) throws {
         switch self {
         case .raw(_):
-            throw "unable to chain \(chainedInstruction) w/o preceding instruction"
-        case let .instruction(current):
+            throw "unable to chain \(chainedInstruction) w/o preceding tagTemplate"
+        case let .tagTemplate(current):
             self = .chain([current, chainedInstruction])
         case let .chain(chain):
             self = .chain(chain + [chainedInstruction])

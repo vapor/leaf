@@ -6,8 +6,8 @@ extension BufferProtocol where Element == Byte {
         while let next = try nextComponent() {
             print("Got component: \(next)")
             print("")
-            if case let .instruction(i) = next, i.isChain {
-                guard comps.count > 0 else { throw "invalid chain component w/o preceeding instruction" }
+            if case let .tagTemplate(i) = next, i.isChain {
+                guard comps.count > 0 else { throw "invalid chain component w/o preceeding tagTemplate" }
                 while let last = comps.last {
                     var loop = true
 
@@ -35,8 +35,8 @@ extension BufferProtocol where Element == Byte {
     mutating func nextComponent() throws -> Leaf.Component? {
         guard let token = current else { return nil }
         if token == TOKEN {
-            let instruction = try extractInstruction()
-            return .instruction(instruction)
+            let tagTemplate = try extractInstruction()
+            return .tagTemplate(tagTemplate)
         } else {
             let raw = extractUntil { $0.isLeafToken }
             return .raw(raw)
@@ -83,10 +83,10 @@ extension BufferProtocol where Element == Byte {
 
     mutating func extractInstructionName() throws -> String {
         // can't extract section because of @@
-        guard current == TOKEN else { throw "instruction name must lead with token" }
+        guard current == TOKEN else { throw "tagTemplate name must lead with token" }
         moveForward() // drop initial token from name. a secondary token implies chain
         let name = extractUntil { $0 == .openParenthesis }
-        guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
+        guard current == .openParenthesis else { throw "tagTemplate names must be alphanumeric and terminated with '('" }
         return name.string
     }
 
