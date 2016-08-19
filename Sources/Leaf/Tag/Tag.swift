@@ -23,18 +23,27 @@ public protocol Tag {
 }
 
 extension Tag {
-    public func postCompile(stem: Stem,
-                     tagTemplate: TagTemplate) throws -> TagTemplate {
+    public func postCompile(
+        stem: Stem,
+        tagTemplate: TagTemplate
+    ) throws -> TagTemplate {
         return tagTemplate
     }
 
-    public func makeArguments(stem: Stem,
-                       context: Context,
-                       tagTemplate: TagTemplate) throws -> [Argument]{
+    public func makeArguments(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate
+    ) throws -> [Argument]{
         return tagTemplate.makeArguments(context: context)
     }
 
-    public func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
+    public func run(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]
+    ) throws -> Any? {
         guard arguments.count == 1 else {
             throw "only single argument supported by default, override \(#function) in \(self.dynamicType)for custom behavior"
         }
@@ -48,18 +57,22 @@ extension Tag {
         }
     }
 
-    public func shouldRender(stem: Stem,
-                      context: Context,
-                      tagTemplate: TagTemplate,
-                      arguments: [Argument],
-                      value: Any?) -> Bool {
+    public func shouldRender(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument],
+        value: Any?
+    ) -> Bool {
         return value != nil
     }
 
-    public func render(stem: Stem,
-                context: Context,
-                value: Any?,
-                leaf: Leaf) throws -> Bytes {
+    public func render(
+        stem: Stem,
+        context: Context,
+        value: Any?,
+        leaf: Leaf
+    ) throws -> Bytes {
         return try stem.render(leaf, with: context)
     }
 }
