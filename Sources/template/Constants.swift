@@ -1,7 +1,8 @@
+@_exported import Core
+
 /*
- Potentially expose in future
- */
-import Core
+    Potentially expose in future
+*/
 internal let TOKEN: Byte = .numberSign
 internal let SUFFIX = ".leaf"
 
