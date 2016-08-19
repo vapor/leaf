@@ -2,8 +2,6 @@ extension BufferProtocol where Element == Byte {
     mutating func components() throws -> [Leaf.Component] {
         var comps: [Leaf.Component] = []
         while let next = try nextComponent() {
-            print("Got component: \(next)")
-            print("")
             if case let .tagTemplate(i) = next, i.isChain {
                 guard comps.count > 0 else { throw "invalid chain component w/o preceeding tagTemplate" }
                 while let last = comps.last {

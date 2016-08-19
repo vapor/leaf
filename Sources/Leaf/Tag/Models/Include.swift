@@ -9,7 +9,7 @@ public final class Include: Tag {
         }
         switch tagTemplate.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
-            let body = try stem.loadLeaf(named: name)
+            let body = try stem.spawnLeaf(named: name)
             return TagTemplate(
                 name: tagTemplate.name,
                 parameters: [], // no longer need parameters

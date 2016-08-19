@@ -9,6 +9,7 @@ private var workDir: String {
 public class Stem {
     public let workingDirectory: String
     public private(set) var tags: [String: Tag] = defaultTags
+    public private(set) var cache: [String: Leaf] = [:]
 
     public init(workingDirectory: String = workDir) {
         self.workingDirectory = workingDirectory.finished(with: "/")
@@ -22,11 +23,11 @@ extension Stem {
 }
 
 extension Stem {
-    public func loadLeaf(raw: String) throws -> Leaf {
-        return try loadLeaf(raw: raw.bytes)
+    public func spawnLeaf(raw: String) throws -> Leaf {
+        return try spawnLeaf(raw: raw.bytes)
     }
 
-    public func loadLeaf(raw: Bytes) throws -> Leaf {
+    public func spawnLeaf(raw: Bytes) throws -> Leaf {
         let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
         let components = try buffer.components().map(postCompile)
@@ -34,24 +35,19 @@ extension Stem {
         return leaf
     }
 
-    public func loadLeaf(named name: String) throws -> Leaf {
+    public func spawnLeaf(named name: String) throws -> Leaf {
+        if let existing = cache[name] { return existing }
+
         var subpath = name.finished(with: SUFFIX)
         if subpath.hasPrefix("/") {
             subpath = String(subpath.characters.dropFirst())
         }
         let path = workingDirectory + subpath
 
-        let raw = try load(path: path)
-        return try loadLeaf(raw: raw)
-    }
-
-    private func load(path: String) throws -> Bytes {
-        guard let data = NSData(contentsOfFile: path) else {
-            throw "unable to load bytes"
-        }
-        var bytes = Bytes(repeating: 0, count: data.length)
-        data.getBytes(&bytes, length: bytes.count)
-        return bytes
+        let raw = try NSData.load(path: path)
+        let leaf = try spawnLeaf(raw: raw)
+        cache[name] = leaf
+        return leaf
     }
 
     private func postCompile(_ component: Leaf.Component) throws -> Leaf.Component {
@@ -71,5 +67,16 @@ extension Stem {
             let mapped = try tagTemplates.map(commandPostcompile)
             return .chain(mapped)
         }
+    }
+}
+
+extension NSData {
+    private static func load(path: String) throws -> Bytes {
+        guard let data = NSData(contentsOfFile: path) else {
+            throw "unable to load bytes"
+        }
+        var bytes = Bytes(repeating: 0, count: data.length)
+        data.getBytes(&bytes, length: bytes.count)
+        return bytes
     }
 }
