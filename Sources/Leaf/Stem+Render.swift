@@ -74,29 +74,12 @@ extension Stem {
         context: Context,
         value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
-/*
-        switch value {
-            /**
-             ** Warning **
-             MUST parse out non-optional explicitly to
-             avoid printing strings as `Optional(string)`
-             */
-        case let val?:
-            context.push(["self": val])
-        default:
-            context.push(["self": nil])
-        }
-        defer { context.pop() }
-*/
-
         if let subLeaf = tagTemplate.body {
             if let val = value { context.push(["self": val]) }
             return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
         } else if let rendered = try value?.rendered() {
             return rendered
         }
-
-
         return []
 
         /*

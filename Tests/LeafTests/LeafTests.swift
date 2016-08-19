@@ -56,7 +56,7 @@ class Performance: XCTestCase {
         }
     }
 
-    /*
+
     func testMustacheB() throws {
         let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
@@ -90,7 +90,7 @@ class Performance: XCTestCase {
             }
         }
     }
-    */
+    
 }
 
 class BranchVsArray: XCTestCase {
