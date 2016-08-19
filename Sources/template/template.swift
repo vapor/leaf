@@ -4,6 +4,8 @@
          `@(foo.bar()` == `@bar(foo)`
          `@(foo.bar().waa())` == `@bar(foo) { @waa(self) }`
      - Extendible Leafs
+     - Allow no argument tags to terminate with a space, ie: @h1 {` or `@date`
+     - HTML Tags, a la @h1() { }
 */
 import Core
 import Foundation
@@ -15,8 +17,8 @@ var workDir: String {
 }
 
 func loadLeaf(named name: String) throws -> Leaf {
-    let namespace = NameSpace()
-    let template = try namespace.loadLeaf(named: name)
+    let stem = Stem()
+    let template = try stem.loadLeaf(named: name)
     return template
 }
 
@@ -274,47 +276,28 @@ extension Sequence where Iterator.Element == Byte {
     }
 }
 
-
-final class Leaf {
-    // TODO: Bytes?
-    // reference only
-    let raw: String
-    let components: [Component]
-
-    init(raw: String, components: [Component]) {
-        self.raw = raw
-        self.components = components
-    }
-
-    init(raw: String) throws {
-        self.raw = raw
-        var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
-        self.components = try buffer.components()
-    }
-}
-
 extension Leaf {
-    enum Component {
-        final class Instruction {
-            enum Parameter {
+    public enum Component {
+        public final class Instruction {
+            public enum Parameter {
                 case variable(String)
                 case constant(String)
             }
 
-            let name: String
-            let parameters: [Parameter]
+            public let name: String
+            public let parameters: [Parameter]
 
-            let body: Leaf?
+            public let body: Leaf?
 
             fileprivate var isChain: Bool
 
-            convenience init(name: String, parameters: [Parameter], body: String?) throws {
+            internal convenience init(name: String, parameters: [Parameter], body: String?) throws {
                 let body = try body.flatMap { try Leaf(raw: $0) }
                 self.init(name: name, parameters: parameters, body: body)
             }
 
 
-            init(name: String, parameters: [Parameter], body: Leaf?) {
+            internal init(name: String, parameters: [Parameter], body: Leaf?) {
                 // we strip leading token, if another one is there,
                 // that means we've found a chain element, ie: @@else {
                 if name.bytes.first == TOKEN {
@@ -349,39 +332,39 @@ protocol InstructionDriver {
     var name: String { get }
 
     // after a template is compiled, an instruction will be passed in for validation/modification if necessary
-    func postCompile(namespace: NameSpace,
+    func postCompile(stem: Stem,
                      instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction
 
     // turn parameters in instruction into concrete arguments
-    func makeArguments(namespace: NameSpace,
+    func makeArguments(stem: Stem,
                        filler: Filler,
                        instruction: Instruction) throws -> [Argument]
 
 
     // run the driver w/ the specified arguments and returns the value to add to scope or render
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any?
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any?
 
     // whether or not the given value should be rendered. Defaults to `!= nil`
-    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool
+    func shouldRender(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool
 
     // filler is populated with value at this point
     // renders a given template, can override for custom behavior. For example, #loop
-    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Leaf) throws -> Bytes
+    func render(stem: Stem, filler: Filler, value: Any?, template: Leaf) throws -> Bytes
 }
 
 extension InstructionDriver {
-    func postCompile(namespace: NameSpace,
+    func postCompile(stem: Stem,
                      instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
         return instruction
     }
 
-    func makeArguments(namespace: NameSpace,
+    func makeArguments(stem: Stem,
                        filler: Filler,
                        instruction: Instruction) throws -> [Argument]{
         return instruction.makeArguments(filler: filler)
     }
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else {
             throw "more than one argument not supported, override \(#function) for custom behavior"
         }
@@ -395,7 +378,7 @@ extension InstructionDriver {
         }
     }
 
-    func shouldRender(namespace: NameSpace,
+    func shouldRender(stem: Stem,
                       filler: Filler,
                       instruction: Instruction,
                       arguments: [Argument],
@@ -403,34 +386,18 @@ extension InstructionDriver {
         return value != nil
     }
 
-    func render(namespace: NameSpace,
+    func render(stem: Stem,
                 filler: Filler,
                 value: Any?,
                 template: Leaf) throws -> Bytes {
-        return try template.render(in: namespace, with: filler)
+        return try template.render(in: stem, with: filler)
     }
 }
 
 
 typealias Instruction = Leaf.Component.Instruction
 
-class NameSpace {
-    let workingDirectory: String
-    var drivers: [String: InstructionDriver] = [
-        "": _Variable(),
-        "if": _If(),
-        "else": _Else(),
-        "loop": _Loop(),
-        "uppercased": _Uppercased(),
-        "include": _Include()
-    ]
-
-    init(workingDirectory: String = workDir) {
-        self.workingDirectory = workingDirectory.finished(with: "/")
-    }
-}
-
-extension NameSpace {
+extension Stem {
     func loadLeaf(raw: String) throws -> Leaf {
         return try loadLeaf(raw: raw.bytes)
     }
@@ -457,7 +424,7 @@ extension NameSpace {
     private func postcompile(_ component: Leaf.Component) throws -> Leaf.Component {
         func commandPostcompile(_ instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
             guard let command = drivers[instruction.name] else { throw "unsupported instruction: \(instruction.name)" }
-            return try command.postCompile(namespace: self,
+            return try command.postCompile(stem: self,
                                            instruction: instruction)
         }
 
@@ -497,12 +464,12 @@ final class _Include: InstructionDriver {
     var cache: [String: Leaf] = [:]
 
     func postCompile(
-        namespace: NameSpace,
+        stem: Stem,
         instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
         guard instruction.parameters.count == 1 else { throw "invalid include" }
         switch instruction.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
-            let body = try namespace.loadLeaf(named: name)
+            let body = try stem.loadLeaf(named: name)
             return Leaf.Component.Instruction(
                 name: instruction.name,
                 parameters: [], // no longer need parameters
@@ -513,11 +480,11 @@ final class _Include: InstructionDriver {
         }
     }
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         return nil
     }
 
-    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         // throws at precompile, should always render
         return true
     }
@@ -526,7 +493,7 @@ final class _Include: InstructionDriver {
 final class _Loop: InstructionDriver {
     let name = "loop"
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 2 else {
             throw "loop requires two arguments, var w/ array, and constant w/ sub name"
         }
@@ -542,7 +509,7 @@ final class _Loop: InstructionDriver {
         }
     }
 
-    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Leaf) throws -> Bytes {
+    func render(stem: Stem, filler: Filler, value: Any?, template: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
 
         // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
@@ -554,7 +521,7 @@ final class _Loop: InstructionDriver {
                     filler.push(["self": item])
                 }
 
-                let rendered = try template.render(in: namespace, with: filler)
+                let rendered = try template.render(in: stem, with: filler)
 
                 filler.pop()
 
@@ -568,7 +535,7 @@ final class _Uppercased: InstructionDriver {
 
     let name = "uppercased"
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "\(self) only accepts single arguments" }
         switch arguments[0] {
         case let .constant(value: value):
@@ -606,10 +573,10 @@ final class _Uppercased: InstructionDriver {
 
 final class _Else: InstructionDriver {
     let name = "else"
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         return nil
     }
-    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         return true
     }
 }
@@ -617,12 +584,12 @@ final class _Else: InstructionDriver {
 final class _If: InstructionDriver {
     let name = "if"
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
         return nil
     }
 
-    func shouldRender(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
+    func shouldRender(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument], value: Any?) -> Bool {
         guard arguments.count == 1 else { return false }
         let argument = arguments[0]
         switch argument {
@@ -647,7 +614,7 @@ final class _If: InstructionDriver {
 final class _Variable: InstructionDriver {
     let name = "" // empty name, ie: @(variable)
 
-    func run(namespace: NameSpace, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
+    func run(stem: Stem, filler: Filler, instruction: Instruction, arguments: [Argument]) throws -> Any? {
         /*
          Currently ALL '@' signs are interpreted as instructions.  This means to escape in
 
@@ -678,14 +645,14 @@ final class _Variable: InstructionDriver {
 }
 
 extension Leaf: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         let components = self.components.map { $0.description } .joined(separator: ", ")
         return "Leaf: " + components
     }
 }
 
 extension Leaf.Component: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         switch self {
         case let .raw(r):
             return ".raw(\(r.string))"
@@ -698,13 +665,13 @@ extension Leaf.Component: CustomStringConvertible {
 }
 
 extension Leaf.Component.Instruction: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         return "(name: \(name), parameters: \(parameters), body: \(body)"
     }
 }
 
 extension Leaf.Component.Instruction.Parameter: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         switch self {
         case let .variable(v):
             return ".variable(\(v))"
@@ -715,7 +682,7 @@ extension Leaf.Component.Instruction.Parameter: CustomStringConvertible {
 }
 
 extension Leaf.Component: Equatable {}
-func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
+public func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
     switch (lhs, rhs) {
     case let (.raw(l), .raw(r)):
         return l == r
@@ -727,19 +694,19 @@ func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
 }
 
 extension Leaf: Equatable {}
-func == (lhs: Leaf, rhs: Leaf) -> Bool {
+public func == (lhs: Leaf, rhs: Leaf) -> Bool {
     return lhs.components == rhs.components
 }
 
 extension Leaf.Component.Instruction: Equatable {}
-func == (lhs: Leaf.Component.Instruction, rhs: Leaf.Component.Instruction) -> Bool {
+public func == (lhs: Leaf.Component.Instruction, rhs: Leaf.Component.Instruction) -> Bool {
     return lhs.name == rhs.name
         && lhs.parameters == rhs.parameters
         && lhs.body == rhs.body
 }
 
 extension Leaf.Component.Instruction.Parameter: Equatable {}
-func == (lhs: Leaf.Component.Instruction.Parameter, rhs: Leaf.Component.Instruction.Parameter) -> Bool {
+public func == (lhs: Leaf.Component.Instruction.Parameter, rhs: Leaf.Component.Instruction.Parameter) -> Bool {
     switch (lhs, rhs) {
     case let (.variable(l), .variable(r)):
         return l == r
@@ -776,10 +743,10 @@ extension Filler {
     }
 }
 
-let Default = NameSpace()
+let Default = Stem()
 
 extension Leaf {
-    func render(in namespace: NameSpace, with filler: Filler) throws -> Bytes {
+    func render(in stem: Stem, with filler: Filler) throws -> Bytes {
         let initialQueue = filler.queue
         defer { filler.queue = initialQueue }
 
@@ -789,16 +756,16 @@ extension Leaf {
             case let .raw(bytes):
                 buffer += bytes
             case let .instruction(instruction):
-                guard let command = namespace.drivers[instruction.name] else { throw "unsupported instruction" }
+                guard let command = stem.drivers[instruction.name] else { throw "unsupported instruction" }
                 let arguments = try command.makeArguments(
-                    namespace: namespace,
+                    stem: stem,
                     filler: filler,
                     instruction: instruction
                 )
 
-                let value = try command.run(namespace: namespace, filler: filler, instruction: instruction, arguments: arguments)
+                let value = try command.run(stem: stem, filler: filler, instruction: instruction, arguments: arguments)
                 let shouldRender = command.shouldRender(
-                    namespace: namespace,
+                    stem: stem,
                     filler: filler,
                     instruction: instruction,
                     arguments: arguments,
@@ -816,7 +783,7 @@ extension Leaf {
                 }
 
                 if let subtemplate = instruction.body {
-                    buffer += try command.render(namespace: namespace, filler: filler, value: value, template: subtemplate)
+                    buffer += try command.render(stem: stem, filler: filler, value: value, template: subtemplate)
                 } else if let rendered = try filler.rendered(path: "self") {
                     buffer += rendered
                 }
@@ -831,16 +798,16 @@ extension Leaf {
                 print("Chain: \n\(chain.map { "\($0)" } .joined(separator: "\n"))")
                 for instruction in chain {
                     // TODO: Copy pasta, clean up
-                    guard let command = namespace.drivers[instruction.name] else { throw "unsupported instruction" }
+                    guard let command = stem.drivers[instruction.name] else { throw "unsupported instruction" }
                     let arguments = try command.makeArguments(
-                        namespace: namespace,
+                        stem: stem,
                         filler: filler,
                         instruction: instruction
                     )
 
-                    let value = try command.run(namespace: namespace, filler: filler, instruction: instruction, arguments: arguments)
+                    let value = try command.run(stem: stem, filler: filler, instruction: instruction, arguments: arguments)
                     let shouldRender = command.shouldRender(
-                        namespace: namespace,
+                        stem: stem,
                         filler: filler,
                         instruction: instruction,
                         arguments: arguments,
@@ -861,7 +828,7 @@ extension Leaf {
                     }
 
                     if let subtemplate = instruction.body {
-                        buffer += try command.render(namespace: namespace, filler: filler, value: value, template: subtemplate)
+                        buffer += try command.render(stem: stem, filler: filler, value: value, template: subtemplate)
                     } else if let rendered = try filler.rendered(path: "self") {
                         buffer += rendered
                     }

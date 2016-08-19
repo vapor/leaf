@@ -101,12 +101,12 @@ class FuzzyAccessibleTests: XCTestCase {
 
 class FillerTests: XCTestCase {
     func testBasic() throws {
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: "Hello, #(name)!")
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: "Hello, #(name)!")
         let context: [String: String] = ["name": "World"]
         let filler = Filler(context)
         do {
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "Hello, World!"
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         } catch { XCTFail("\(error)") }
@@ -114,18 +114,18 @@ class FillerTests: XCTestCase {
 
     func testNested() throws {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         print("Components: \(template.components)")
         let filler = Filler(["best-friend": ["name": "World"]])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         XCTAssert(rendered == "Hello, World!")
     }
 
     func testLoop() throws {
         let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let filler = Filler(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try template.render(in: Default, with: filler).string
         let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
@@ -133,39 +133,39 @@ class FillerTests: XCTestCase {
     }
 
     func testNamedInner() throws {
-        let raw = "#(name) { #(name) }" // redundant, but should render as an inner namespace
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let raw = "#(name) { #(name) }" // redundant, but should render as an inner stem
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let filler = Filler(["name": "foo"])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "foo"
         XCTAssert(rendered == expectation)
     }
 
     func testDualContext() throws {
         let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let filler = Filler(["name": "Foo", "friend": ["name": "Bar"]])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "Let's render Foo is friends with Bar"
         XCTAssert(rendered == expectation, "have: *\(rendered)* want: *\(expectation)*")
     }
 
     func testMultiScope() throws {
         let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let filler = Filler(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "HEllo"
         XCTAssert(rendered == expectation)
     }
 
     func testIfChain() throws {
         let raw = "#if(key-zero) { Hi, A! } ##if(key-one) { Hi, B! } ##else() { Hi, C! }"
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let cases: [(key: String, bool: Bool, expectation: String)] = [
             ("key-zero", true, "Hi, A!"),
             ("key-zero", false, "Hi, C!"),
@@ -178,7 +178,7 @@ class FillerTests: XCTestCase {
 
         try cases.forEach { key, bool, expectation in
             let filler = Filler([key: bool])
-            let rendered = try template.render(in: namespace, with: filler).string
+            let rendered = try template.render(in: stem, with: filler).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }
@@ -188,10 +188,10 @@ class FilterTests: XCTestCase {
     func testBasic() throws {
         let raw = "#(name) { #uppercased(self) }"
         // let raw = "#uppercased(name)"
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(raw: raw)
+        let stem = Stem()
+        let template = try stem.loadLeaf(raw: raw)
         let filler = Filler(["name": "hi"])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "HI"
         XCTAssert(rendered == expectation)
     }
@@ -199,11 +199,11 @@ class FilterTests: XCTestCase {
 
 class IncludeTests: XCTestCase {
     func testBasicInclude() throws {
-        let namespace = NameSpace()
-        let template = try namespace.loadLeaf(named: "include-base")
+        let stem = Stem()
+        let template = try stem.loadLeaf(named: "include-base")
         // let template = try loadLeaf(named: "include-base")
         let filler = Filler(["name": "World"])
-        let rendered = try template.render(in: namespace, with: filler).string
+        let rendered = try template.render(in: stem, with: filler).string
         let expectation = "Leaf included: Hello, World!"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
