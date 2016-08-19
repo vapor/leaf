@@ -73,31 +73,6 @@ extension Stem {
             value: value
         )
         return (tag, value, shouldRender)
-
-        /*
-        let arguments = try tag.makeArguments(
-            stem: self,
-            context: context,
-            tagTemplate: tagTemplate
-        )
-
-        let value = try tag.run(
-            stem: self,
-            context: context,
-            tagTemplate: tagTemplate,
-            arguments: arguments
-        )
-
-        let shouldRender = tag.shouldRender(
-            stem: self,
-            context: context,
-            tagTemplate: tagTemplate,
-            arguments: arguments,
-            value: value
-        )
-        
-        return (tag, value, shouldRender)
-        */
     }
 
     private func render(
@@ -105,8 +80,7 @@ extension Stem {
         context: Context,
         value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
-        return "World".bytes
-        /*
+        // return "World".bytes
         if let subLeaf = tagTemplate.body {
             if let val = value { context.push(["self": val]) }
             return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
@@ -114,7 +88,6 @@ extension Stem {
             return rendered
         }
         return []
-        */
 
         
         /*

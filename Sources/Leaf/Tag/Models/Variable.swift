@@ -14,7 +14,7 @@ public final class Variable: Tag {
         switch argument {
         case let .constant(value: value):
             return .string(value)
-        case let .variable(key: _, value: value):
+        case let .variable(path: _, value: value):
             return value
         }
     }

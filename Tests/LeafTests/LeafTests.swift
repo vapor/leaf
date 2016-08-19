@@ -4,7 +4,6 @@ import Mustache
 @testable import Leaf
 
 class Performance: XCTestCase {
-    /*
     func testMustache() throws {
         let raw = "Hello, {{name}}!"
         let template = try Template(string: raw)
@@ -57,7 +56,6 @@ class Performance: XCTestCase {
         }
     }
 
-*/
     func testMustacheB() throws {
         let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
@@ -66,7 +64,7 @@ class Performance: XCTestCase {
             "name": "World"
         ]
         measure {
-            try! (1...5).forEach { _ in
+            try! (1...50).forEach { _ in
                 let rendered = try template.render(box: context.mustacheBox)
                 XCTAssert(rendered == expectation)
             }
@@ -78,14 +76,9 @@ class Performance: XCTestCase {
         let raw = [String](repeating: "Hello, #(name)!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
         let template = try Leaf(raw: raw)
-        /*
-         let context: [String: Any] = [
-         "name": "World"
-         ]
-         */
         let ctxt = Context(["name": "World"])
         measure {
-            try! (1...5).forEach { _ in
+            try! (1...50).forEach { _ in
                 let rendered = try stem.render(template, with: ctxt)
                 XCTAssert(rendered == expectation)
             }
@@ -94,7 +87,6 @@ class Performance: XCTestCase {
     
 }
 
-/*
 class BranchVsArray: XCTestCase {
     func testArray() {
         var array: [Node] = []
@@ -116,9 +108,7 @@ class BranchVsArray: XCTestCase {
         }
     }
 }
-*/
 
-/*
 class FuzzyAccessibleTests: XCTestCase {
     func testFuzzyLeaf() throws {
         let raw = "Hello, #(path.to.person.0.name)!"
@@ -439,4 +429,3 @@ class IfTests: XCTestCase {
         }
     }
 }
-*/

@@ -11,7 +11,7 @@ public final class Loop: Tag {
         }
 
         switch (arguments[0], arguments[1]) {
-        case let (.variable(key: _, value: value?), .constant(value: innername)):
+        case let (.variable(path: _, value: value?), .constant(value: innername)):
             let array = value.nodeArray ?? [value]
             return .array(array.map { [innername: $0] })
         default:

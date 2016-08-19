@@ -10,7 +10,7 @@ public final class Uppercased: Tag {
         switch arguments[0] {
         case let .constant(value: value):
             return .string(value.uppercased())
-        case let .variable(key: _, value: value):
+        case let .variable(path: _, value: value):
             if let string = value?.string?.uppercased() {
                 return .string(string)
             }
