@@ -61,7 +61,6 @@ extension BufferProtocol where Element == Byte {
 extension BufferProtocol where Element == Byte {
     mutating func extractInstruction() throws -> TagTemplate {
         let name = try extractInstructionName()
-        print("Got name: \(name)")
         let parameters = try extractInstructionParameters()
 
         // check if body

@@ -9,7 +9,6 @@ extension FuzzyAccessible {
         let components = path.characters
             .split(separator: ".", omittingEmptySubsequences: true)
             .map { String($0) }
-        print("Components: \(components)")
         return get(path: components)
     }
 
