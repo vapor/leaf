@@ -37,8 +37,11 @@ func load(path: String) throws -> Bytes {
  - Included sections should ALSO be rendered
  */
 
+/*
+    Potentially expose in future
+*/
 let TOKEN: Byte = .numberSign
-let SUFFIX = ".vt"
+let SUFFIX = ".leaf"
 
 final class Filler {
 
