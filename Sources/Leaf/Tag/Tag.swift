@@ -12,14 +12,14 @@ public protocol Tag {
 
 
     // run the tag w/ the specified arguments and returns the value to add to context or render
-    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any?
+    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node?
 
     // whether or not the given value should be rendered. Defaults to `!= nil`
-    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool
+    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Node?) -> Bool
 
     // context is populated with value at this point
     // renders a given leaf, can override for custom behavior. For example, #loop
-    func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes
+    func render(stem: Stem, context: Context, value: Node?, leaf: Leaf) throws -> Bytes
 }
 
 extension Tag {
@@ -43,7 +43,7 @@ extension Tag {
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]
-    ) throws -> Any? {
+    ) throws -> Node? {
         guard arguments.count == 1 else {
             throw "only single argument supported by default, override \(#function) in \(self.dynamicType)for custom behavior"
         }
@@ -51,7 +51,7 @@ extension Tag {
         let argument = arguments[0]
         switch argument {
         case let .constant(value: value):
-            return value
+            return .string(value)
         case let .variable(key: _, value: value):
             return value
         }
@@ -62,7 +62,7 @@ extension Tag {
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
-        value: Any?
+        value: Node?
     ) -> Bool {
         return value != nil
     }
@@ -70,7 +70,7 @@ extension Tag {
     public func render(
         stem: Stem,
         context: Context,
-        value: Any?,
+        value: Node?,
         leaf: Leaf
     ) throws -> Bytes {
         return try stem.render(leaf, with: context)

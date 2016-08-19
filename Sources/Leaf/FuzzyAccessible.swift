@@ -1,3 +1,4 @@
+/*
 import Foundation
 
 public protocol FuzzyAccessible {
@@ -98,3 +99,5 @@ extension NSArray: FuzzyAccessible {
         }
     }
 }
+
+*/

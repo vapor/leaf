@@ -24,7 +24,7 @@ public final class Include: Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Any? {
+        arguments: [Argument]) throws -> Node? {
         return nil
     }
 
@@ -33,7 +33,7 @@ public final class Include: Tag {
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
-        value: Any?) -> Bool {
+        value: Node?) -> Bool {
         // throws at precompile, should always render
         return true
     }

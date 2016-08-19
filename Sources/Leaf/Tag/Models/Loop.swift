@@ -5,17 +5,20 @@ public final class Loop: Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Any? {
+        arguments: [Argument]) throws -> Node? {
         guard arguments.count == 2 else {
             throw "loop requires two arguments, var w/ array, and constant w/ sub name"
         }
 
         switch (arguments[0], arguments[1]) {
         case let (.variable(key: _, value: value?), .constant(value: innername)):
+            let array = value.nodeArray ?? [value]
+            /*
             let array = value as? [Any]
                 ?? value as? [AnyObject] // catches NS variant arrays
                 ?? [value]
-            return array.map { [innername: $0] }
+             */
+            return .array(array.map { [innername: $0] })
         default:
             return nil
             // return false
@@ -25,13 +28,15 @@ public final class Loop: Tag {
     public func render(
         stem: Stem,
         context: Context,
-        value: Any?,
+        value: Node?,
         leaf: Leaf) throws -> Bytes {
-        guard let array = value as? [Any] else { fatalError() }
+        guard let array = value?.nodeArray else { fatalError() }
         return try array
             .map { item -> Bytes in
-                if let i = item as? FuzzyAccessible {
-                    context.push(i)
+                if case .object(_) = item {
+                    context.push(item)
+                } else if case .array(_) = item {
+                    context.push(item)
                 } else {
                     context.push(["self": item])
                 }

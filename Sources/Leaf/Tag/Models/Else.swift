@@ -4,7 +4,7 @@ public final class Else: Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Any? {
+        arguments: [Argument]) throws -> Node? {
         return nil
     }
     public func shouldRender(
@@ -12,7 +12,7 @@ public final class Else: Tag {
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
-        value: Any?) -> Bool {
+        value: Node?) -> Bool {
         return true
     }
 }

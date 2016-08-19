@@ -41,7 +41,7 @@ extension Stem {
     private func process(
         _ tagTemplate: TagTemplate,
         leaf: Leaf,
-        context: Context) throws -> (tag: Tag, value: Any?, shouldRender: Bool) {
+        context: Context) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
 
         guard let tag = tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
 
@@ -72,7 +72,7 @@ extension Stem {
     private func render(
         tag: Tag,
         context: Context,
-        value: Any?,
+        value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
         switch value {
         /**
@@ -83,7 +83,7 @@ extension Stem {
         case let val?:
             context.push(["self": val])
         default:
-            context.push(["self": value])
+            context.push(["self": nil])
         }
         defer { context.pop() }
 

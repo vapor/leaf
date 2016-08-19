@@ -3,6 +3,7 @@ import XCTest
 @testable import Leaf
 
 class FuzzyAccessibleTests: XCTestCase {
+/*
     func testSingleDictionary() {
         let object: [String: Any] = [
             "hello": "world"
@@ -77,10 +78,10 @@ class FuzzyAccessibleTests: XCTestCase {
         guard let unwrapped = result else { return }
         XCTAssert("\(unwrapped)" == "Hello!", "have: \(unwrapped), want: Hello!")
     }
-
+*/
     func testFuzzyLeaf() throws {
         let raw = "Hello, #(path.to.person.0.name)!"
-        let context: [String: Any] = [
+        let context = try Node(node:[
             "path": [
                 "to": [
                     "person": [
@@ -88,7 +89,7 @@ class FuzzyAccessibleTests: XCTestCase {
                     ]
                 ]
             ]
-        ]
+        ])
 
         let template = try Leaf(raw: raw)
         let loadable = Context(context)
@@ -102,7 +103,7 @@ class ContextTests: XCTestCase {
     func testBasic() throws {
         let stem = Stem()
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
-        let context: [String: String] = ["name": "World"]
+        let context = try Node(node: ["name": "World"])
         let loadable = Context(context)
         let rendered = try stem.render(template, with: loadable).string
         let expectation = "Hello, World!"
@@ -156,7 +157,7 @@ class ContextTests: XCTestCase {
         let context = Context(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
         let rendered = try stem.render(template, with: context).string
         let expectation = "HEllo"
-        XCTAssert(rendered == expectation)
+        XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
 
     func testIfChain() throws {
@@ -174,7 +175,7 @@ class ContextTests: XCTestCase {
         ]
 
         try cases.forEach { key, bool, expectation in
-            let context = Context([key: bool])
+            let context = Context([key: .bool(bool)])
             let rendered = try stem.render(template, with: context).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
@@ -267,7 +268,7 @@ class LeafRenderTests: XCTestCase {
 
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
-            let context = Context(["self": context])
+            let context = Context(["self": .string(context)])
             let rendered = try Stem().render(template, with: context).string
             XCTAssert(rendered == expectation)
         }
@@ -276,16 +277,16 @@ class LeafRenderTests: XCTestCase {
     func testNestedBodyRender() throws {
         let template = try stem.spawnLeaf(named: "nested-body")
 
-        let contextTests: [[String: Any]] = [
-            ["best-friend": ["name": "World"]],
-            ["best-friend": ["name": "##"]],
-            ["best-friend": ["name": "!*7D0"]]
+        let contextTests: [Node] = [
+            try .init(node: ["best-friend": ["name": "World"]]),
+            try .init(node: ["best-friend": ["name": "##"]]),
+            try .init(node: ["best-friend": ["name": "!*7D0"]])
         ]
 
         try contextTests.forEach { ctxt in
             let context = Context(ctxt)
             let rendered = try Stem().render(template, with: context).string
-            let name = (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
+            let name = ctxt["best-friend", "name"]?.string ?? "[fail]"// (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
             XCTAssert(rendered == "Hello, \(name)!", "have: \(rendered) want: Hello, \(name)!")
         }
     }
@@ -295,14 +296,14 @@ class LoopTests: XCTestCase {
     func testBasicLoop() throws {
         let template = try stem.spawnLeaf(named: "basic-loop")
 
-        let context: [String: [Any]] = [
+        let context = try Node(node: [
             "friends": [
                 "asdf",
                 "🐌",
                 "8***z0-1",
                 12
             ]
-        ]
+        ])
         let loadable = Context(context)
         let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
         let rendered = try Stem().render(template, with: loadable).string
@@ -310,7 +311,7 @@ class LoopTests: XCTestCase {
     }
 
     func testComplexLoop() throws {
-        let context: [String: Any] = [
+        let context = try Node(node: [
             "friends": [
                 [
                     "name": "Venus",
@@ -325,7 +326,7 @@ class LoopTests: XCTestCase {
                     "age": 9000
                 ]
             ]
-        ]
+        ])
 
         let template = try stem.spawnLeaf(named: "complex-loop")
         let loadable = Context(context)
@@ -339,7 +340,7 @@ class IfTests: XCTestCase {
     func testBasicIf() throws {
         let template = try stem.spawnLeaf(named: "basic-if-test")
 
-        let context = ["say-hello": true]
+        let context = try Node(node: ["say-hello": true])
         let loadable = Context(context)
         let rendered = try Stem().render(template, with: loadable).string
         let expectation = "Hello, there!"
@@ -349,7 +350,7 @@ class IfTests: XCTestCase {
     func testBasicIfFail() throws {
         let template = try stem.spawnLeaf(named: "basic-if-test")
 
-        let context = ["say-hello": false]
+        let context = try Node(node: ["say-hello": false])
         let loadable = Context(context)
         let rendered = try Stem().render(template, with: loadable).string
         let expectation = ""
@@ -359,19 +360,19 @@ class IfTests: XCTestCase {
     func testBasicIfElse() throws {
         let template = try stem.spawnLeaf(named: "basic-if-else")
 
-        let helloContext: [String: Any] = [
+        let helloContext = try Node(node: [
             "entering": true,
             "friend-name": "World"
-        ]
+        ])
         let hello = Context(helloContext)
         let renderedHello = try Stem().render(template, with: hello).string
         let expectedHello = "Hello, World!"
         XCTAssert(renderedHello == expectedHello, "have: \(renderedHello) want: \(expectedHello)")
 
-        let goodbyeContext: [String: Any] = [
+        let goodbyeContext = try Node(node: [
             "entering": false,
             "friend-name": "World"
-        ]
+        ])
         let goodbye = Context(goodbyeContext)
         let renderedGoodbye = try Stem().render(template, with: goodbye).string
         let expectedGoodbye = "Goodbye, World!"
@@ -380,7 +381,7 @@ class IfTests: XCTestCase {
 
     func testNestedIfElse() throws {
         let template = try stem.spawnLeaf(named: "nested-if-else")
-        let expectations: [(input: [String: Any], expectation: String)] = [
+        let expectations: [(input: Node, expectation: String)] = [
             (input: ["a": true], expectation: "Got a."),
             (input: ["b": true], expectation: "Got b."),
             (input: ["c": true], expectation: "Got c."),

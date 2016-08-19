@@ -5,7 +5,7 @@ public final class If: Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Any? {
+        arguments: [Argument]) throws -> Node? {
         guard arguments.count == 1 else { throw "invalid if statement arguments" }
         return nil
     }
@@ -15,8 +15,16 @@ public final class If: Tag {
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument],
-        value: Any?) -> Bool {
+        value: Node?) -> Bool {
         guard arguments.count == 1 else { return false }
+        let argument = arguments[0]
+        switch argument {
+        case let .constant(value: value):
+            return value.bool == true
+        case let .variable(key: _, value: value):
+            return value?.bool == true
+        }
+        /*
         let argument = arguments[0]
         switch argument {
         case let .constant(value: value):
@@ -34,5 +42,6 @@ public final class If: Tag {
         case let .variable(key: _, value: value):
             return value != nil
         }
+ */
     }
 }
