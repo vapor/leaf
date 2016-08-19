@@ -55,5 +55,6 @@ extension TagTemplate: Equatable {}
 public func == (lhs: TagTemplate, rhs: TagTemplate) -> Bool {
     return lhs.name == rhs.name
         && lhs.parameters == rhs.parameters
-        && lhs.body == rhs.body
+    // TODO: 
+    // && lhs.body == rhs.body
 }

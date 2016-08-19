@@ -12,17 +12,18 @@ public final class Leaf {
     /**
         The compiled components generated from the raw string
     */
-    public let _components: [Component]
+    // public let _components: [Component]
+    public let _components: List<Component>
 
     internal init(raw: String) throws {
         // self.raw = raw
         var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
-        self._components = try buffer.components()
+        self._components = List(try buffer.components())
     }
 
     internal init(raw: String, components: [Component]) {
         // self.raw = raw
-        self._components = components
+        self._components = List(components)
     }
 }
 
@@ -32,9 +33,10 @@ extension Leaf: CustomStringConvertible {
         return "Leaf: " + components
     }
 }
-
+/*
 extension Leaf: Equatable {}
 public func == (lhs: Leaf, rhs: Leaf) -> Bool {
     return lhs._components == rhs._components
     // return lhs.raw == rhs.raw
 }
+*/

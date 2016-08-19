@@ -246,10 +246,12 @@ class IncludeTests: XCTestCase {
 }
 
 class LeafLoadingTests: XCTestCase {
+    /* // TODO: Equatable
     func testBasicRawOnly() throws {
         let template = try Stem().spawnLeaf(named: "template-basic-raw")
         XCTAssert(template._components ==  [.raw("Hello, World!".bytes)])
     }
+    */
 
     /* Failing non-existent commands
     func testBasicInstructions() throws {

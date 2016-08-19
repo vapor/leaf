@@ -8,7 +8,7 @@ extension Stem {
 
 
         var buffer = Bytes()
-        for component in try leaf._components {
+        for component in leaf._components {
             switch component {
             case let .raw(bytes):
                 buffer += bytes
@@ -40,7 +40,8 @@ extension Stem {
     private func process(
         _ tagTemplate: TagTemplate,
         leaf: Leaf,
-        context: Context) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
+        context: Context
+        ) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
 
         guard let tag = tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
 
@@ -73,6 +74,7 @@ extension Stem {
         context: Context,
         value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
+/*
         switch value {
             /**
              ** Warning **
@@ -85,16 +87,25 @@ extension Stem {
             context.push(["self": nil])
         }
         defer { context.pop() }
+*/
 
-        return "World".bytes
-        
+        if let subLeaf = tagTemplate.body {
+            if let val = value { context.push(["self": val]) }
+            return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
+        } else if let rendered = try value?.rendered() {
+            return rendered
+        }
+
+
+        return []
+
         /*
         switch value {
-        /**
+            /**
              ** Warning **
              MUST parse out non-optional explicitly to
              avoid printing strings as `Optional(string)`
-        */
+             */
         case let val?:
             context.push(["self": val])
         default:
@@ -110,6 +121,7 @@ extension Stem {
         
         
         return []
+ 
  */
     }
 

@@ -96,6 +96,13 @@ extension List: Sequence {
     }
 }
 
+extension List {
+    public convenience init<S: Sequence where S.Iterator.Element == Value>(_ s: S) {
+        self.init()
+        s.forEach(insertAtTail)
+    }
+}
+
 public final class List<Value> {
     private var tip: Link<Value>?
 
