@@ -28,8 +28,33 @@ public final class TagTemplate {
     }
 }
 
+public final class Param {
+    public enum Mode {
+        case variable, constant
+    }
+
+    public let mode: Mode
+    public let name: String
+
+    init(mode: Mode, name: String) {
+        self.mode = mode
+        self.name = name
+    }
+}
+
 extension TagTemplate {
     func makeArguments(context: Context) -> [Argument] {
+        return parameters.map { arg in
+            switch arg {
+            case let .variable(key):
+                let value = context.get(path: key)
+                return .variable(key: key, value: value)
+            case let .constant(c):
+                return .constant(value: c)
+            }
+        }
+        // return [.variable(key: "name", value: Optional(Node("World")))]
+/*
         var input = [Argument]()
         parameters.forEach { arg in
             switch arg {
@@ -41,6 +66,7 @@ extension TagTemplate {
             }
         }
         return input
+ */
     }
 }
 

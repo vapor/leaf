@@ -4,6 +4,7 @@ import Mustache
 @testable import Leaf
 
 class Performance: XCTestCase {
+    /*
     func testMustache() throws {
         let raw = "Hello, {{name}}!"
         let template = try Template(string: raw)
@@ -56,7 +57,7 @@ class Performance: XCTestCase {
         }
     }
 
-
+*/
     func testMustacheB() throws {
         let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
@@ -93,6 +94,7 @@ class Performance: XCTestCase {
     
 }
 
+/*
 class BranchVsArray: XCTestCase {
     func testArray() {
         var array: [Node] = []
@@ -114,6 +116,7 @@ class BranchVsArray: XCTestCase {
         }
     }
 }
+*/
 
 /*
 class FuzzyAccessibleTests: XCTestCase {
