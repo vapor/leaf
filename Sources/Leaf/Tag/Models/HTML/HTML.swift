@@ -1,5 +1,16 @@
+// Make this class generic w/ a `tag` that is automatically injected. 
+// Infinite args, ie: @p("class='asdf'", ...) { }
 public final class HTML: Tag {
     public let name = "html"
+
+    public func run(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
+        guard arguments.isEmpty else { throw "h1 supports no arguments" }
+        return nil
+    }
 
     public func shouldRender(
         stem: Stem,
@@ -10,9 +21,37 @@ public final class HTML: Tag {
     }
 
     public func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes {
-        var buffer = "<html>".bytes
+        var buffer = "\n<html>\n".bytes
         buffer += try stem.render(leaf, with: context)
-        buffer += "</html>".bytes
+        buffer += "\n</html>\n".bytes
+        return buffer
+    }
+}
+
+public final class H1: Tag {
+    public let name = "h1"
+
+    public func run(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
+        guard arguments.isEmpty else { throw "h1 supports no arguments" }
+        return nil
+    }
+
+    public func shouldRender(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument], value: Any?) -> Bool {
+        return true
+    }
+
+    public func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes {
+        var buffer = "\n<h1>".bytes
+        buffer += try stem.render(leaf, with: context)
+        buffer += "</h1>\n".bytes
         return buffer
     }
 }
@@ -20,6 +59,15 @@ public final class HTML: Tag {
 public final class Body: Tag {
     public let name = "body"
 
+    public func run(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
+        guard arguments.isEmpty else { throw "h1 supports no arguments" }
+        return nil
+    }
+
     public func shouldRender(
         stem: Stem,
         context: Context,
@@ -29,9 +77,9 @@ public final class Body: Tag {
     }
 
     public func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes {
-        var buffer = "<body>".bytes
+        var buffer = "\n<body>\n".bytes
         buffer += try stem.render(leaf, with: context)
-        buffer += "</body>".bytes
+        buffer += "\n</body>\n".bytes
         return buffer
     }
 }
@@ -39,6 +87,14 @@ public final class Body: Tag {
 public final class Head: Tag {
     public let name = "head"
 
+    public func run(
+        stem: Stem,
+        context: Context,
+        tagTemplate: TagTemplate,
+        arguments: [Argument]) throws -> Any? {
+        guard arguments.isEmpty else { throw "h1 supports no arguments" }
+        return nil
+    }
 
     public func shouldRender(
         stem: Stem,
@@ -49,9 +105,9 @@ public final class Head: Tag {
     }
 
     public func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes {
-        var buffer = "<head>".bytes
+        var buffer = "\n<head>\n".bytes
         buffer += try stem.render(leaf, with: context)
-        buffer += "</head>".bytes
+        buffer += "\n</head>\n".bytes
         return buffer
     }
 }
@@ -89,9 +145,9 @@ public final class Div: Tag {
             throw "invalid value: \(value), expected String"
         }
 
-        var buffer = "<div class=\"\(classname)\">".bytes
+        var buffer = "\n<div class=\"\(classname)\">\n".bytes
         buffer += try stem.render(leaf, with: context)
-        buffer += "</head>".bytes
+        buffer += "\n</div>\n".bytes
         return buffer
     }
 }

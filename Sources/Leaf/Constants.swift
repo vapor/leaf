@@ -18,7 +18,8 @@ public let defaultTags: [String: Tag] = [
     "html": HTML(),
     "body": Body(),
     "div": Div(),
-    "head": Head()
+    "head": Head(),
+    "h1": H1() // make '1' dynamic 'h1': H(size: 1), 'h2': H(size: 2)
 ]
 
 /*

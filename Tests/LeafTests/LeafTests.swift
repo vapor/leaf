@@ -3,6 +3,28 @@ import XCTest
 @testable import Leaf
 
 class FuzzyAccessibleTests: XCTestCase {
+    func testHTML() throws {
+        let stem = Stem()
+        let leaf = try stem.spawnLeaf(named: "scratch")
+        let context = Context(
+            [
+                "title": "My Page",
+                "projects": [
+                    "Vapor",
+                    "Fluent",
+                    "Leaf",
+                    "Core",
+                    "Node"
+                ]
+            ]
+        )
+        let rendered = try stem.render(leaf, with: context).string
+
+        let l = try stem.spawnLeaf(raw: "Here's an awesome tweet #('5')hashTag")
+        try print(stem.render(l, with: Context([:])).string)
+        print("Rendered \(rendered)")
+    }
+
     func testSingleDictionary() {
         let object: [String: Any] = [
             "hello": "world"

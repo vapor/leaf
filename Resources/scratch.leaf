@@ -1,28 +1,13 @@
-<!-- Stored in resources/views/layouts/master.blade.php -->
-
-<html>
-    <head>
-        <title>App Name - @include(title)</title>
-    </head>
-    <body>
-        @include(sidebar)
-
-        <div class="container">
-            @include(content)
-        </div>
-    </body>
-</html>
-
-@html() {
-    @head() {
-        @title() { App Name - @include(title) }
+#html() {
+    #head() {
+        #h1() { Welcome to, #(title) }
     }
 
-    @body() {
-        @include("sidebar")
-
-        @div("container") {
-
+    #body() {
+        #div("container") {
+            #loop(projects, "project") {
+                Project: #(project)
+            }
         }
     }
 }

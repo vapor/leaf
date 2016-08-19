@@ -1,5 +1,3 @@
-import Foundation
-
 private var workDir: String {
     let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
     let path = "/\(parent)/../../Resources/"
@@ -44,7 +42,7 @@ extension Stem {
         }
         let path = workingDirectory + subpath
 
-        let raw = try NSData.load(path: path)
+        let raw = try Bytes.load(path: path)
         let leaf = try spawnLeaf(raw: raw)
         cache[name] = leaf
         return leaf
@@ -52,7 +50,8 @@ extension Stem {
 
     private func postCompile(_ component: Leaf.Component) throws -> Leaf.Component {
         func commandPostcompile(_ tagTemplate: TagTemplate) throws -> TagTemplate {
-            guard let command = tags[tagTemplate.name] else { throw "unsupported tagTemplate: \(tagTemplate.name)" }
+            guard let command = tags[tagTemplate.name] else { throw "unsupported tagTemplate: \(tagTemplate.name)"
+            }
             return try command.postCompile(stem: self,
                                            tagTemplate: tagTemplate)
         }
@@ -67,16 +66,5 @@ extension Stem {
             let mapped = try tagTemplates.map(commandPostcompile)
             return .chain(mapped)
         }
-    }
-}
-
-extension NSData {
-    private static func load(path: String) throws -> Bytes {
-        guard let data = NSData(contentsOfFile: path) else {
-            throw "unable to load bytes"
-        }
-        var bytes = Bytes(repeating: 0, count: data.length)
-        data.getBytes(&bytes, length: bytes.count)
-        return bytes
     }
 }

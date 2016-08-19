@@ -36,7 +36,7 @@ extension Tag {
 
     public func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Any? {
         guard arguments.count == 1 else {
-            throw "more than one argument not supported, override \(#function) for custom behavior"
+            throw "only single argument supported by default, override \(#function) in \(self.dynamicType)for custom behavior"
         }
 
         let argument = arguments[0]
