@@ -79,7 +79,7 @@ extension Stem {
         defer { context.pop() }
 
         if let subLeaf = tagTemplate.body {
-            return try tag.render(stem: self, context: context, value: value, template: subLeaf)
+            return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
         } else if let rendered = try context.renderedSelf() {
             return rendered
         }

@@ -1,5 +1,3 @@
-import Core
-
 public final class Context {
     public internal(set) var queue: [FuzzyAccessible] = []
 

@@ -1,4 +1,3 @@
-import Core
 import Foundation
 import XCTest
 @testable import template
@@ -209,7 +208,7 @@ class IncludeTests: XCTestCase {
 
 class LeafLoadingTests: XCTestCase {
     func testBasicRawOnly() throws {
-        let template = try loadLeaf(named: "template-basic-raw")
+        let template = try Stem().loadLeaf(named: "template-basic-raw")
         XCTAssert(template.components ==  [.raw("Hello, World!".bytes)])
     }
 
@@ -259,9 +258,11 @@ class LeafLoadingTests: XCTestCase {
     */
 }
 
+let stem = Stem()
+
 class LeafRenderTests: XCTestCase {
     func testBasicRender() throws {
-        let template = try loadLeaf(named: "basic-render")
+        let template = try stem.loadLeaf(named: "basic-render")
         let contexts = ["a", "ab9***", "ajcm301kc,s--11111", "World", "👾"]
 
         try contexts.forEach { context in
@@ -273,7 +274,7 @@ class LeafRenderTests: XCTestCase {
     }
 
     func testNestedBodyRender() throws {
-        let template = try loadLeaf(named: "nested-body")
+        let template = try stem.loadLeaf(named: "nested-body")
 
         let contextTests: [[String: Any]] = [
             ["best-friend": ["name": "World"]],
@@ -292,7 +293,7 @@ class LeafRenderTests: XCTestCase {
 
 class LoopTests: XCTestCase {
     func testBasicLoop() throws {
-        let template = try loadLeaf(named: "basic-loop")
+        let template = try stem.loadLeaf(named: "basic-loop")
 
         let context: [String: [Any]] = [
             "friends": [
@@ -326,7 +327,7 @@ class LoopTests: XCTestCase {
             ]
         ]
 
-        let template = try loadLeaf(named: "complex-loop")
+        let template = try stem.loadLeaf(named: "complex-loop")
         let loadable = Context(context)
         let rendered = try Stem().render(template, with: loadable).string
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
@@ -336,7 +337,7 @@ class LoopTests: XCTestCase {
 
 class IfTests: XCTestCase {
     func testBasicIf() throws {
-        let template = try loadLeaf(named: "basic-if-test")
+        let template = try stem.loadLeaf(named: "basic-if-test")
 
         let context = ["say-hello": true]
         let loadable = Context(context)
@@ -346,7 +347,7 @@ class IfTests: XCTestCase {
     }
 
     func testBasicIfFail() throws {
-        let template = try loadLeaf(named: "basic-if-test")
+        let template = try stem.loadLeaf(named: "basic-if-test")
 
         let context = ["say-hello": false]
         let loadable = Context(context)
@@ -356,7 +357,7 @@ class IfTests: XCTestCase {
     }
 
     func testBasicIfElse() throws {
-        let template = try loadLeaf(named: "basic-if-else")
+        let template = try stem.loadLeaf(named: "basic-if-else")
 
         let helloContext: [String: Any] = [
             "entering": true,
@@ -378,7 +379,7 @@ class IfTests: XCTestCase {
     }
 
     func testNestedIfElse() throws {
-        let template = try loadLeaf(named: "nested-if-else")
+        let template = try stem.loadLeaf(named: "nested-if-else")
         let expectations: [(input: [String: Any], expectation: String)] = [
             (input: ["a": true], expectation: "Got a."),
             (input: ["b": true], expectation: "Got b."),

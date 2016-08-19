@@ -1,5 +1,3 @@
-import Core
-
 extension BufferProtocol where Element == Byte {
     mutating func components() throws -> [Leaf.Component] {
         var comps: [Leaf.Component] = []
@@ -75,7 +73,7 @@ extension BufferProtocol where Element == Byte {
         }
         moveForward() // queue up `{`
 
-        // TODO: Body should be template components
+        // TODO: Body should be leaf components
         let body = try extractBody()
         moveForward()
         return try TagTemplate(name: name, parameters: parameters, body: body)

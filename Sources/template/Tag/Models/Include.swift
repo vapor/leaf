@@ -1,13 +1,12 @@
-final class Include: Tag {
-    let name = "include"
+public final class Include: Tag {
+    public let name = "include"
 
-    // TODO: Use
-    var cache: [String: Leaf] = [:]
-
-    func postCompile(
+    public func postCompile(
         stem: Stem,
         tagTemplate: TagTemplate) throws -> TagTemplate {
-        guard tagTemplate.parameters.count == 1 else { throw "invalid include" }
+        guard tagTemplate.parameters.count == 1 else {
+            throw "invalid include"
+        }
         switch tagTemplate.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
             let body = try stem.loadLeaf(named: name)
@@ -21,7 +20,7 @@ final class Include: Tag {
         }
     }
 
-    func run(
+    public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
@@ -29,7 +28,7 @@ final class Include: Tag {
         return nil
     }
 
-    func shouldRender(
+    public func shouldRender(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,

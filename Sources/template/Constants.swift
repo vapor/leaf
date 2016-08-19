@@ -14,3 +14,14 @@ public let defaultTags: [String: Tag] = [
     "uppercased": Uppercased(),
     "include": Include()
 ]
+
+/*
+     // TODO: GLOBAL
+     - Filters/Modifiers are supported longform, consider implementing short form -> Possibly compile out to longform
+         `@(foo.bar()` == `@bar(foo)`
+         `@(foo.bar().waa())` == `@bar(foo) { @waa(self) }`
+     - Extendible Leafs
+     - Allow no argument tags to terminate with a space, ie: @h1 {` or `@date`
+     - HTML Tags, a la @h1() { }
+     - Dynamic Tag w/ (Any?) throws? -> Any?
+*/

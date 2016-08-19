@@ -1,7 +1,7 @@
-final class If: Tag {
-    let name = "if"
+public final class If: Tag {
+    public let name = "if"
 
-    func run(
+    public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
@@ -10,7 +10,7 @@ final class If: Tag {
         return nil
     }
 
-    func shouldRender(
+    public func shouldRender(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,

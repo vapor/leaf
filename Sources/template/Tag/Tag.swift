@@ -1,13 +1,11 @@
-import Core
-
 public protocol Tag {
     var name: String { get }
 
-    // after a template is compiled, an tagTemplate will be passed in for validation/modification if necessary
+    // after a leaf is compiled, an tagTemplate will be passed in for validation/modification if necessary
     func postCompile(stem: Stem,
                      tagTemplate: TagTemplate) throws -> TagTemplate
 
-    // turn parameters in template into concrete arguments
+    // turn parameters in leaf into concrete arguments
     func makeArguments(stem: Stem,
                        context: Context,
                        tagTemplate: TagTemplate) throws -> [Argument]
@@ -20,8 +18,8 @@ public protocol Tag {
     func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Any?) -> Bool
 
     // context is populated with value at this point
-    // renders a given template, can override for custom behavior. For example, #loop
-    func render(stem: Stem, context: Context, value: Any?, template: Leaf) throws -> Bytes
+    // renders a given leaf, can override for custom behavior. For example, #loop
+    func render(stem: Stem, context: Context, value: Any?, leaf: Leaf) throws -> Bytes
 }
 
 extension Tag {
@@ -61,7 +59,7 @@ extension Tag {
     public func render(stem: Stem,
                 context: Context,
                 value: Any?,
-                template: Leaf) throws -> Bytes {
-        return try stem.render(template, with: context)
+                leaf: Leaf) throws -> Bytes {
+        return try stem.render(leaf, with: context)
     }
 }

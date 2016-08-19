@@ -1,4 +1,10 @@
-import Core
+import Foundation
+
+private var workDir: String {
+    let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
+    let path = "/\(parent)/../../Resources/"
+    return path
+}
 
 public class Stem {
     public let workingDirectory: String
@@ -15,7 +21,6 @@ extension Stem {
     }
 }
 
-
 extension Stem {
     public func loadLeaf(raw: String) throws -> Leaf {
         return try loadLeaf(raw: raw.bytes)
@@ -25,8 +30,8 @@ extension Stem {
         let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
         let components = try buffer.components().map(postCompile)
-        let template = Leaf(raw: raw.string, components: components)
-        return template
+        let leaf = Leaf(raw: raw.string, components: components)
+        return leaf
     }
 
     public func loadLeaf(named name: String) throws -> Leaf {
@@ -38,6 +43,15 @@ extension Stem {
 
         let raw = try load(path: path)
         return try loadLeaf(raw: raw)
+    }
+
+    private func load(path: String) throws -> Bytes {
+        guard let data = NSData(contentsOfFile: path) else {
+            throw "unable to load bytes"
+        }
+        var bytes = Bytes(repeating: 0, count: data.length)
+        data.getBytes(&bytes, length: bytes.count)
+        return bytes
     }
 
     private func postCompile(_ component: Leaf.Component) throws -> Leaf.Component {

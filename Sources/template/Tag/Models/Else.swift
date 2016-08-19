@@ -1,13 +1,13 @@
-final class Else: Tag {
-    let name = "else"
-    func run(
+public final class Else: Tag {
+    public let name = "else"
+    public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
         arguments: [Argument]) throws -> Any? {
         return nil
     }
-    func shouldRender(
+    public func shouldRender(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,

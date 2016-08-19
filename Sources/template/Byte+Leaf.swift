@@ -1,5 +1,3 @@
-import Core
-
 extension Byte {
     public static let openParenthesis = "(".bytes.first!
     public static let closedParenthesis = ")".bytes.first!

@@ -1,9 +1,7 @@
-import Core
+public final class Loop: Tag {
+    public let name = "loop"
 
-final class Loop: Tag {
-    let name = "loop"
-
-    func run(
+    public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
@@ -23,13 +21,12 @@ final class Loop: Tag {
         }
     }
 
-    func render(
+    public func render(
         stem: Stem,
         context: Context,
         value: Any?,
-        template: Leaf) throws -> Bytes {
+        leaf: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
-
         return try array
             .map { item -> Bytes in
                 if let i = item as? FuzzyAccessible {
@@ -37,12 +34,9 @@ final class Loop: Tag {
                 } else {
                     context.push(["self": item])
                 }
+                defer { context.pop() }
 
-                let rendered = try stem.render(template, with: context)
-
-                context.pop()
-
-                return rendered
+                return try stem.render(leaf, with: context)
             }
             .flatMap { $0 + [.newLine] }
     }

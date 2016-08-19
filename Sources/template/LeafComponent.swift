@@ -1,5 +1,3 @@
-import Core
-
 extension Leaf {
     public enum Component {
         case raw(Bytes)

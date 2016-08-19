@@ -13,3 +13,16 @@
     </body>
 </html>
 
+@html() {
+    @head() {
+        @title() { App Name - @include(title) }
+    }
+
+    @body() {
+        @include("sidebar")
+
+        @div("container") {
+
+        }
+    }
+}

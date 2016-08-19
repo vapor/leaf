@@ -1,7 +1,7 @@
-final class Uppercased: Tag {
-    let name = "uppercased"
+public final class Uppercased: Tag {
+    public let name = "uppercased"
 
-    func run(
+    public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,

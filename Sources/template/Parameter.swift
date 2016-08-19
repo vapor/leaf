@@ -1,5 +1,3 @@
-import Core
-
 public enum Parameter {
     case variable(String)
     case constant(String)
