@@ -13,15 +13,9 @@ public final class Loop: Tag {
         switch (arguments[0], arguments[1]) {
         case let (.variable(key: _, value: value?), .constant(value: innername)):
             let array = value.nodeArray ?? [value]
-            /*
-            let array = value as? [Any]
-                ?? value as? [AnyObject] // catches NS variant arrays
-                ?? [value]
-             */
             return .array(array.map { [innername: $0] })
         default:
             return nil
-            // return false
         }
     }
 

@@ -1,6 +1,4 @@
 extension Stem {
-    // TODO: Make overload with FuzzyAccessible and Any
-    
     /*
         Renders a given leaf with the given context
     */
