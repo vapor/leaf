@@ -1,3 +1,10 @@
+/*
+     // TODO: GLOBAL
+     - Filters/Modifiers are supported longform, consider implementing short form -> Possibly compile out to longform
+         `@(foo.bar()` == `@bar(foo)`
+         `@(foo.bar().waa())` == `@bar(foo) { @waa(self) }`
+     - Extendible Leafs
+*/
 import Core
 import Foundation
 
@@ -7,17 +14,10 @@ var workDir: String {
     return path
 }
 
-func loadTemplate(named name: String) throws -> Template {
-
+func loadLeaf(named name: String) throws -> Leaf {
     let namespace = NameSpace()
-    let template = try namespace.loadTemplate(named: name)
+    let template = try namespace.loadLeaf(named: name)
     return template
-    /*
-    let helloData = NSData(contentsOfFile: workDir + "\(named).vt")!
-    var bytes = Bytes(repeating: 0, count: helloData.length)
-    helloData.getBytes(&bytes, length: bytes.count)
-    return try Template(raw: bytes.string)
-    */
 }
 
 func load(path: String) throws -> Bytes {
@@ -29,13 +29,6 @@ func load(path: String) throws -> Bytes {
     return bytes
 }
 
-/*
- // TODO: GLOBAL
-
- - Filler passed into Driver should have same amount in queue as it does AFTER. Warn or Assert
- - Filters/Modifiers are supported longform, consider implementing short form.
- - Included sections should ALSO be rendered
- */
 
 /*
     Potentially expose in future
@@ -92,7 +85,7 @@ extension String: Swift.Error {}
 
 
 extension Byte {
-    var isTemplateToken: Bool {
+    var isLeafToken: Bool {
         return self == TOKEN
     }
 }
@@ -141,8 +134,8 @@ extension Byte {
 }
 
 extension BufferProtocol where Element == Byte {
-    mutating func components() throws -> [Template.Component] {
-        var comps: [Template.Component] = []
+    mutating func components() throws -> [Leaf.Component] {
+        var comps: [Leaf.Component] = []
         while let next = try nextComponent() {
             print("Got component: \(next)")
             print("")
@@ -172,13 +165,13 @@ extension BufferProtocol where Element == Byte {
         return comps
     }
 
-    mutating func nextComponent() throws -> Template.Component? {
+    mutating func nextComponent() throws -> Leaf.Component? {
         guard let token = current else { return nil }
         if token == TOKEN {
             let instruction = try extractInstruction()
             return .instruction(instruction)
         } else {
-            let raw = extractUntil { $0.isTemplateToken }
+            let raw = extractUntil { $0.isLeafToken }
             return .raw(raw)
         }
     }
@@ -203,7 +196,7 @@ extension BufferProtocol where Element == Byte {
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
  */
 extension BufferProtocol where Element == Byte {
-    mutating func extractInstruction() throws -> Template.Component.Instruction {
+    mutating func extractInstruction() throws -> Leaf.Component.Instruction {
         let name = try extractInstructionName()
         print("Got name: \(name)")
         let parameters = try extractInstructionParameters()
@@ -211,14 +204,14 @@ extension BufferProtocol where Element == Byte {
         // check if body
         moveForward()
         guard current == .space, next == .openCurly else {
-            return try Template.Component.Instruction(name: name, parameters: parameters, body: String?.none)
+            return try Leaf.Component.Instruction(name: name, parameters: parameters, body: String?.none)
         }
         moveForward() // queue up `{`
 
         // TODO: Body should be template components
         let body = try extractBody()
         moveForward()
-        return try Template.Component.Instruction(name: name, parameters: parameters, body: body)
+        return try Leaf.Component.Instruction(name: name, parameters: parameters, body: body)
     }
 
     mutating func extractInstructionName() throws -> String {
@@ -230,7 +223,7 @@ extension BufferProtocol where Element == Byte {
         return name.string
     }
 
-    mutating func extractInstructionParameters() throws -> [Template.Component.Instruction.Parameter] {
+    mutating func extractInstructionParameters() throws -> [Leaf.Component.Instruction.Parameter] {
         return try extractSection(opensWith: .openParenthesis, closesWith: .closedParenthesis)
             .extractParameters()
     }
@@ -269,9 +262,9 @@ extension Byte {
 }
 
 extension Sequence where Iterator.Element == Byte {
-    func extractParameters() throws -> [Template.Component.Instruction.Parameter] {
+    func extractParameters() throws -> [Leaf.Component.Instruction.Parameter] {
         return try split(separator: .comma)
-            .map { try Template.Component.Instruction.Parameter.init($0) }
+            .map { try Leaf.Component.Instruction.Parameter.init($0) }
     }
 }
 
@@ -282,7 +275,7 @@ extension Sequence where Iterator.Element == Byte {
 }
 
 
-final class Template {
+final class Leaf {
     // TODO: Bytes?
     // reference only
     let raw: String
@@ -300,7 +293,7 @@ final class Template {
     }
 }
 
-extension Template {
+extension Leaf {
     enum Component {
         final class Instruction {
             enum Parameter {
@@ -311,17 +304,17 @@ extension Template {
             let name: String
             let parameters: [Parameter]
 
-            let body: Template?
+            let body: Leaf?
 
             fileprivate var isChain: Bool
 
             convenience init(name: String, parameters: [Parameter], body: String?) throws {
-                let body = try body.flatMap { try Template(raw: $0) }
+                let body = try body.flatMap { try Leaf(raw: $0) }
                 self.init(name: name, parameters: parameters, body: body)
             }
 
 
-            init(name: String, parameters: [Parameter], body: Template?) {
+            init(name: String, parameters: [Parameter], body: Leaf?) {
                 // we strip leading token, if another one is there,
                 // that means we've found a chain element, ie: @@else {
                 if name.bytes.first == TOKEN {
@@ -357,7 +350,7 @@ protocol InstructionDriver {
 
     // after a template is compiled, an instruction will be passed in for validation/modification if necessary
     func postCompile(namespace: NameSpace,
-                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction
+                     instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction
 
     // turn parameters in instruction into concrete arguments
     func makeArguments(namespace: NameSpace,
@@ -373,12 +366,12 @@ protocol InstructionDriver {
 
     // filler is populated with value at this point
     // renders a given template, can override for custom behavior. For example, #loop
-    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes
+    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Leaf) throws -> Bytes
 }
 
 extension InstructionDriver {
     func postCompile(namespace: NameSpace,
-                     instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+                     instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
         return instruction
     }
 
@@ -413,13 +406,13 @@ extension InstructionDriver {
     func render(namespace: NameSpace,
                 filler: Filler,
                 value: Any?,
-                template: Template) throws -> Bytes {
+                template: Leaf) throws -> Bytes {
         return try template.render(in: namespace, with: filler)
     }
 }
 
 
-typealias Instruction = Template.Component.Instruction
+typealias Instruction = Leaf.Component.Instruction
 
 class NameSpace {
     let workingDirectory: String
@@ -438,19 +431,19 @@ class NameSpace {
 }
 
 extension NameSpace {
-    func loadTemplate(raw: String) throws -> Template {
-        return try loadTemplate(raw: raw.bytes)
+    func loadLeaf(raw: String) throws -> Leaf {
+        return try loadLeaf(raw: raw.bytes)
     }
 
-    func loadTemplate(raw: Bytes) throws -> Template {
+    func loadLeaf(raw: Bytes) throws -> Leaf {
         let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
         let components = try buffer.components().map(postcompile)
-        let template = Template(raw: raw.string, components: components)
+        let template = Leaf(raw: raw.string, components: components)
         return template
     }
 
-    func loadTemplate(named name: String) throws -> Template {
+    func loadLeaf(named name: String) throws -> Leaf {
         var subpath = name.finished(with: SUFFIX)
         if subpath.hasPrefix("/") {
             subpath = String(subpath.characters.dropFirst())
@@ -458,11 +451,11 @@ extension NameSpace {
         let path = workingDirectory + subpath
 
         let raw = try load(path: path)
-        return try loadTemplate(raw: raw)
+        return try loadLeaf(raw: raw)
     }
 
-    private func postcompile(_ component: Template.Component) throws -> Template.Component {
-        func commandPostcompile(_ instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+    private func postcompile(_ component: Leaf.Component) throws -> Leaf.Component {
+        func commandPostcompile(_ instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
             guard let command = drivers[instruction.name] else { throw "unsupported instruction: \(instruction.name)" }
             return try command.postCompile(namespace: self,
                                            instruction: instruction)
@@ -501,16 +494,16 @@ final class _Include: InstructionDriver {
     let name = "include"
 
     // TODO: Use
-    var cache: [String: Template] = [:]
+    var cache: [String: Leaf] = [:]
 
     func postCompile(
         namespace: NameSpace,
-        instruction: Template.Component.Instruction) throws -> Template.Component.Instruction {
+        instruction: Leaf.Component.Instruction) throws -> Leaf.Component.Instruction {
         guard instruction.parameters.count == 1 else { throw "invalid include" }
         switch instruction.parameters[0] {
         case let .constant(name): // ok to be subpath, NOT ok to b absolute
-            let body = try namespace.loadTemplate(named: name)
-            return Template.Component.Instruction(
+            let body = try namespace.loadLeaf(named: name)
+            return Leaf.Component.Instruction(
                 name: instruction.name,
                 parameters: [], // no longer need parameters
                 body: body
@@ -549,7 +542,7 @@ final class _Loop: InstructionDriver {
         }
     }
 
-    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Template) throws -> Bytes {
+    func render(namespace: NameSpace, filler: Filler, value: Any?, template: Leaf) throws -> Bytes {
         guard let array = value as? [Any] else { fatalError() }
 
         // return try array.map { try template.render(with: $0) } .flatMap { $0 + [.newLine] }
@@ -684,14 +677,14 @@ final class _Variable: InstructionDriver {
     }
 }
 
-extension Template: CustomStringConvertible {
+extension Leaf: CustomStringConvertible {
     var description: String {
         let components = self.components.map { $0.description } .joined(separator: ", ")
-        return "Template: " + components
+        return "Leaf: " + components
     }
 }
 
-extension Template.Component: CustomStringConvertible {
+extension Leaf.Component: CustomStringConvertible {
     var description: String {
         switch self {
         case let .raw(r):
@@ -704,13 +697,13 @@ extension Template.Component: CustomStringConvertible {
     }
 }
 
-extension Template.Component.Instruction: CustomStringConvertible {
+extension Leaf.Component.Instruction: CustomStringConvertible {
     var description: String {
         return "(name: \(name), parameters: \(parameters), body: \(body)"
     }
 }
 
-extension Template.Component.Instruction.Parameter: CustomStringConvertible {
+extension Leaf.Component.Instruction.Parameter: CustomStringConvertible {
     var description: String {
         switch self {
         case let .variable(v):
@@ -721,8 +714,8 @@ extension Template.Component.Instruction.Parameter: CustomStringConvertible {
     }
 }
 
-extension Template.Component: Equatable {}
-func == (lhs: Template.Component, rhs: Template.Component) -> Bool {
+extension Leaf.Component: Equatable {}
+func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
     switch (lhs, rhs) {
     case let (.raw(l), .raw(r)):
         return l == r
@@ -733,20 +726,20 @@ func == (lhs: Template.Component, rhs: Template.Component) -> Bool {
     }
 }
 
-extension Template: Equatable {}
-func == (lhs: Template, rhs: Template) -> Bool {
+extension Leaf: Equatable {}
+func == (lhs: Leaf, rhs: Leaf) -> Bool {
     return lhs.components == rhs.components
 }
 
-extension Template.Component.Instruction: Equatable {}
-func == (lhs: Template.Component.Instruction, rhs: Template.Component.Instruction) -> Bool {
+extension Leaf.Component.Instruction: Equatable {}
+func == (lhs: Leaf.Component.Instruction, rhs: Leaf.Component.Instruction) -> Bool {
     return lhs.name == rhs.name
         && lhs.parameters == rhs.parameters
         && lhs.body == rhs.body
 }
 
-extension Template.Component.Instruction.Parameter: Equatable {}
-func == (lhs: Template.Component.Instruction.Parameter, rhs: Template.Component.Instruction.Parameter) -> Bool {
+extension Leaf.Component.Instruction.Parameter: Equatable {}
+func == (lhs: Leaf.Component.Instruction.Parameter, rhs: Leaf.Component.Instruction.Parameter) -> Bool {
     switch (lhs, rhs) {
     case let (.variable(l), .variable(r)):
         return l == r
@@ -757,7 +750,7 @@ func == (lhs: Template.Component.Instruction.Parameter, rhs: Template.Component.
     }
 }
 
-extension Template.Component.Instruction.Parameter {
+extension Leaf.Component.Instruction.Parameter {
     init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw "invalid argument: empty" }
@@ -785,7 +778,7 @@ extension Filler {
 
 let Default = NameSpace()
 
-extension Template {
+extension Leaf {
     func render(in namespace: NameSpace, with filler: Filler) throws -> Bytes {
         let initialQueue = filler.queue
         defer { filler.queue = initialQueue }
@@ -933,7 +926,7 @@ extension Template {
  */
 }
 
-extension Template.Component {
+extension Leaf.Component {
     mutating func addToChain(_ chainedInstruction: Instruction) throws {
         switch self {
         case .raw(_):
