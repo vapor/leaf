@@ -24,20 +24,41 @@ extension FuzzyAccessible {
 
 extension Dictionary: FuzzyAccessible {
     public func get(key: String) -> Any? {
-        print("\(self):\(key)")
-        // TODO: Throw if invalid key?
-        guard let key = key as? Key else {
-            return nil }
-        let value: Value? = self[key]
-        print("Value: \(value)")
-        return value
+        guard let k = key as? Key else { return nil }
+        if let ob = self[k] { return ob }
+
+        switch key {
+        case "self":
+            return self
+        case "keys":
+            return self.keys
+        case "values":
+            return self.values
+        case "count":
+            return self.count
+        default:
+            return nil
+        }
     }
 }
 
 extension NSDictionary: FuzzyAccessible {
     public func get(key: String) -> Any? {
         let ns = NSString(string: key)
-        return self.object(forKey: ns)
+        if let ob = self.object(forKey: ns) { return ob }
+
+        switch key {
+        case "self":
+            return self
+        case "keys":
+            return self.allKeys
+        case "values":
+            return self.allValues
+        case "count":
+            return self.count
+        default:
+            return nil
+        }
     }
 }
 

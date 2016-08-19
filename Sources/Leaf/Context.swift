@@ -1,3 +1,6 @@
+/**
+    The associated context used in rendering
+*/
 public final class Context {
     public internal(set) var queue: [FuzzyAccessible] = []
 
@@ -46,17 +49,5 @@ extension Context {
         guard let value = get(path: "self") else { return nil }
         guard let renderable = value as? Renderable else { return "\(value)".bytes }
         return try renderable.rendered()
-    }
-}
-
-extension Leaf.Component: Equatable {}
-public func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
-    switch (lhs, rhs) {
-    case let (.raw(l), .raw(r)):
-        return l == r
-    case let (.tagTemplate(l), .tagTemplate(r)):
-        return l == r
-    default:
-        return false
     }
 }

@@ -12,7 +12,13 @@ public let defaultTags: [String: Tag] = [
     "else": Else(),
     "loop": Loop(),
     "uppercased": Uppercased(),
-    "include": Include()
+    "include": Include(),
+
+    // HTML Tags
+    "html": HTML(),
+    "body": Body(),
+    "div": Div(),
+    "head": Head()
 ]
 
 /*

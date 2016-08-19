@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import template
+@testable import Leaf
 
 class FuzzyAccessibleTests: XCTestCase {
     func testSingleDictionary() {

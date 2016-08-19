@@ -1,7 +1,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "template",
+    name: "Leaf",
     dependencies: [
       .Package(url: "https://github.com/vapor/core.git", majorVersion: 0, minor: 0)
     ]

@@ -31,3 +31,15 @@ extension Leaf.Component: CustomStringConvertible {
         }
     }
 }
+
+extension Leaf.Component: Equatable {}
+public func == (lhs: Leaf.Component, rhs: Leaf.Component) -> Bool {
+    switch (lhs, rhs) {
+    case let (.raw(l), .raw(r)):
+        return l == r
+    case let (.tagTemplate(l), .tagTemplate(r)):
+        return l == r
+    default:
+        return false
+    }
+}

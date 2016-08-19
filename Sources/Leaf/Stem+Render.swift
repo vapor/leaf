@@ -1,4 +1,7 @@
 extension Stem {
+    /*
+        Renders a given leaf with the given context
+    */
     public func render(_ leaf: Leaf, with context: Context) throws -> Bytes {
         let initialQueue = context.queue
         defer { context.queue = initialQueue }
@@ -64,13 +67,17 @@ extension Stem {
         return (tag, value, shouldRender)
     }
 
-    private func render(tag: Tag, context: Context, value: Any?, tagTemplate: TagTemplate) throws -> Bytes {
+    private func render(
+        tag: Tag,
+        context: Context,
+        value: Any?,
+        tagTemplate: TagTemplate) throws -> Bytes {
         switch value {
-            /**
+        /**
              ** Warning **
              MUST parse out non-optional explicitly to
              avoid printing strings as `Optional(string)`
-             */
+        */
         case let val?:
             context.push(["self": val])
         default:
