@@ -6,14 +6,15 @@ extension Stem {
         let initialQueue = context.queue
         defer { context.queue = initialQueue }
 
+
         var buffer = Bytes()
-        try leaf.components.forEach { component in
+        for component in try leaf._components {
             switch component {
             case let .raw(bytes):
                 buffer += bytes
             case let .tagTemplate(tagTemplate):
                 let (tag, value, shouldRender) = try process(tagTemplate, leaf: leaf, context: context)
-                guard shouldRender else { return }
+                guard shouldRender else { continue }
                 buffer += try render(tag: tag, context: context, value: value, tagTemplate: tagTemplate)
             case let .chain(chain):
                 for tagTemplate in chain {
@@ -25,7 +26,7 @@ extension Stem {
                      Deceptively similar to above, nuance will break e'rything!
                      **/
                     let (tag, value, shouldRender) = try process(tagTemplate, leaf: leaf, context: context)
-                    guard shouldRender else { continue }
+                    guard shouldRender else { continue } // inner loop
                     buffer += try render(tag: tag, context: context, value: value, tagTemplate: tagTemplate)
                     // Once a link in the chain is marked as pass (shouldRender),
                     // MUST break forEach context
@@ -63,7 +64,7 @@ extension Stem {
             arguments: arguments,
             value: value
         )
-
+        
         return (tag, value, shouldRender)
     }
 
@@ -72,6 +73,22 @@ extension Stem {
         context: Context,
         value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
+        switch value {
+            /**
+             ** Warning **
+             MUST parse out non-optional explicitly to
+             avoid printing strings as `Optional(string)`
+             */
+        case let val?:
+            context.push(["self": val])
+        default:
+            context.push(["self": nil])
+        }
+        defer { context.pop() }
+
+        return "World".bytes
+        
+        /*
         switch value {
         /**
              ** Warning **
@@ -93,6 +110,104 @@ extension Stem {
         
         
         return []
+ */
     }
 
+}
+
+extension Leaf.Component {
+    public func render(stem: Stem, leaf: Leaf, with context: Context) throws -> Bytes {
+        let initialQueue = context.queue
+        defer { context.queue = initialQueue }
+
+        var buffer = Bytes()
+        try leaf._components.forEach { component in
+            switch component {
+            case let .raw(bytes):
+                buffer += bytes
+            case let .tagTemplate(tagTemplate):
+                let (tag, value, shouldRender) = try process(tagTemplate: tagTemplate, stem: stem, leaf: leaf, context: context)
+                guard shouldRender else { return }
+                buffer += try render(stem: stem, tag: tag, context: context, value: value, tagTemplate: tagTemplate)
+            case let .chain(chain):
+                for tagTemplate in chain {
+                    /**
+                     *********************
+                     ****** WARNING ******
+                     *********************
+
+                     Deceptively similar to above, nuance will break e'rything!
+                     **/
+                    let (tag, value, shouldRender) = try process(tagTemplate: tagTemplate, stem: stem, leaf: leaf, context: context)
+                    guard shouldRender else { continue }
+                    buffer += try render(stem: stem, tag: tag, context: context, value: value, tagTemplate: tagTemplate)
+                    // Once a link in the chain is marked as pass (shouldRender),
+                    // MUST break forEach context
+                    break
+                }
+            }
+        }
+        return buffer
+    }
+
+    private func process(
+        tagTemplate: TagTemplate,
+        stem: Stem,
+        leaf: Leaf,
+        context: Context) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
+
+        guard let tag = stem.tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
+
+        let arguments = try tag.makeArguments(
+            stem: stem,
+            context: context,
+            tagTemplate: tagTemplate
+        )
+
+        let value = try tag.run(
+            stem: stem,
+            context: context,
+            tagTemplate: tagTemplate,
+            arguments: arguments
+        )
+
+        let shouldRender = tag.shouldRender(
+            stem: stem,
+            context: context,
+            tagTemplate: tagTemplate,
+            arguments: arguments,
+            value: value
+        )
+
+        return (tag, value, shouldRender)
+    }
+
+    private func render(
+        stem: Stem,
+        tag: Tag,
+        context: Context,
+        value: Node?,
+        tagTemplate: TagTemplate) throws -> Bytes {
+        switch value {
+            /**
+             ** Warning **
+             MUST parse out non-optional explicitly to
+             avoid printing strings as `Optional(string)`
+             */
+        case let val?:
+            context.push(["self": val])
+        default:
+            context.push(["self": nil])
+        }
+        defer { context.pop() }
+
+        if let subLeaf = tagTemplate.body {
+            return try tag.render(stem: stem, context: context, value: value, leaf: subLeaf)
+        } else if let rendered = try context.renderedSelf() {
+            return rendered
+        }
+        
+        
+        return []
+    }
 }

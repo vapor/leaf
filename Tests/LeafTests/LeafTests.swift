@@ -37,6 +37,26 @@ class Performance: XCTestCase {
         }
     }
 
+    func testContextGet() throws {
+        let ctxt = Context(["name": "World"])
+        measure {
+            (1...500).forEach { _ in
+                _ = ctxt.get(path: "name")
+            }
+        }
+    }
+
+    func testContextPush() throws {
+        let ctxt = Context(["name": "World"])
+        measure {
+            (1...500).forEach { _ in
+                _ = ctxt.push(["self": "..."])
+                defer { ctxt.pop() }
+            }
+        }
+    }
+
+    /*
     func testMustacheB() throws {
         let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
@@ -70,8 +90,32 @@ class Performance: XCTestCase {
             }
         }
     }
+    */
 }
 
+class BranchVsArray: XCTestCase {
+    func testArray() {
+        var array: [Node] = []
+        measure {
+            (1...500).forEach { _ in
+                array.insert(["self": "..."], at: 0)
+                defer { array.removeFirst() }
+            }
+        }
+    }
+
+    func testBranch() {
+        var list = List<Node>()
+        measure {
+            (1...500).forEach { _ in
+                list.insertAtTip(["self": "..."])
+                defer { list.removeTip() }
+            }
+        }
+    }
+}
+
+/*
 class FuzzyAccessibleTests: XCTestCase {
     func testFuzzyLeaf() throws {
         let raw = "Hello, #(path.to.person.0.name)!"
@@ -108,7 +152,7 @@ class ContextTests: XCTestCase {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
         let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
-        print("Components: \(template.components)")
+        print("Components: \(template._components)")
         let context = Context(["best-friend": ["name": "World"]])
         let rendered = try stem.render(template, with: context).string
         XCTAssert(rendered == "Hello, World!")
@@ -204,7 +248,7 @@ class IncludeTests: XCTestCase {
 class LeafLoadingTests: XCTestCase {
     func testBasicRawOnly() throws {
         let template = try Stem().spawnLeaf(named: "template-basic-raw")
-        XCTAssert(template.components ==  [.raw("Hello, World!".bytes)])
+        XCTAssert(template._components ==  [.raw("Hello, World!".bytes)])
     }
 
     /* Failing non-existent commands
@@ -390,3 +434,4 @@ class IfTests: XCTestCase {
         }
     }
 }
+*/

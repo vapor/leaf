@@ -1,4 +1,5 @@
 public enum Parameter {
+    // TODO: Store as [String]
     case variable(String)
     case constant(String)
 }
