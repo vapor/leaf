@@ -92,42 +92,6 @@ extension Byte {
     }
 }
 
-
-protocol BufferProtocol {
-    associatedtype Element
-    var previous: Element? { get }
-    var current: Element? { get }
-    var next: Element? { get }
-
-    @discardableResult
-    mutating func moveForward() -> Element?
-}
-
-struct Buffer<T>: BufferProtocol {
-    typealias Element = T
-
-    private(set) var previous: T? = nil
-    private(set) var current: T? = nil
-    private(set) var next: T? = nil
-
-    private var buffer: IndexingIterator<[T]>
-
-    init<S: Sequence where S.Iterator.Element == T>(_ sequence: S) {
-        buffer = sequence.array.makeIterator()
-        // queue up first
-        moveForward() // sets next
-        moveForward() // sets current
-    }
-
-    @discardableResult
-    mutating func moveForward() -> T? {
-        previous = current
-        current = next
-        next = buffer.next()
-        return current
-    }
-}
-
 extension Byte {
     static let openParenthesis = "(".bytes.first!
     static let closedParenthesis = ")".bytes.first!
@@ -135,139 +99,8 @@ extension Byte {
     static let closedCurly = "}".bytes.first!
 }
 
-extension BufferProtocol where Element == Byte {
-    mutating func components() throws -> [Leaf.Component] {
-        var comps: [Leaf.Component] = []
-        while let next = try nextComponent() {
-            print("Got component: \(next)")
-            print("")
-            if case let .instruction(i) = next, i.isChain {
-                guard comps.count > 0 else { throw "invalid chain component w/o preceeding instruction" }
-                while let last = comps.last {
-                    var loop = true
-
-                    comps.removeLast()
-                    switch last {
-                    // skip whitespace
-                    case let .raw(raw) where raw.trimmed(.whitespace).isEmpty:
-                        continue
-                    default:
-                        var mutable = last
-                        try mutable.addToChain(i)
-                        comps.append(mutable)
-                        loop = false
-                    }
-
-                    if !loop { break }
-                }
-            } else {
-                comps.append(next)
-            }
-        }
-        return comps
-    }
-
-    mutating func nextComponent() throws -> Leaf.Component? {
-        guard let token = current else { return nil }
-        if token == TOKEN {
-            let instruction = try extractInstruction()
-            return .instruction(instruction)
-        } else {
-            let raw = extractUntil { $0.isLeafToken }
-            return .raw(raw)
-        }
-    }
-
-    mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
-        var collection = Bytes()
-        if let current = current {
-            guard !until(current) else { return [] }
-            collection.append(current)
-        }
-        while let value = moveForward(), !until(value) {
-            collection.append(value)
-        }
-
-        return collection
-    }
-}
-
-/*
- Syntax
- 
- @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
- */
-extension BufferProtocol where Element == Byte {
-    mutating func extractInstruction() throws -> TagTemplate {
-        let name = try extractInstructionName()
-        print("Got name: \(name)")
-        let parameters = try extractInstructionParameters()
-
-        // check if body
-        moveForward()
-        guard current == .space, next == .openCurly else {
-            return try TagTemplate(name: name, parameters: parameters, body: String?.none)
-        }
-        moveForward() // queue up `{`
-
-        // TODO: Body should be template components
-        let body = try extractBody()
-        moveForward()
-        return try TagTemplate(name: name, parameters: parameters, body: body)
-    }
-
-    mutating func extractInstructionName() throws -> String {
-        // can't extract section because of @@
-        guard current == TOKEN else { throw "instruction name must lead with token" }
-        moveForward() // drop initial token from name. a secondary token implies chain
-        let name = extractUntil { $0 == .openParenthesis }
-        guard current == .openParenthesis else { throw "instruction names must be alphanumeric and terminated with '('" }
-        return name.string
-    }
-
-    mutating func extractInstructionParameters() throws -> [TagTemplate.Parameter] {
-        return try extractSection(opensWith: .openParenthesis, closesWith: .closedParenthesis)
-            .extractParameters()
-    }
-
-    mutating func extractBody() throws -> String {
-        return try extractSection(opensWith: .openCurly, closesWith: .closedCurly)
-            .trimmed(.whitespace)
-            .string
-    }
-
-    mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
-        guard current ==  opener else {
-            throw "invalid body, missing opener: \([opener].string)"
-        }
-
-        var subBodies = 0
-        var body = Bytes()
-        while let value = moveForward() {
-            // TODO: Account for escaping `\`
-            if value == closer && subBodies == 0 { break }
-            if value == opener { subBodies += 1 }
-            if value == closer { subBodies -= 1 }
-            body.append(value)
-        }
-
-        guard current == closer else {
-            throw "invalid body, missing closer: \([closer].string), got \([current])"
-        }
-
-        return body
-    }
-}
-
 extension Byte {
     static let quotationMark = "\"".bytes.first!
-}
-
-extension Sequence where Iterator.Element == Byte {
-    func extractParameters() throws -> [TagTemplate.Parameter] {
-        return try split(separator: .comma)
-            .map { try TagTemplate.Parameter.init($0) }
-    }
 }
 
 extension Sequence where Iterator.Element == Byte {
@@ -276,18 +109,18 @@ extension Sequence where Iterator.Element == Byte {
     }
 }
 
-public final class TagTemplate {
-    public enum Parameter {
-        case variable(String)
-        case constant(String)
-    }
+public enum Parameter {
+    case variable(String)
+    case constant(String)
+}
 
+public final class TagTemplate {
     public let name: String
     public let parameters: [Parameter]
 
     public let body: Leaf?
 
-    fileprivate var isChain: Bool
+    internal let isChain: Bool
 
     internal convenience init(name: String, parameters: [Parameter], body: String?) throws {
         let body = try body.flatMap { try Leaf(raw: $0) }
@@ -669,7 +502,7 @@ extension TagTemplate: CustomStringConvertible {
     }
 }
 
-extension TagTemplate.Parameter: CustomStringConvertible {
+extension Parameter: CustomStringConvertible {
     public var description: String {
         switch self {
         case let .variable(v):
@@ -704,8 +537,8 @@ public func == (lhs: TagTemplate, rhs: TagTemplate) -> Bool {
         && lhs.body == rhs.body
 }
 
-extension TagTemplate.Parameter: Equatable {}
-public func == (lhs: TagTemplate.Parameter, rhs: TagTemplate.Parameter) -> Bool {
+extension Parameter: Equatable {}
+public func == (lhs: Parameter, rhs: Parameter) -> Bool {
     switch (lhs, rhs) {
     case let (.variable(l), .variable(r)):
         return l == r
@@ -716,7 +549,7 @@ public func == (lhs: TagTemplate.Parameter, rhs: TagTemplate.Parameter) -> Bool 
     }
 }
 
-extension TagTemplate.Parameter {
+extension Parameter {
     init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw "invalid argument: empty" }
