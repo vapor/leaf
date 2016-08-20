@@ -16,20 +16,5 @@ public final class Uppercased: Tag {
             }
             return nil
         }
-
-        /*
-        switch arguments[0] {
-        case let .constant(value: value):
-            return value.uppercased()
-        case let .variable(key: _, value: value):
-            return value.uppercased()
-        case let .variable(key: _, value: value as Renderable):
-            return try value.rendered().string.uppercased()
-        case let .variable(key: _, value: value?):
-            return "\(value)".uppercased()
-        default:
-            return nil
-        }
- */
     }
 }

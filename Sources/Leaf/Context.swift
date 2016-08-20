@@ -28,11 +28,9 @@
     The associated context used in rendering
 */
 public final class Context {
-    //public internal(set) var queue: [Node] = []
     public internal(set) var queue = List<Node>()
 
     public init(_ node: Node) {
-        // self.queue.append(node)
         queue.insertAtTip(node)
     }
 
@@ -57,7 +55,6 @@ public final class Context {
 
     public func push(_ fuzzy: Node) {
         queue.insertAtTip(fuzzy)
-        // queue.insert(fuzzy, at: 0)
     }
 
     @discardableResult

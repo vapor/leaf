@@ -14,11 +14,7 @@ extension Stem {
             case let .tagTemplate(tagTemplate):
                 let (tag, value, shouldRender) = try process(tagTemplate, leaf: leaf, context: context)
                 guard shouldRender else { continue }
-                // buffer += "World".bytes
-                // let value = Optional(Node("World"))
-                // let tag = tags[tagTemplate.name]!
                 buffer += try render(tag: tag, context: context, value: value, tagTemplate: tagTemplate)
-
             case let .chain(chain):
                 for tagTemplate in chain {
                     /**
