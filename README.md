@@ -1,0 +1,53 @@
+<p align="center"><img src="http://tse1.mm.bing.net/th?&id=OIP.M88a1265ce687180cf3304086de167fa8o0&w=299&h=203&c=0&pid=1.9&rs=0&p=0&r=0"></img></p>
+
+# Leaf
+
+Welcome to Leaf. Leaf's goal is to be a simple templating language that can make generating views easier.
+
+### Why Another
+
+There's a lot of great templating languages, the goals of leaf are as follows:
+
+- Small set of strict rules
+- Easy to interpret from a parsing perspective
+- All behavior added as extensions to the core
+- Consistency where possible.
+
+# Syntax
+
+Leaf syntax is based around a single token, in this case, the hashtag: `#`.
+
+// TODO:
+
+> This is a low sugar templating language. Some things might not be ideal. The goal is to have flexibility, but first we must be stable. At that point, we will add sugar.
+
+# Examples
+
+### Variable
+
+Variables are added w/ just a number sign.
+
+```leaf
+Hello, #(name)!
+```
+
+### Loop
+
+Loop a variable
+
+```leaf
+#loop(friends, "friend") {
+  Hello, \(friend.name)!
+}
+```
+
+// TODO:
+
+## Custom Tags
+
+# Inspiration
+
+This library was inspired by:
+
+- [Stencil](https://github.com/kylef/stencil)
+- [Mustache](https://github.com/groue/GRMustache.swift)
