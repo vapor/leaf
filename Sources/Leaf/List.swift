@@ -31,7 +31,7 @@ public final class List<Value> {
     @discardableResult
     public func removeTail() -> Value? {
         let tail = tip?.tail()
-        tail?.parent?.child = nil
+        tail?.dropParent()
         return tail?.value
     }
 }
