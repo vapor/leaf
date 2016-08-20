@@ -37,7 +37,7 @@ Loop a variable
 
 ```leaf
 #loop(friends, "friend") {
-  Hello, \(friend.name)!
+  Hello, #(friend.name)!
 }
 ```
 
