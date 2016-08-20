@@ -41,6 +41,18 @@ Loop a variable
 }
 ```
 
+### If - Else
+
+```leaf
+#if(entering) {
+  Hello, there!
+} ##if(leaving) {
+  Goodbye!
+} ##else() {
+  I've been here the whole time.
+}
+```
+
 // TODO:
 
 ## Custom Tags
