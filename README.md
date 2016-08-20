@@ -1,4 +1,4 @@
-<p align="center"><img src="http://upload.wikimedia.org/wikipedia/commons/9/9d/Pear_Leaf.jpg"></img></p>
+<p align="center"><img src="http://upload.wikimedia.org/wikipedia/commons/9/9d/Pear_Leaf.jpg" width="200"></img></p>
 
 # Leaf
 
