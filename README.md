@@ -11,7 +11,6 @@ There's a lot of great templating languages, the goals of leaf are as follows:
 - Small set of strict rules
 - Easy to interpret from a parsing perspective
 - All behavior added as extensions to the core
-- Consistency where possible.
 
 # Syntax
 
