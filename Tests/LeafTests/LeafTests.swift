@@ -1,33 +1,15 @@
 import Foundation
 import XCTest
-import Mustache
 @testable import Leaf
 
-class Performance: XCTestCase {
-    func testMustache() throws {
-        let raw = "Hello, {{name}}!"
-        let template = try Template(string: raw)
-        let context: [String: Any] = [
-            "name": "World"
-        ]
-        measure {
-            try! (1...500).forEach { _ in
-                let rendered = try template.render(box: context.mustacheBox)
-                XCTAssert(rendered == "Hello, World!")
-            }
-        }
-    }
+let stem = Stem()
 
+class Performance: XCTestCase {
     func testLeaf() throws {
         let stem = Stem()
         let raw = "Hello, #(name)!"
         let expectation = "Hello, World!".bytes
         let template = try Leaf(raw: raw)
-        /*
-        let context: [String: Any] = [
-            "name": "World"
-        ]
-         */
         let ctxt = Context(["name": "World"])
         measure {
             try! (1...500).forEach { _ in
@@ -56,21 +38,6 @@ class Performance: XCTestCase {
         }
     }
 
-    func testMustacheB() throws {
-        let raw = [String](repeating: "Hello, {{name}}!", count: 1000).joined(separator: ", ")
-        let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ")
-        let template = try Template(string: raw)
-        let context: [String: Any] = [
-            "name": "World"
-        ]
-        measure {
-            try! (1...50).forEach { _ in
-                let rendered = try template.render(box: context.mustacheBox)
-                XCTAssert(rendered == expectation)
-            }
-        }
-    }
-
     func testLeafB() throws {
         let stem = Stem()
         let raw = [String](repeating: "Hello, #(name)!", count: 1000).joined(separator: ", ")
@@ -78,16 +45,16 @@ class Performance: XCTestCase {
         let template = try Leaf(raw: raw)
         let ctxt = Context(["name": "World"])
         measure {
-            try! (1...50).forEach { _ in
+            try! (1...5).forEach { _ in
                 let rendered = try stem.render(template, with: ctxt)
                 XCTAssert(rendered == expectation)
             }
         }
     }
-    
 }
 
-class BranchVsArray: XCTestCase {
+
+class LinkVsArray: XCTestCase {
     func testArray() {
         var array: [Node] = []
         measure {
@@ -98,12 +65,31 @@ class BranchVsArray: XCTestCase {
         }
     }
 
-    func testBranch() {
+    func testList() {
         var list = List<Node>()
         measure {
             (1...500).forEach { _ in
                 list.insertAtTip(["self": "..."])
                 defer { list.removeTip() }
+            }
+        }
+    }
+
+    func testIterateArray() {
+        let array = [Int](repeating: 0, count: 100)
+        measure {
+            (1...5000).forEach { _ in
+                array.forEach { _ in }
+            }
+        }
+    }
+
+    func testIterateList() {
+        let array = [Int](repeating: 0, count: 100)
+        let list = List(array)
+        measure {
+            (1...5000).forEach { _ in
+                list.forEach { _ in }
             }
         }
     }
@@ -145,7 +131,6 @@ class ContextTests: XCTestCase {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
         let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
-        print("Components: \(template._components)")
         let context = Context(["best-friend": ["name": "World"]])
         let rendered = try stem.render(template, with: context).string
         XCTAssert(rendered == "Hello, World!")
@@ -237,62 +222,6 @@ class IncludeTests: XCTestCase {
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
 }
-
-class LeafLoadingTests: XCTestCase {
-    /* // TODO: Equatable
-    func testBasicRawOnly() throws {
-        let template = try Stem().spawnLeaf(named: "template-basic-raw")
-        XCTAssert(template._components ==  [.raw("Hello, World!".bytes)])
-    }
-    */
-
-    /* Failing non-existent commands
-    func testBasicInstructions() throws {
-        do {
-        let template = try spawnLeaf(named: "template-basic-tagTemplates-no-body")
-        // #custom(two, variables, "and one constant")
-        let tagTemplate = try Leaf.Component.Instruction(
-            name: "custom",
-            parameters: [.variable("two"), .variable("variables"), .constant("and one constant")],
-            body: String?.none
-        )
-
-        let expectation: [Leaf.Component] = [
-            .raw("Some raw text here. ".bytes),
-            .tagTemplate(tagTemplate)
-        ]
-        XCTAssert(template.components ==  expectation, "have: \(template.components) want: \(expectation)")
-        } catch { XCTFail("E: \(error)") }
-    }
-
-    func testBasicNested() throws {
-        /*
-            Here's a basic template and, #command(parameter) {
-                now we're in the body, which is ALSO a #template("constant") {
-                    and a third sub template with a #(variable)
-                }
-            }
-
-        */
-        let template = try spawnLeaf(named: "template-basic-nested")
-
-        let command = try Leaf.Component.Instruction(
-            name: "command",
-            // TODO: `.variable(name: `
-            parameters: [.variable("parameter")],
-            body: "now we're in the body, which is ALSO a #template(\"constant\") {\n\tand a third sub template with a #(variable)\n\t}"
-        )
-
-        let expectation: [Leaf.Component] = [
-            .raw("Here's a basic template and, ".bytes),
-            .tagTemplate(command)
-        ]
-        XCTAssert(template.components ==  expectation)
-    }
-    */
-}
-
-let stem = Stem()
 
 class LeafRenderTests: XCTestCase {
     func testBasicRender() throws {

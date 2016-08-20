@@ -41,20 +41,6 @@ extension TagTemplate {
                 return .constant(value: c)
             }
         }
-        // return [.variable(key: "name", value: Optional(Node("World")))]
-/*
-        var input = [Argument]()
-        parameters.forEach { arg in
-            switch arg {
-            case let .variable(key):
-                let value = context.get(path: key)
-                input.append(.variable(key: key, value: value))
-            case let .constant(c):
-                input.append(.constant(value: c))
-            }
-        }
-        return input
- */
     }
 }
 

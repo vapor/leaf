@@ -1,6 +1,18 @@
+/**
+    A paremeter is created from a leaf as a placeholder that will be converted
+    into an Argument at render time.
+*/
 public enum Parameter {
-    // TODO: Store as [String]
+    /**
+        represents a named variable that will be accessed from context
+        - parameter path: . names are forbidden and are used to indicate paths.
+    */
     case variable(path: [String])
+
+    /**
+        represents a constant value passed into a tag
+        - parameter value: the value found
+     */
     case constant(value: String)
 }
 
@@ -28,7 +40,7 @@ public func == (lhs: Parameter, rhs: Parameter) -> Bool {
 }
 
 extension Parameter {
-    init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
+    internal init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw "invalid argument: empty" }
         if bytes.count > 1, bytes.first == .quotationMark, bytes.last == .quotationMark {

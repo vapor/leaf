@@ -34,7 +34,7 @@ extension BufferProtocol where Element == Byte {
             let tagTemplate = try extractInstruction()
             return .tagTemplate(tagTemplate)
         } else {
-            let raw = extractUntil { $0.isLeafToken }
+            let raw = extractUntil { $0 == TOKEN }
             return .raw(raw)
         }
     }

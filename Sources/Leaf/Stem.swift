@@ -4,7 +4,7 @@ private var workDir: String {
     return path
 }
 
-public class Stem {
+public final class Stem {
     public let workingDirectory: String
     public private(set) var tags: [String: Tag] = defaultTags
     public private(set) var cache: [String: Leaf] = [:]

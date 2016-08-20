@@ -2,7 +2,6 @@ extension Node {
     func rendered() throws -> Bytes {
         switch self {
         case .array(_), .object(_), .null:
-            // TODO: Should throw?
             return []
         case let .bool(bool):
             return bool.description.bytes

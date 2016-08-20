@@ -7,7 +7,7 @@ extension Stem {
         let initialQueue = context.queue
         defer { context.queue = initialQueue }
         var buffer = Bytes()
-        for component in leaf._components {
+        for component in leaf.components {
             switch component {
             case let .raw(bytes):
                 buffer += bytes
@@ -117,14 +117,14 @@ extension Stem {
     }
 
 }
-
+/*
 extension Leaf.Component {
     public func render(stem: Stem, leaf: Leaf, with context: Context) throws -> Bytes {
         let initialQueue = context.queue
         defer { context.queue = initialQueue }
 
         var buffer = Bytes()
-        try leaf._components.forEach { component in
+        try leaf.components.forEach { component in
             switch component {
             case let .raw(bytes):
                 buffer += bytes
@@ -214,3 +214,4 @@ extension Leaf.Component {
         return []
     }
 }
+*/
