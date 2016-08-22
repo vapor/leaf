@@ -1,23 +1,26 @@
 public final class Include: Tag {
+    public enum Error: LeafError {
+        case expectedSingleConstant(have: [Parameter])
+    }
+
     public let name = "include"
 
     public func postCompile(
         stem: Stem,
         tagTemplate: TagTemplate) throws -> TagTemplate {
-        guard tagTemplate.parameters.count == 1 else {
-            throw "invalid include"
-        }
-        switch tagTemplate.parameters[0] {
-        case let .constant(name): // ok to be subpath, NOT ok to b absolute
-            let body = try stem.spawnLeaf(named: name)
-            return TagTemplate(
-                name: tagTemplate.name,
-                parameters: [], // no longer need parameters
-                body: body
-            )
-        case let .variable(name):
-            throw "include's must not be dynamic, try `@include(\"\(name)\")"
-        }
+        guard
+            let parameter = tagTemplate.parameters.first,
+            case let .constant(value: name) = parameter
+            else {
+                throw Error.expectedSingleConstant(have: tagTemplate.parameters)
+            }
+
+        let body = try stem.spawnLeaf(named: name)
+        return TagTemplate(
+            name: tagTemplate.name,
+            parameters: [], // no longer need parameters
+            body: body
+        )
     }
 
     public func run(

@@ -221,6 +221,13 @@ class IncludeTests: XCTestCase {
         let expectation = "Leaf included: Hello, World!"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
+
+    func testIncludeThrow() throws {
+        do {
+            _ = try stem.spawnLeaf(raw: "#include(invalid-variable)")
+            XCTFail("Expected throw")
+        } catch Include.Error.expectedSingleConstant { }
+    }
 }
 
 class LeafRenderTests: XCTestCase {
