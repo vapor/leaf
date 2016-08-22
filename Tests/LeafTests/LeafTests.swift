@@ -406,6 +406,15 @@ class IfTests: XCTestCase {
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }
+
+    func testIfThrow() throws {
+        let leaf = try stem.spawnLeaf(raw: "#if(too, many, arguments) { }")
+        let context = Context([:])
+        do {
+            _ = try stem.render(leaf, with: context)
+            XCTFail("should throw")
+        } catch If.Error.expectedSingleArgument {}
+    }
 }
 
 class VariableTests: XCTestCase {
