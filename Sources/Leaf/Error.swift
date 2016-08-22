@@ -1,0 +1,1 @@
+protocol LeafError: Swift.Error {}

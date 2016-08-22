@@ -296,6 +296,48 @@ class LoopTests: XCTestCase {
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
+
+    func testNumberThrow() throws {
+        let leaf = try stem.spawnLeaf(raw: "#loop(too, many, arguments)")
+        let context = Context(["too": "", "many": "", "arguments": ""])
+        do {
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Should throw")
+        } catch Loop.Error.expectedTwoArguments { }
+    }
+
+    func testInvalidSignature1() throws {
+        let leaf = try stem.spawnLeaf(raw: "#loop(\"invalid\", \"signature\")")
+        let context = Context([:])
+        do {
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Should throw")
+        } catch Loop.Error.expectedVariable { }
+    }
+
+    func testInvalidSignature2() throws {
+        let leaf = try stem.spawnLeaf(raw: "#loop(invalid, signature)")
+        let context = Context([:])
+        do {
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Should throw")
+        } catch Loop.Error.expectedConstant { }
+    }
+
+    func testSkipNil() throws {
+        let leaf = try stem.spawnLeaf(raw: "#loop(find-nil, \"inner-name\") { asdfasdfasdfsdf }")
+        let context = Context([:])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "")
+    }
+
+    func testFuzzySingle() throws {
+        // single => array
+        let leaf = try stem.spawnLeaf(raw: "#loop(names, \"name\") { Hello, #(name)! }")
+        let context = Context(["names": "Rick"])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello, Rick!\n")
+    }
 }
 
 class IfTests: XCTestCase {
@@ -371,11 +413,9 @@ class VariableTests: XCTestCase {
         let leaf = try stem.spawnLeaf(raw: "Hello, #(name, location)!")
         let context = Context([:])
         do {
-            let rendered = try stem.render(leaf, with: context).string
-            XCTAssert(rendered == "Hello, World!")
-        } catch let e as String {
-            XCTAssert(e == "invalid var argument" )
-        }
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Expected error")
+        } catch Variable.Error.expectedOneArgument { }
     }
 
     func testVariableEscape() throws {
@@ -391,5 +431,53 @@ class VariableTests: XCTestCase {
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello, World!")
+    }
+}
+
+class UppercasedTests: XCTestCase {
+    func testUppercased() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased(name)!")
+        let context = Context(["name": "World"])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello, WORLD!")
+    }
+
+    func testInvalidArgumentCount() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased()!")
+        let context = Context([:])
+        do {
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Expected error")
+        } catch Uppercased.Error.expectedOneArgument {}
+    }
+
+    func testInvalidType() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased(name)!")
+        let context = Context(["name": ["invalid", "type", "array"]])
+        do {
+            _ = try stem.render(leaf, with: context).string
+            XCTFail("Expected error")
+        } catch Uppercased.Error.expectedStringArgument {}
+    }
+
+    func testNil() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello #uppercased(name)")
+        let context = Context([:])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello ")
+    }
+
+    func testUnwrapNil() throws {
+        let leaf = try stem.spawnLeaf(raw: "#uppercased(name) { Hello, #(self)! }")
+        let context = Context(["name": "World"])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello, WORLD!")
+    }
+
+    func testUnwrapNilEmpty() throws {
+        let leaf = try stem.spawnLeaf(raw: "#uppercased(name) { Hello, #(self)! }")
+        let context = Context([:])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "")
     }
 }
