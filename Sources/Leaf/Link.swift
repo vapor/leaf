@@ -56,6 +56,7 @@ public final class Link<Value> { // TODO: Rename Context
     /**
         Sever the child of this Link. This will also lose all children of that link.
     */
+    @discardableResult
     public func dropChild() -> Link? {
         let child = self.child
         self.child = nil

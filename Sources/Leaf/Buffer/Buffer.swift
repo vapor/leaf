@@ -7,7 +7,7 @@ struct Buffer<T>: BufferProtocol {
 
     private var buffer: IndexingIterator<[T]>
 
-    init<S: Sequence where S.Iterator.Element == T>(_ sequence: S) {
+    init<S: Sequence>(_ sequence: S) where S.Iterator.Element == T {
         buffer = sequence.array.makeIterator()
         // queue up first
         moveForward() // sets next

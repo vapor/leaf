@@ -65,7 +65,7 @@ extension Tag {
         arguments: [Argument]
     ) throws -> Node? {
         guard arguments.count == 1 else {
-            throw "only single argument supported by default, override \(#function) in \(self.dynamicType)for custom behavior"
+            throw "only single argument supported by default, override \(#function) in \(type(of: self))for custom behavior"
         }
 
         let argument = arguments[0]

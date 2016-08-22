@@ -40,7 +40,7 @@ public func == (lhs: Parameter, rhs: Parameter) -> Bool {
 }
 
 extension Parameter {
-    internal init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
+    internal init<S: Sequence>(_ bytes: S) throws where S.Iterator.Element == Byte {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw "invalid argument: empty" }
         if bytes.count > 1, bytes.first == .quotationMark, bytes.last == .quotationMark {

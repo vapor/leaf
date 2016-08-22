@@ -6,8 +6,8 @@ private var workDir: String {
 
 public final class Stem {
     public let workingDirectory: String
-    public private(set) var tags: [String: Tag] = defaultTags
-    public private(set) var cache: [String: Leaf] = [:]
+    public fileprivate(set) var tags: [String: Tag] = defaultTags
+    public fileprivate(set) var cache: [String: Leaf] = [:]
 
     public init(workingDirectory: String = workDir) {
         self.workingDirectory = workingDirectory.finished(with: "/")

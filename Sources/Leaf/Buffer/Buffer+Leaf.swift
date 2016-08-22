@@ -39,7 +39,7 @@ extension BufferProtocol where Element == Byte {
         }
     }
 
-    mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
+    mutating func extractUntil(_ until: (Element) -> Bool) -> [Element] {
         var collection = Bytes()
         if let current = current {
             guard !until(current) else { return [] }

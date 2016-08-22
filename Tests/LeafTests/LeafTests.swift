@@ -358,3 +358,38 @@ class IfTests: XCTestCase {
         }
     }
 }
+
+class VariableTests: XCTestCase {
+    func testVariable() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #(name)!")
+        let context = Context(["name": "World"])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello, World!")
+    }
+
+    func testVariableThrows() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #(name, location)!")
+        let context = Context([:])
+        do {
+            let rendered = try stem.render(leaf, with: context).string
+            XCTAssert(rendered == "Hello, World!")
+        } catch let e as String {
+            XCTAssert(e == "invalid var argument" )
+        }
+    }
+
+    func testVariableEscape() throws {
+        // All tokens are parsed, this tests an escape mechanism to introduce explicit.
+        let leaf = try stem.spawnLeaf(raw: "#()#(hashtag)!")
+        let context = Context(["hashtag": "leafRules"])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "#leafRules!")
+    }
+
+    func testConstant() throws {
+        let leaf = try stem.spawnLeaf(raw: "Hello, #(\"World\")!")
+        let context = Context([:])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Hello, World!")
+    }
+}
