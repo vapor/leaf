@@ -23,7 +23,7 @@ class Performance: XCTestCase {
         let ctxt = Context(["name": "World"])
         measure {
             (1...500).forEach { _ in
-                _ = ctxt.get(path: "name")
+                _ = ctxt["name"]
             }
         }
     }
@@ -198,6 +198,34 @@ class ContextTests: XCTestCase {
     }
 }
 
+class TagTemplateTests: XCTestCase {
+    func testEquatable() throws {
+        let lhs = try TagTemplate(
+            name: "Foo",
+            parameters: [.constant(value: "Hello!")],
+            body: "Just some body"
+        )
+        let rhs = try TagTemplate(
+            name: "Foo",
+            parameters: [.constant(value: "Hello!")],
+            body: "Just some body"
+        )
+
+        XCTAssert(lhs == rhs)
+        XCTAssert(lhs.description == rhs.description)
+
+        let other = try TagTemplate(
+            name: "Foo",
+            parameters: [.constant(value: "Hello!")],
+            body: "Different"
+        )
+
+        XCTAssertFalse(other == lhs)
+        XCTAssertFalse(other == rhs)
+    }
+}
+
+
 class FilterTests: XCTestCase {
     func testBasic() throws {
         let raw = "#(name) { #uppercased(self) }"
@@ -230,7 +258,27 @@ class IncludeTests: XCTestCase {
     }
 }
 
+class Test: Tag {
+    let name = "test"
+
+    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
+        return "Passed"
+    }
+}
+
 class LeafRenderTests: XCTestCase {
+
+    func testCustomStemComponents() throws {
+        let temporaryTag = Test()
+        stem.register(temporaryTag)
+        defer { stem.remove(temporaryTag) }
+
+        let leaf = try stem.spawnLeaf(raw: "Custom #test()")
+        let context = Context([:])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssert(rendered == "Custom Passed")
+    }
+
     func testBasicRender() throws {
         let template = try stem.spawnLeaf(named: "basic-render")
         let contexts = ["a", "ab9***", "ajcm301kc,s--11111", "World", "👾"]
@@ -495,5 +543,40 @@ class UppercasedTests: XCTestCase {
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "")
+    }
+}
+
+class LinkTests: XCTestCase {
+    func testChild() {
+        let link = Link(0)
+        link.addChild(Link(1))
+        XCTAssert(link.child?.value == 1)
+        link.addChild(Link(2))
+        XCTAssert(link.child?.value == 2)
+        XCTAssert([Int](link) == [0, 2])
+        link.dropChild()
+        XCTAssert([Int](link) == [0])
+    }
+
+    func testParent() {
+        let link = Link(0)
+        link.addParent(Link(1))
+        XCTAssert(link.parent?.value == 1)
+        link.addParent(Link(2))
+        XCTAssert(link.parent?.value == 2)
+        XCTAssert([Int](link.tip()) == [2, 0])
+        link.dropParent()
+        XCTAssert([Int](link) == [0])
+    }
+
+    func testTipAndTail() {
+        let link = Link(0)
+        link.addParent(Link(-1))
+        link.parent?.addParent(Link(-2))
+        link.addChild(Link(1))
+        link.child?.addChild(Link(2))
+
+        XCTAssert(link.tip().value == -2)
+        XCTAssert(link.tail().value == 2)
     }
 }

@@ -58,25 +58,6 @@ extension Tag {
         return tagTemplate.makeArguments(context: context)
     }
 
-    public func run(
-        stem: Stem,
-        context: Context,
-        tagTemplate: TagTemplate,
-        arguments: [Argument]
-    ) throws -> Node? {
-        guard arguments.count == 1 else {
-            throw "only single argument supported by default, override \(#function) in \(type(of: self))for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            return .string(value)
-        case let .variable(path: _, value: value):
-            return value
-        }
-    }
-
     public func shouldRender(
         stem: Stem,
         context: Context,

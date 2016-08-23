@@ -7,10 +7,13 @@ extension Leaf {
 }
 
 extension Leaf.Component {
+    public enum ChainError: LeafError {
+        case expectedLeadingTemplate(have: Leaf.Component)
+    }
     internal mutating func addToChain(_ chainedInstruction: TagTemplate) throws {
         switch self {
         case .raw(_):
-            throw "unable to chain \(chainedInstruction) w/o preceding tagTemplate"
+            throw ChainError.expectedLeadingTemplate(have: self)
         case let .tagTemplate(current):
             self = .chain([current, chainedInstruction])
         case let .chain(chain):

@@ -76,8 +76,8 @@ public final class Link<Value> { // TODO: Rename Context
     }
 
     /**
-        Adds a new, or replaces the existing child associated with this link
-    */
+     Adds a new, or replaces the existing child associated with this link
+     */
     public func addChild(_ link: Link?) {
         if let existingChild = child { existingChild.parent = nil }
         self.child = link
