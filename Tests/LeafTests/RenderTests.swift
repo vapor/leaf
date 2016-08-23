@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import Leaf
 
-class LeafRenderTests: XCTestCase {
+class RenderTests: XCTestCase {
     static let allTests = [
         ("testCustomStemComponents", testCustomStemComponents),
         ("testBasicRender", testBasicRender),
