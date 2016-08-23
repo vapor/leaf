@@ -13,7 +13,6 @@ class TagTemplateTests: XCTestCase {
     func testBasic() throws {
         let raw = "#(name) { #uppercased(self) }"
         // let raw = "#uppercased(name)"
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "hi"])
         let rendered = try stem.render(template, with: context).string

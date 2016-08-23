@@ -16,7 +16,7 @@ class IfTests: XCTestCase {
 
         let context = try Node(node: ["say-hello": true])
         let loadable = Context(context)
-        let rendered = try Stem().render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).string
         let expectation = "Hello, there!"
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -26,7 +26,7 @@ class IfTests: XCTestCase {
 
         let context = try Node(node: ["say-hello": false])
         let loadable = Context(context)
-        let rendered = try Stem().render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).string
         let expectation = ""
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -39,7 +39,7 @@ class IfTests: XCTestCase {
             "friend-name": "World"
             ])
         let hello = Context(helloContext)
-        let renderedHello = try Stem().render(template, with: hello).string
+        let renderedHello = try stem.render(template, with: hello).string
         let expectedHello = "Hello, World!"
         XCTAssert(renderedHello == expectedHello, "have: \(renderedHello) want: \(expectedHello)")
 
@@ -48,7 +48,7 @@ class IfTests: XCTestCase {
             "friend-name": "World"
             ])
         let goodbye = Context(goodbyeContext)
-        let renderedGoodbye = try Stem().render(template, with: goodbye).string
+        let renderedGoodbye = try stem.render(template, with: goodbye).string
         let expectedGoodbye = "Goodbye, World!"
         XCTAssert(renderedGoodbye == expectedGoodbye, "have: \(renderedGoodbye) want: \(expectedGoodbye)")
     }
@@ -65,7 +65,7 @@ class IfTests: XCTestCase {
 
         try expectations.forEach { input, expectation in
             let context = Context(input)
-            let rendered = try Stem().render(template, with: context).string
+            let rendered = try stem.render(template, with: context).string
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }

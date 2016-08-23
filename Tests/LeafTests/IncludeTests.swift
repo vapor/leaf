@@ -9,7 +9,6 @@ class IncludeTests: XCTestCase {
     ]
 
     func testBasicInclude() throws {
-        let stem = Stem()
         let template = try stem.spawnLeaf(named: "/include-base")
         // let template = try spawnLeaf(named: "include-base")
         let context = Context(["name": "World"])

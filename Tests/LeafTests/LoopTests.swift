@@ -26,7 +26,7 @@ class LoopTests: XCTestCase {
             ])
         let loadable = Context(context)
         let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
-        let rendered = try Stem().render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
 
@@ -50,7 +50,7 @@ class LoopTests: XCTestCase {
 
         let template = try stem.spawnLeaf(named: "complex-loop")
         let loadable = Context(context)
-        let rendered = try Stem().render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).string
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }

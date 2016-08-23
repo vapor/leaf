@@ -1,15 +1,9 @@
-private var workDir: String {
-    let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
-    let path = "/\(parent)/../../Resources/"
-    return path
-}
-
 public final class Stem {
     public let workingDirectory: String
     public fileprivate(set) var tags: [String: Tag] = defaultTags
     public fileprivate(set) var cache: [String: Leaf] = [:]
 
-    public init(workingDirectory: String = workDir) {
+    public init(workingDirectory: String) {
         self.workingDirectory = workingDirectory.finished(with: "/")
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import Leaf
 
-class Performance: XCTestCase {
+class PerformanceTests: XCTestCase {
     static let allTests = [
         ("testLeaf", testLeaf),
         ("testContextGet", testContextGet),
@@ -11,7 +11,6 @@ class Performance: XCTestCase {
     ]
 
     func testLeaf() throws {
-        let stem = Stem()
         let raw = "Hello, #(name)!"
         let expectation = "Hello, World!".bytes
         let template = try Leaf(raw: raw)
@@ -44,7 +43,6 @@ class Performance: XCTestCase {
     }
 
     func testLeafLong() throws {
-        let stem = Stem()
         let raw = [String](repeating: "Hello, #(name)!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
         let template = try Leaf(raw: raw)

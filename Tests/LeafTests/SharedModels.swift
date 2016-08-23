@@ -1,6 +1,16 @@
 @testable import Leaf
 
-let stem = Stem()
+#if Xcode
+    private var workDir: String {
+        let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
+        let path = "/\(parent)/../../Resources/"
+        return path
+    }
+#else
+    private let workDir = "./Resources/"
+#endif
+
+let stem = Stem(workingDirectory: workDir)
 
 class Test: Tag {
     let name: String

@@ -30,7 +30,7 @@ class RenderTests: XCTestCase {
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
             let context = Context(["self": .string(context)])
-            let rendered = try Stem().render(template, with: context).string
+            let rendered = try stem.render(template, with: context).string
             XCTAssert(rendered == expectation)
         }
     }
@@ -46,7 +46,7 @@ class RenderTests: XCTestCase {
 
         try contextTests.forEach { ctxt in
             let context = Context(ctxt)
-            let rendered = try Stem().render(template, with: context).string
+            let rendered = try stem.render(template, with: context).string
             let name = ctxt["best-friend", "name"]?.string ?? "[fail]"// (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
             XCTAssert(rendered == "Hello, \(name)!", "have: \(rendered) want: Hello, \(name)!")
         }

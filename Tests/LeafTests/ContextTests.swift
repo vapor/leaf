@@ -15,7 +15,6 @@ class ContextTests: XCTestCase {
     ]
 
     func testBasic() throws {
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
         let context = try Node(node: ["name": "World"])
         let loadable = Context(context)
@@ -26,7 +25,6 @@ class ContextTests: XCTestCase {
 
     func testNested() throws {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["best-friend": ["name": "World"]])
         let rendered = try stem.render(template, with: context).string
@@ -35,7 +33,6 @@ class ContextTests: XCTestCase {
 
     func testLoop() throws {
         let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try stem.render(template, with: context).string
@@ -45,7 +42,6 @@ class ContextTests: XCTestCase {
 
     func testNamedInner() throws {
         let raw = "#(name) { #(name) }" // redundant, but should render as an inner stem
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "foo"])
         let rendered = try stem.render(template, with: context).string
@@ -55,7 +51,6 @@ class ContextTests: XCTestCase {
 
     func testDualContext() throws {
         let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "Foo", "friend": ["name": "Bar"]])
         let rendered = try stem.render(template, with: context).string
@@ -65,7 +60,6 @@ class ContextTests: XCTestCase {
 
     func testMultiContext() throws {
         let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
         let rendered = try stem.render(template, with: context).string
@@ -75,7 +69,6 @@ class ContextTests: XCTestCase {
 
     func testIfChain() throws {
         let raw = "#if(key-zero) { Hi, A! } ##if(key-one) { Hi, B! } ##else() { Hi, C! }"
-        let stem = Stem()
         let template = try stem.spawnLeaf(raw: raw)
         let cases: [(key: String, bool: Bool, expectation: String)] = [
             ("key-zero", true, "Hi, A!"),
