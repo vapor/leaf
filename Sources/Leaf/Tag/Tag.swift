@@ -1,4 +1,5 @@
 public protocol Tag {
+    // ** required
     var name: String { get }
 
     // after a leaf is compiled, an tagTemplate will be passed in for validation/modification if necessary
@@ -15,6 +16,7 @@ public protocol Tag {
     ) throws -> [Argument]
 
 
+    // ** Required
     // run the tag w/ the specified arguments and returns the value to add to context or render
     func run(
         stem: Stem,

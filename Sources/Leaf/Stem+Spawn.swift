@@ -1,4 +1,3 @@
-
 extension Stem {
     public func spawnLeaf(raw: String) throws -> Leaf {
         return try spawnLeaf(raw: raw.bytes)
@@ -30,7 +29,7 @@ extension Stem {
     private func postCompile(_ component: Leaf.Component) throws -> Leaf.Component {
         func commandPostcompile(_ tagTemplate: TagTemplate) throws -> TagTemplate {
             guard let command = tags[tagTemplate.name] else {
-                throw "unsupported tagTemplate: \(tagTemplate.name)"
+                throw ParseError.tagTemplateNotFound(name: tagTemplate.name)
             }
             return try command.postCompile(stem: self,
                                            tagTemplate: tagTemplate)

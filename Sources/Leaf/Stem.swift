@@ -26,6 +26,10 @@ extension Stem {
     }
 
     public func remove(_ tag: Tag) {
-        tags[tag.name] = nil
+        removeTag(named: tag.name)
+    }
+
+    public func removeTag(named name: String) {
+        tags[name] = nil
     }
 }

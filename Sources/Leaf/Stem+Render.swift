@@ -1,4 +1,3 @@
-    let val = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
 extension Stem {
     /*
         Renders a given leaf with the given context
@@ -41,12 +40,7 @@ extension Stem {
         leaf: Leaf,
         context: Context
         ) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
-
-        /*
-        return (Variable(), Optional(Node("World")), true)
-         */
-
-        guard let tag = tags[tagTemplate.name] else { throw "unsupported tagTemplate" }
+        guard let tag = tags[tagTemplate.name] else { throw ParseError.tagTemplateNotFound(name: tagTemplate.name) }
         
         let arguments = try tag.makeArguments(
             stem: self,

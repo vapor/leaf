@@ -43,6 +43,7 @@ class Performance: XCTestCase {
         let raw = [String](repeating: "Hello, #(name)!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
         let template = try Leaf(raw: raw)
+        _ = template.description
         let ctxt = Context(["name": "World"])
         measure {
             try! (1...5).forEach { _ in
@@ -92,6 +93,8 @@ class LinkVsArray: XCTestCase {
                 list.forEach { _ in }
             }
         }
+        list.removeTail()
+        XCTAssert([Int](list) == [Int](repeating: 0, count: 99))
     }
 }
 
@@ -203,12 +206,12 @@ class TagTemplateTests: XCTestCase {
         let lhs = try TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body"
+            body: "Just some body, #if(variable) { if } ##else { else #(variable) { #(self) exists }"
         )
         let rhs = try TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body"
+            body: "Just some body, #if(variable) { if } ##else { else #(variable) { #(self) exists }"
         )
 
         XCTAssert(lhs == rhs)
@@ -223,8 +226,76 @@ class TagTemplateTests: XCTestCase {
         XCTAssertFalse(other == lhs)
         XCTAssertFalse(other == rhs)
     }
+
+    func testChainFail() throws {
+        do {
+            _ = try stem.spawnLeaf(raw: "##else() {}")
+            XCTFail()
+        } catch ParseError.expectedLeadingTemplate {}
+
+
+        do {
+            _ = try stem.spawnLeaf(raw: "Different component ##else() {}")
+            XCTFail()
+        } catch ParseError.expectedLeadingTemplate {}
+    }
+
+    func testMissingOpenParens() throws {
+        do {
+            _ = try stem.spawnLeaf(raw: "#invalid-tag {}")
+            XCTFail()
+        } catch ParseError.expectedOpenParenthesis {}
+    }
+
+    
 }
 
+class NodeRenderTests: XCTestCase {
+    func testRender() throws {
+        var node = Node("Hello")
+        XCTAssert(try node.rendered() == "Hello".bytes)
+
+        node = .bytes("SomeBytes".bytes)
+        XCTAssert(try node.rendered() == "SomeBytes".bytes)
+
+        node = .number(19972)
+        XCTAssert(try node.rendered() == "19972".bytes)
+        node = .number(-98172)
+        XCTAssert(try node.rendered() == "-98172".bytes)
+        node = .number(73.655)
+        XCTAssert(try node.rendered() == "73.655".bytes)
+
+        node = .object([:])
+        XCTAssert(try node.rendered() == [])
+        node = .array([])
+        XCTAssert(try node.rendered() == [])
+        node = .null
+        XCTAssert(try node.rendered() == [])
+
+        node = .bool(true)
+        XCTAssert(try node.rendered() == "true".bytes)
+        node = .bool(false)
+        XCTAssert(try node.rendered() == "false".bytes)
+    }
+}
+
+class BufferTests: XCTestCase {
+    func testSectionOpenerThrow() throws {
+        var buffer = Buffer("No opener".bytes)
+        do {
+            _ = try buffer.extractSection(opensWith: .period, closesWith: .period)
+            XCTFail()
+        } catch ParseError.missingBodyOpener {}
+    }
+
+    func testSectionCloserThrow() throws {
+        var buffer = Buffer(". No closer".bytes)
+        do {
+            _ = try buffer.extractSection(opensWith: .period, closesWith: .period)
+            XCTFail()
+        } catch ParseError.missingBodyCloser {}
+    }
+}
 
 class FilterTests: XCTestCase {
     func testBasic() throws {
@@ -242,7 +313,7 @@ class FilterTests: XCTestCase {
 class IncludeTests: XCTestCase {
     func testBasicInclude() throws {
         let stem = Stem()
-        let template = try stem.spawnLeaf(named: "include-base")
+        let template = try stem.spawnLeaf(named: "/include-base")
         // let template = try spawnLeaf(named: "include-base")
         let context = Context(["name": "World"])
         let rendered = try stem.render(template, with: context).string
@@ -259,17 +330,29 @@ class IncludeTests: XCTestCase {
 }
 
 class Test: Tag {
-    let name = "test"
+    let name: String
+    let value: Node?
+    let shouldRender: Bool
+
+    init(name: String, value: Node?, shouldRender: Bool) {
+        self.name = name
+        self.value = value
+        self.shouldRender = shouldRender
+    }
 
     func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
-        return "Passed"
+        return value
+    }
+
+    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Node?) -> Bool {
+        return shouldRender
     }
 }
 
 class LeafRenderTests: XCTestCase {
 
     func testCustomStemComponents() throws {
-        let temporaryTag = Test()
+        let temporaryTag = Test(name: "test", value: "Passed", shouldRender: true)
         stem.register(temporaryTag)
         defer { stem.remove(temporaryTag) }
 
@@ -306,6 +389,55 @@ class LeafRenderTests: XCTestCase {
             let name = ctxt["best-friend", "name"]?.string ?? "[fail]"// (ctxt["best-friend"] as! Dictionary<String, Any>)["name"] as? String ?? "[fail]"
             XCTAssert(rendered == "Hello, \(name)!", "have: \(rendered) want: Hello, \(name)!")
         }
+    }
+
+    func testSpawnThrow() throws {
+        do {
+            _ = try stem.spawnLeaf(raw: "Hello, #badtag()")
+            XCTFail()
+        } catch ParseError.tagTemplateNotFound { }
+    }
+
+    func testRenderThrowMissingTag() throws {
+        do {
+            let tag = Test(name: "test", value: nil, shouldRender: true)
+            stem.register(tag)
+            let leaf = try stem.spawnLeaf(raw: "Hello, #test()")
+            stem.remove(tag)
+            _ = try stem.render(leaf, with: Context([]))
+            XCTFail()
+        } catch ParseError.tagTemplateNotFound { }
+    }
+
+    func testRenderNil() throws {
+        let tag = Test(name: "nil", value: nil, shouldRender: true)
+        stem.register(tag)
+        let leaf = try stem.spawnLeaf(raw: "#nil()")
+        let rendered = try stem.render(leaf, with: Context([])).string
+        XCTAssert(rendered == "")
+    }
+}
+
+class ParameterTests: XCTestCase {
+    func testEquatable() {
+        var l = Parameter.variable(path: ["path", "to", "var"])
+        var r = Parameter.variable(path: ["path", "to", "var"])
+        XCTAssert(l == r)
+
+        l = .constant(value: "constant-value")
+        r = .constant(value: "constant-value")
+        XCTAssert(l == r)
+
+        l = .variable(path: ["simple", "path"])
+        XCTAssert(l != r)
+    }
+
+    func testFromBytesThrows() throws {
+        let bytes = Bytes()
+        do {
+            _ = try Parameter(bytes)
+            XCTFail()
+        } catch Parameter.Error.nonEmptyArgumentRequired {}
     }
 }
 
