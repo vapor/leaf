@@ -40,13 +40,20 @@ public func == (lhs: Parameter, rhs: Parameter) -> Bool {
 }
 
 extension Parameter {
-    internal init<S: Sequence where S.Iterator.Element == Byte>(_ bytes: S) throws {
+    public enum Error: LeafError {
+        case nonEmptyArgumentRequired
+    }
+    
+    internal init<S: Sequence>(_ bytes: S) throws where S.Iterator.Element == Byte {
         let bytes = bytes.array.trimmed(.whitespace)
-        guard !bytes.isEmpty else { throw "invalid argument: empty" }
+        guard !bytes.isEmpty else { throw Error.nonEmptyArgumentRequired }
         if bytes.count > 1, bytes.first == .quotationMark, bytes.last == .quotationMark {
             self = .constant(value: bytes.dropFirst().dropLast().string)
         } else {
-            let path = bytes.split(separator: .period, omittingEmptySubsequences: true)
+            let path = bytes.split(
+                    separator: .period,
+                    omittingEmptySubsequences: true
+                )
                 .map { $0.string }
             self = .variable(path: path)
         }

@@ -33,9 +33,7 @@ extension TagTemplate {
         return parameters.map { arg in
             switch arg {
             case let .variable(path: path):
-                // let value = context.get(path: key)
-                let value = context.get(path: path)
-                // let value = Optional(Node("World"))
+                let value = context[path]
                 return .variable(path: path, value: value)
             case let .constant(c):
                 return .constant(value: c)
@@ -50,11 +48,9 @@ extension TagTemplate: CustomStringConvertible {
     }
 }
 
-
 extension TagTemplate: Equatable {}
 public func == (lhs: TagTemplate, rhs: TagTemplate) -> Bool {
     return lhs.name == rhs.name
         && lhs.parameters == rhs.parameters
-    // TODO: 
-    // && lhs.body == rhs.body
+        && lhs.body == rhs.body
 }

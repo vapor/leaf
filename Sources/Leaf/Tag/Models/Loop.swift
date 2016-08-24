@@ -1,43 +1,48 @@
 public final class Loop: Tag {
+    public enum Error: LeafError {
+        case expectedTwoArguments(have: [Argument])
+        case expectedVariable(have: Argument)
+        case expectedConstant(have: Argument)
+    }
+
     public let name = "loop"
 
     public func run(
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Node? {
-        guard arguments.count == 2 else {
-            throw "loop requires two arguments, var w/ array, and constant w/ sub name"
+        arguments: [Argument]
+    ) throws -> Node? {
+        guard arguments.count == 2 else { throw Error.expectedTwoArguments(have: arguments) }
+        let variable = arguments[0]
+        guard case let .variable(path: _, value: value) = variable else {
+            throw Error.expectedVariable(have: variable)
+        }
+        let constant = arguments[1]
+        guard case let .constant(value: innername) = constant else {
+            throw Error.expectedConstant(have: constant)
         }
 
-        switch (arguments[0], arguments[1]) {
-        case let (.variable(path: _, value: value?), .constant(value: innername)):
-            let array = value.nodeArray ?? [value]
-            return .array(array.map { [innername: $0] })
-        default:
-            return nil
-        }
+        guard let unwrapped = value else { return nil }
+        let array = unwrapped.nodeArray ?? [unwrapped]
+        return .array(array.map { [innername: $0] })
     }
 
     public func render(
         stem: Stem,
         context: Context,
         value: Node?,
-        leaf: Leaf) throws -> Bytes {
-        guard let array = value?.nodeArray else { fatalError() }
+        leaf: Leaf
+    ) throws -> Bytes {
+        guard let array = value?.nodeArray else { fatalError("run function MUST return an array") }
+        func renderItem(_ item: Node) throws -> Bytes {
+            context.push(item)
+            let rendered = try stem.render(leaf, with: context)
+            context.pop()
+            return rendered
+        }
         return try array
-            .map { item -> Bytes in
-                if case .object(_) = item {
-                    context.push(item)
-                } else if case .array(_) = item {
-                    context.push(item)
-                } else {
-                    context.push(["self": item])
-                }
-                defer { context.pop() }
-
-                return try stem.render(leaf, with: context)
-            }
+            .map(renderItem)
             .flatMap { $0 + [.newLine] }
     }
 }

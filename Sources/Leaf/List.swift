@@ -3,7 +3,7 @@
     where performance lists are required.
 */
 public final class List<Value> {
-    private var tip: Link<Value>?
+    public fileprivate(set) var tip: Link<Value>?
 
     public init() {}
 
@@ -31,7 +31,7 @@ public final class List<Value> {
     @discardableResult
     public func removeTail() -> Value? {
         let tail = tip?.tail()
-        tail?.dropParent()
+        _ = tail?.dropParent()
         return tail?.value
     }
 }
@@ -52,7 +52,7 @@ extension List: Sequence {
 }
 
 extension List {
-    public convenience init<S: Sequence where S.Iterator.Element == Value>(_ s: S) {
+    public convenience init<S: Sequence>(_ s: S) where S.Iterator.Element == Value {
         self.init()
         s.forEach(insertAtTail)
     }

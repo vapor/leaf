@@ -1,15 +1,9 @@
-private var workDir: String {
-    let parent = #file.characters.split(separator: "/").map(String.init).dropLast().joined(separator: "/")
-    let path = "/\(parent)/../../Resources/"
-    return path
-}
-
 public final class Stem {
     public let workingDirectory: String
-    public private(set) var tags: [String: Tag] = defaultTags
-    public private(set) var cache: [String: Leaf] = [:]
+    public fileprivate(set) var tags: [String: Tag] = defaultTags
+    public fileprivate(set) var cache: [String: Leaf] = [:]
 
-    public init(workingDirectory: String = workDir) {
+    public init(workingDirectory: String) {
         self.workingDirectory = workingDirectory.finished(with: "/")
     }
 }
@@ -26,6 +20,10 @@ extension Stem {
     }
 
     public func remove(_ tag: Tag) {
-        tags[tag.name] = nil
+        removeTag(named: tag.name)
+    }
+
+    public func removeTag(named name: String) {
+        tags[name] = nil
     }
 }

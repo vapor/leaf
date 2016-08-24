@@ -36,16 +36,12 @@ public final class Context {
 
     // TODO: Subscripts
 
-    public func get(key: String) -> Node? {
-        return queue.lazy.flatMap { $0[key] } .first
-    }
-
-    public func get(path: String) -> Node? {
+    subscript(path: String) -> Node? {
         let components = path.components(separatedBy: ".")
-        return get(path: components)
+        return self[components]
     }
 
-    public func get(path: [String]) -> Node? {
+    subscript(path: [String]) -> Node? {
         for node in queue {
             guard let value = node[path] else { continue }
             return value
@@ -60,12 +56,5 @@ public final class Context {
     @discardableResult
     public func pop() -> Node? {
         return queue.removeTip()
-    }
-}
-
-
-extension Context {
-    internal func renderedSelf() throws -> Bytes? {
-        return try get(path: "self")?.rendered()
     }
 }

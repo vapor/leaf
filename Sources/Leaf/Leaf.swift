@@ -29,12 +29,16 @@ public final class Leaf {
 
 extension Leaf: CustomStringConvertible {
     public var description: String {
-        let components = self.components.map { $0.description } .joined(separator: ", ")
-        return "Leaf: " + components
+        let components = self.components.map { $0.description } .joined(separator: "\n")
+        return "Leaf: \n" + components
     }
 }
 
 extension Leaf: Equatable {}
 public func == (lhs: Leaf, rhs: Leaf) -> Bool {
-    return lhs === rhs
+    for (l, r) in zip(lhs.components, rhs.components) where l != r {
+        return false
+    }
+
+    return lhs.raw == rhs.raw
 }

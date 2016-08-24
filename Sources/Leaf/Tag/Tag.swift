@@ -1,4 +1,5 @@
 public protocol Tag {
+    // ** required
     var name: String { get }
 
     // after a leaf is compiled, an tagTemplate will be passed in for validation/modification if necessary
@@ -15,6 +16,7 @@ public protocol Tag {
     ) throws -> [Argument]
 
 
+    // ** Required
     // run the tag w/ the specified arguments and returns the value to add to context or render
     func run(
         stem: Stem,
@@ -56,25 +58,6 @@ extension Tag {
         tagTemplate: TagTemplate
     ) throws -> [Argument]{
         return tagTemplate.makeArguments(context: context)
-    }
-
-    public func run(
-        stem: Stem,
-        context: Context,
-        tagTemplate: TagTemplate,
-        arguments: [Argument]
-    ) throws -> Node? {
-        guard arguments.count == 1 else {
-            throw "only single argument supported by default, override \(#function) in \(self.dynamicType)for custom behavior"
-        }
-
-        let argument = arguments[0]
-        switch argument {
-        case let .constant(value: value):
-            return .string(value)
-        case let .variable(path: _, value: value):
-            return value
-        }
     }
 
     public func shouldRender(

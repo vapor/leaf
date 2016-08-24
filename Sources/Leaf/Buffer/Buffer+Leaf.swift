@@ -3,7 +3,9 @@ extension BufferProtocol where Element == Byte {
         var comps: [Leaf.Component] = []
         while let next = try nextComponent() {
             if case let .tagTemplate(i) = next, i.isChain {
-                guard comps.count > 0 else { throw "invalid chain component w/o preceeding tagTemplate" }
+                guard comps.count > 0 else {
+                    throw ParseError.expectedLeadingTemplate(have: nil)
+                }
                 while let last = comps.last {
                     var loop = true
 
@@ -30,16 +32,12 @@ extension BufferProtocol where Element == Byte {
 
     mutating func nextComponent() throws -> Leaf.Component? {
         guard let token = current else { return nil }
-        if token == TOKEN {
-            let tagTemplate = try extractInstruction()
-            return .tagTemplate(tagTemplate)
-        } else {
-            let raw = extractUntil { $0 == TOKEN }
-            return .raw(raw)
-        }
+        guard token == TOKEN else { return .raw(extractUntil { $0 == TOKEN }) }
+        let tagTemplate = try extractInstruction()
+        return .tagTemplate(tagTemplate)
     }
 
-    mutating func extractUntil(_ until: @noescape (Element) -> Bool) -> [Element] {
+    mutating func extractUntil(_ until: (Element) -> Bool) -> [Element] {
         var collection = Bytes()
         if let current = current {
             guard !until(current) else { return [] }
@@ -51,6 +49,14 @@ extension BufferProtocol where Element == Byte {
 
         return collection
     }
+}
+
+enum ParseError: LeafError {
+    case tagTemplateNotFound(name: String)
+    case missingBodyOpener(expected: String, have: String?)
+    case missingBodyCloser(expected: String)
+    case expectedOpenParenthesis
+    case expectedLeadingTemplate(have: Leaf.Component?)
 }
 
 /*
@@ -77,11 +83,11 @@ extension BufferProtocol where Element == Byte {
     }
 
     mutating func extractInstructionName() throws -> String {
-        // can't extract section because of @@
-        guard current == TOKEN else { throw "tagTemplate name must lead with token" }
         moveForward() // drop initial token from name. a secondary token implies chain
         let name = extractUntil { $0 == .openParenthesis }
-        guard current == .openParenthesis else { throw "tagTemplate names must be alphanumeric and terminated with '('" }
+        guard current == .openParenthesis else {
+            throw ParseError.expectedOpenParenthesis
+        }
         return name.string
     }
 
@@ -98,7 +104,8 @@ extension BufferProtocol where Element == Byte {
 
     mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
         guard current ==  opener else {
-            throw "invalid body, missing opener: \([opener].string)"
+            let have = current.flatMap { [$0] }?.string
+            throw ParseError.missingBodyOpener(expected: [opener].string, have: have)
         }
 
         var subBodies = 0
@@ -112,7 +119,7 @@ extension BufferProtocol where Element == Byte {
         }
 
         guard current == closer else {
-            throw "invalid body, missing closer: \([closer].string), got \([current])"
+            throw ParseError.missingBodyCloser(expected: [closer].string)
         }
 
         return body
