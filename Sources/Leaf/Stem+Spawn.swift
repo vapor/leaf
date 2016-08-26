@@ -31,8 +31,10 @@ extension Stem {
             guard let command = tags[tagTemplate.name] else {
                 throw ParseError.tagTemplateNotFound(name: tagTemplate.name)
             }
-            return try command.postCompile(stem: self,
-                                           tagTemplate: tagTemplate)
+            return try command.postCompile(
+                stem: self,
+                tagTemplate: tagTemplate
+            )
         }
 
         switch component {

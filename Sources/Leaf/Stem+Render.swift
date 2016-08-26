@@ -16,13 +16,10 @@ extension Stem {
                 buffer += try render(tag: tag, context: context, value: value, tagTemplate: tagTemplate)
             case let .chain(chain):
                 for tagTemplate in chain {
-                    /**
-                     *********************
-                     ****** WARNING ******
-                     *********************
-
-                     Deceptively similar to above, nuance will break e'rything!
-                     **/
+                    /*
+                        WARNING
+                        Deceptively similar to above, nuance will break e'rything!
+                    */
                     let (tag, value, shouldRender) = try process(tagTemplate, leaf: leaf, context: context)
                     guard shouldRender else { continue } // inner loop
                     buffer += try render(tag: tag, context: context, value: value, tagTemplate: tagTemplate)
@@ -39,7 +36,7 @@ extension Stem {
         _ tagTemplate: TagTemplate,
         leaf: Leaf,
         context: Context
-        ) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
+    ) throws -> (tag: Tag, value: Node?, shouldRender: Bool) {
         guard let tag = tags[tagTemplate.name] else { throw ParseError.tagTemplateNotFound(name: tagTemplate.name) }
         
         let arguments = try tag.makeArguments(
