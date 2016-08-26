@@ -28,29 +28,32 @@ public final class Link<Value> { // TODO: Rename Context
         Add a new Link to the end of the chain.
     */
     public func extend(_ output: Value) {
-        if let child = child {
-            child.extend(output)
-        } else {
-            let new = Link(output)
-            new.parent = self
-            self.child = new
-        }
+        let tail = self.tail()
+        let new = Link(output)
+        new.parent = tail
+        tail.child = new
     }
 
     /**
         The tip of the chain associated with this link
     */
     public func tip() -> Link {
-        guard let parent = parent else { return self }
-        return parent.tip()
+        var tip = self
+        while let next = tip.parent {
+            tip = next
+        }
+        return tip
     }
 
     /**
         The tail of the chain associated with this link
     */
     public func tail() -> Link {
-        guard let child = child else { return self }
-        return child.tail()
+        var tail = self
+        while let next = tail.child {
+            tail = next
+        }
+        return tail
     }
 
     /**

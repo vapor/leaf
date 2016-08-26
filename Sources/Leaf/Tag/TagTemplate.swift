@@ -33,7 +33,7 @@ extension TagTemplate {
         return parameters.map { arg in
             switch arg {
             case let .variable(path: path):
-                let value = context[path]
+                let value = context.get(path: path)
                 return .variable(path: path, value: value)
             case let .constant(c):
                 return .constant(value: c)

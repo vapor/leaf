@@ -12,7 +12,7 @@ extension Stem {
     }
 
     public func spawnLeaf(named name: String) throws -> Leaf {
-        if let existing = cache[name] { return existing }
+        if let existing = cache?[name] { return existing }
 
         var subpath = name.finished(with: SUFFIX)
         if subpath.hasPrefix("/") {

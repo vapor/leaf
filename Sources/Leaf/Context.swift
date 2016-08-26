@@ -36,16 +36,13 @@ public final class Context {
 
     // TODO: Subscripts
 
-    subscript(path: String) -> Node? {
-        let components = path.components(separatedBy: ".")
-        return self[components]
-    }
+    func get<T: PathIndex>(path: [T]) -> Node? {
+        var next = queue.tip
+        repeat {
+            if let value = next?.value[path] { return value }
+            next = next?.child
+        } while next != nil
 
-    subscript(path: [String]) -> Node? {
-        for node in queue {
-            guard let value = node[path] else { continue }
-            return value
-        }
         return nil
     }
 
