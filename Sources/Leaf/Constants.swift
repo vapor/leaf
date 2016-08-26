@@ -16,6 +16,6 @@ public var defaultTags: [String: Tag] = [
     "else": Else(),
     "loop": Loop(),
     "uppercased": Uppercased(),
-    "include": Include(),
+    "embed": Embed(),
     "index": Index(),
 ]

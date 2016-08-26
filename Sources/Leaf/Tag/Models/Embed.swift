@@ -1,9 +1,9 @@
-public final class Include: Tag {
+public final class Embed: Tag {
     public enum Error: LeafError {
         case expectedSingleConstant(have: [Parameter])
     }
 
-    public let name = "include"
+    public let name = "embed"
 
     public func postCompile(
         stem: Stem,

@@ -4,23 +4,9 @@ import XCTest
 
 class IndexTests: XCTestCase {
     static let allTests = [
-        ("testOverrideRequired", testOverrideRequired),
         ("testBasicIndex", testBasicIndex),
         ("testOutOfBounds", testOutOfBounds)
     ]
-
-    func testOverrideRequired() throws {
-        let basic = BasicTag(name: "fail")
-        stem.register(basic)
-        defer { stem.remove(basic) }
-
-        let template = try stem.spawnLeaf(raw: "This should #fail()")
-        let context = Context([])
-        do {
-            _ = try stem.render(template, with: context)
-            XCTFail()
-        } catch BasicTag.Error.overrideRequired {}
-    }
 
     func testBasicIndex() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #index(friends, idx)!")

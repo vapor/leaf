@@ -1,9 +1,7 @@
-class Index: BasicTag {
-    public init() {
-        super.init(name: "index")
-    }
+public class Index: BasicTag {
+    public let name = "index"
 
-    override func run(arguments: [Argument]) throws -> Node? {
+    public func run(arguments: [Argument]) throws -> Node? {
         guard
             arguments.count == 2,
             let array = arguments[0].value?.nodeArray,

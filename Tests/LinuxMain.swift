@@ -4,8 +4,8 @@ import XCTest
 XCTMain([
      testCase(BufferTests.allTests),
      testCase(ContextTests.allTests),
+     testCase(EmbedTests.allTests),
      testCase(IfTests.allTests),
-     testCase(IncludeTests.allTests),
      testCase(IndexTests.allTests),
      testCase(LinkTests.allTests),
      testCase(LoopTests.allTests),
