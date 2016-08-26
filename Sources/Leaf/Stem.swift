@@ -1,7 +1,7 @@
 public final class Stem {
     public let workingDirectory: String
     public fileprivate(set) var tags: [String: Tag] = defaultTags
-    public fileprivate(set) var cache: [String: Leaf]
+    public fileprivate(set) var cache: [String: Leaf]?
 
     public init(workingDirectory: String, cache: [String: Leaf]? = [:]) {
         self.workingDirectory = workingDirectory.finished(with: "/")
@@ -11,7 +11,7 @@ public final class Stem {
 
 extension Stem {
     public func cache(_ leaf: Leaf, named name: String) {
-        cache[name] = leaf
+        cache?[name] = leaf
     }
 }
 
