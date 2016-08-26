@@ -8,6 +8,7 @@ class TagTemplateTests: XCTestCase {
         ("testEquatable", testEquatable),
         ("testChainFail", testChainFail),
         ("testMissingOpenParens", testMissingOpenParens),
+        ("testEquatableComponents", testEquatableComponents),
     ]
 
     func testBasic() throws {
@@ -43,6 +44,12 @@ class TagTemplateTests: XCTestCase {
 
         XCTAssertFalse(other == lhs)
         XCTAssertFalse(other == rhs)
+    }
+
+    func testEquatableComponents() throws {
+        let lhs = Leaf.Component.raw("raw".bytes)
+        let rhs = Leaf.Component.chain([])
+        XCTAssertNotEqual(lhs, rhs)
     }
 
     func testChainFail() throws {
