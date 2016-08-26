@@ -27,7 +27,7 @@ class PerformanceTests: XCTestCase {
         let ctxt = Context(["name": "World"])
         measure {
             (1...500).forEach { _ in
-                _ = ctxt["name"]
+                _ = ctxt.get(path: ["name"])
             }
         }
     }
