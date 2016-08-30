@@ -20,6 +20,10 @@ Leaf syntax is based around a single token, in this case, the hashtag: `#`.
 
 > This is a low sugar templating language. Some things might not be ideal. The goal is to have flexibility, but first we must be stable. At that point, we will add sugar.
 
+### Using # in html with Leaf
+
+If you need # to appear alone in your html, simply using `#()` will render as #
+
 # Examples
 
 ### Variable
