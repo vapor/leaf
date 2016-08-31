@@ -12,14 +12,28 @@ extension Stem {
     }
 
     public func spawnLeaf(named name: String) throws -> Leaf {
+        var name = name
+        if name.hasPrefix("/") {
+            name = String(name.characters.dropFirst())
+        }
+
+        // non-leaf document. rendered as pure bytes
+        if name.characters.contains("."), !name.hasSuffix(".leaf") {
+            if let existing = cache?[name] { return existing }
+            let path = workingDirectory + name
+            let bytes = try Bytes.load(path: path)
+            let component = Leaf.Component.raw(bytes)
+            let leaf = Leaf(raw: bytes.string, components: [component])
+            cache(leaf, named: name)
+            return leaf
+        }
+
+        name = name.finished(with: SUFFIX)
+
+        // add suffix if necessary
         if let existing = cache?[name] { return existing }
 
-        var subpath = name.finished(with: SUFFIX)
-        if subpath.hasPrefix("/") {
-            subpath = String(subpath.characters.dropFirst())
-        }
-        let path = workingDirectory + subpath
-
+        let path = workingDirectory + name
         let raw = try Bytes.load(path: path)
         let leaf = try spawnLeaf(raw: raw)
         cache(leaf, named: name)
