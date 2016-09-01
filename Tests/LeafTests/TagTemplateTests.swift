@@ -12,8 +12,8 @@ class TagTemplateTests: XCTestCase {
     ]
 
     func testBasic() throws {
-        let raw = "#(name) { #uppercased(self) }"
-        // let raw = "#uppercased(name)"
+        let raw = "*(name) { *uppercased(self) }"
+        // let raw = "*uppercased(name)"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "hi"])
         let rendered = try stem.render(template, with: context).string
@@ -25,12 +25,12 @@ class TagTemplateTests: XCTestCase {
         let lhs = try TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body, #if(variable) { if } ##else { else #(variable) { #(self) exists }"
+            body: "Just some body, *if(variable) { if } **else { else *(variable) { *(self) exists }"
         )
         let rhs = try TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body, #if(variable) { if } ##else { else #(variable) { #(self) exists }"
+            body: "Just some body, *if(variable) { if } **else { else *(variable) { *(self) exists }"
         )
 
         XCTAssert(lhs == rhs)
@@ -54,20 +54,20 @@ class TagTemplateTests: XCTestCase {
 
     func testChainFail() throws {
         do {
-            _ = try stem.spawnLeaf(raw: "##else() {}")
+            _ = try stem.spawnLeaf(raw: "**else() {}")
             XCTFail()
         } catch ParseError.expectedLeadingTemplate {}
 
 
         do {
-            _ = try stem.spawnLeaf(raw: "Different component ##else() {}")
+            _ = try stem.spawnLeaf(raw: "Different component **else() {}")
             XCTFail()
         } catch ParseError.expectedLeadingTemplate {}
     }
 
     func testMissingOpenParens() throws {
         do {
-            _ = try stem.spawnLeaf(raw: "#invalid-tag {}")
+            _ = try stem.spawnLeaf(raw: "*invalid-tag {}")
             XCTFail()
         } catch ParseError.expectedOpenParenthesis {}
     }

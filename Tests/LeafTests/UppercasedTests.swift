@@ -13,14 +13,14 @@ class UppercasedTests: XCTestCase {
     ]
 
     func testUppercased() throws {
-        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased(name)!")
+        let leaf = try stem.spawnLeaf(raw: "Hello, *uppercased(name)!")
         let context = Context(["name": "World"])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello, WORLD!")
     }
 
     func testInvalidArgumentCount() throws {
-        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased()!")
+        let leaf = try stem.spawnLeaf(raw: "Hello, *uppercased()!")
         let context = Context([:])
         do {
             _ = try stem.render(leaf, with: context).string
@@ -29,7 +29,7 @@ class UppercasedTests: XCTestCase {
     }
 
     func testInvalidType() throws {
-        let leaf = try stem.spawnLeaf(raw: "Hello, #uppercased(name)!")
+        let leaf = try stem.spawnLeaf(raw: "Hello, *uppercased(name)!")
         let context = Context(["name": ["invalid", "type", "array"]])
         do {
             _ = try stem.render(leaf, with: context).string
@@ -38,21 +38,21 @@ class UppercasedTests: XCTestCase {
     }
 
     func testNil() throws {
-        let leaf = try stem.spawnLeaf(raw: "Hello #uppercased(name)")
+        let leaf = try stem.spawnLeaf(raw: "Hello *uppercased(name)")
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello ")
     }
 
     func testUnwrapNil() throws {
-        let leaf = try stem.spawnLeaf(raw: "#uppercased(name) { Hello, #(self)! }")
+        let leaf = try stem.spawnLeaf(raw: "*uppercased(name) { Hello, *(self)! }")
         let context = Context(["name": "World"])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello, WORLD!")
     }
 
     func testUnwrapNilEmpty() throws {
-        let leaf = try stem.spawnLeaf(raw: "#uppercased(name) { Hello, #(self)! }")
+        let leaf = try stem.spawnLeaf(raw: "*uppercased(name) { Hello, *(self)! }")
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "")
