@@ -1,1 +1,1 @@
-#loop(friends, "friend") { Hello, #(friend) }
+*loop(friends, "friend") { Hello, *(friend) }

@@ -1,12 +1,12 @@
-#html() {
-    #head() {
-        #h1() { Welcome to, #(title) }
+*html() {
+    *head() {
+        *h1() { Welcome to, *(title) }
     }
 
-    #body() {
-        #div("container") {
-            #loop(projects, "project") {
-                Project: #(project)
+    *body() {
+        *div("container") {
+            *loop(projects, "project") {
+                Project: *(project)
             }
         }
     }

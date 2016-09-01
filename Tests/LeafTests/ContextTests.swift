@@ -15,7 +15,7 @@ class ContextTests: XCTestCase {
     ]
 
     func testBasic() throws {
-        let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
+        let template = try stem.spawnLeaf(raw: "Hello, *(name)!")
         let context = try Node(node: ["name": "World"])
         let loadable = Context(context)
         let rendered = try stem.render(template, with: loadable).string
@@ -24,7 +24,7 @@ class ContextTests: XCTestCase {
     }
 
     func testNested() throws {
-        let raw = "#(best-friend) { Hello, #(self.name)! }"
+        let raw = "*(best-friend) { Hello, *(self.name)! }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["best-friend": ["name": "World"]])
         let rendered = try stem.render(template, with: context).string
@@ -32,16 +32,16 @@ class ContextTests: XCTestCase {
     }
 
     func testLoop() throws {
-        let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
+        let raw = "*loop(friends, \"friend\") { Hello, *(friend)! }"
         let template = try stem.spawnLeaf(raw: raw)
-        let context = Context(["friends": ["a", "b", "c", "#loop"]])
+        let context = Context(["friends": ["a", "b", "c", "*loop"]])
         let rendered = try stem.render(template, with: context).string
-        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
+        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, *loop!\n"
         XCTAssert(rendered == expectation)
     }
 
     func testNamedInner() throws {
-        let raw = "#(name) { #(name) }" // redundant, but should render as an inner stem
+        let raw = "*(name) { *(name) }" // redundant, but should render as an inner stem
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "foo"])
         let rendered = try stem.render(template, with: context).string
@@ -50,16 +50,16 @@ class ContextTests: XCTestCase {
     }
 
     func testDualContext() throws {
-        let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
+        let raw = "Let's render *(friend) { *(name) is friends with *(friend.name) } "
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "Foo", "friend": ["name": "Bar"]])
         let rendered = try stem.render(template, with: context).string
         let expectation = "Let's render Foo is friends with Bar"
-        XCTAssert(rendered == expectation, "have: *\(rendered)* want: *\(expectation)*")
+        XCTAssertEqual(rendered, expectation)
     }
 
     func testMultiContext() throws {
-        let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
+        let raw = "*(a) { *(self.b) { *(self.c) { *(self.path.1) } } }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
         let rendered = try stem.render(template, with: context).string
@@ -68,7 +68,7 @@ class ContextTests: XCTestCase {
     }
 
     func testIfChain() throws {
-        let raw = "#if(key-zero) { Hi, A! } ##if(key-one) { Hi, B! } ##else() { Hi, C! }"
+        let raw = "*if(key-zero) { Hi, A! } **if(key-one) { Hi, B! } **else() { Hi, C! }"
         let template = try stem.spawnLeaf(raw: raw)
         let cases: [(key: String, bool: Bool, expectation: String)] = [
             ("key-zero", true, "Hi, A!"),
@@ -88,7 +88,7 @@ class ContextTests: XCTestCase {
     }
 
     func testNestedComplex() throws {
-        let raw = "Hello, #(path.to.person.0.name)!"
+        let raw = "Hello, *(path.to.person.0.name)!"
         let context = try Node(node:[
             "path": [
                 "to": [

@@ -18,7 +18,7 @@ class EmbedTests: XCTestCase {
 
     func testEmbedThrow() throws {
         do {
-            _ = try stem.spawnLeaf(raw: "#embed(invalid-variable)")
+            _ = try stem.spawnLeaf(raw: "*embed(invalid-variable)")
             XCTFail("Expected throw")
         } catch Embed.Error.expectedSingleConstant { }
     }
