@@ -6,7 +6,7 @@ extension Stem {
     public func spawnLeaf(raw: Bytes) throws -> Leaf {
         let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
-        let components = try buffer.components().map(postCompile)
+        let components = try buffer.components(stem: self).map(postCompile)
         var leaf = Leaf(raw: raw.string, components: components)
         try tags.values.forEach {
             leaf = try $0.postCompile(stem: self, leaf: leaf)

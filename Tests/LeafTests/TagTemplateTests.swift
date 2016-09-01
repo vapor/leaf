@@ -22,24 +22,28 @@ class TagTemplateTests: XCTestCase {
     }
 
     func testEquatable() throws {
-        let lhs = try TagTemplate(
+        let lhsb = try stem.spawnLeaf(raw: "Just some body, *if(variable) { if } **else() { else *(variable) { *(self) exists } }")
+        let lhs = TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body, *if(variable) { if } **else { else *(variable) { *(self) exists }"
+            body: lhsb
         )
-        let rhs = try TagTemplate(
+
+        let rhsb = try stem.spawnLeaf(raw: "Just some body, *if(variable) { if } **else() { else *(variable) { *(self) exists } }")
+        let rhs = TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Just some body, *if(variable) { if } **else { else *(variable) { *(self) exists }"
+            body: rhsb
         )
 
         XCTAssert(lhs == rhs)
         XCTAssert(lhs.description == rhs.description)
 
-        let other = try TagTemplate(
+        let otherb = try stem.spawnLeaf(raw: "Different")
+        let other = TagTemplate(
             name: "Foo",
             parameters: [.constant(value: "Hello!")],
-            body: "Different"
+            body: otherb
         )
 
         XCTAssertFalse(other == lhs)

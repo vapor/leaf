@@ -99,7 +99,7 @@ class ContextTests: XCTestCase {
             ]
             ])
 
-        let template = try Leaf(raw: raw)
+        let template = try stem.spawnLeaf(raw: raw)
         let loadable = Context(context)
         let rendered = try stem.render(template, with: loadable).string
         let expectation = "Hello, World!"
