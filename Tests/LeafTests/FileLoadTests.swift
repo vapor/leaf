@@ -13,7 +13,7 @@ class FileLoadTests: XCTestCase {
 
         let rendered = try stem.render(leaf, with: Context([])).string
         // tags are not parsed in non-leaf document
-        let expectation = "This file *(won't) be *rendered() {}\n"
+        let expectation = "This file ^(won't) be ^rendered() {}\n"
         XCTAssertEqual(rendered, expectation)
 
         // test cache

@@ -4,7 +4,7 @@
 /*
     Potentially expose in future
 */
-internal let TOKEN: Byte = "*".bytes.first!
+internal let TOKEN = "^".bytes.first!
 internal let SUFFIX = ".leaf"
 
 /**

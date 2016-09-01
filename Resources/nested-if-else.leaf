@@ -1,11 +1,11 @@
-*if(a) {
+^if(a) {
     Got a.
-} **if(b) {
+} ^^if(b) {
     Got b.
-} **if(c) {
+} ^^if(c) {
     Got c.
-} **if(d) {
+} ^^if(d) {
     Got d.
-} **else() {
+} ^^else() {
     Got e.
 }

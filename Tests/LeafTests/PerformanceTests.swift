@@ -11,7 +11,7 @@ class PerformanceTests: XCTestCase {
     ]
 
     func testLeaf() throws {
-        let raw = "Hello, *(name)!"
+        let raw = "Hello, ^(name)!"
         let expectation = "Hello, World!".bytes
         let template = try stem.spawnLeaf(raw: raw)
         let ctxt = Context(["name": "World"])
@@ -43,7 +43,7 @@ class PerformanceTests: XCTestCase {
     }
 
     func testLeafLong() throws {
-        let raw = [String](repeating: "Hello, *(name)!", count: 1000).joined(separator: ", ")
+        let raw = [String](repeating: "Hello, ^(name)!", count: 1000).joined(separator: ", ")
         let expectation = [String](repeating: "Hello, World!", count: 1000).joined(separator: ", ").bytes
         let template = try stem.spawnLeaf(raw: raw)
         _ = template.description

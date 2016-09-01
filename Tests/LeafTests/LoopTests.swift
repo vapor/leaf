@@ -20,12 +20,12 @@ class LoopTests: XCTestCase {
             "friends": [
                 "asdf",
                 "🐌",
-                "8***z0-1",
+                "8^^^z0-1",
                 12
             ]
             ])
         let loadable = Context(context)
-        let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
+        let expectation = "Hello, asdf\nHello, 🐌\nHello, 8^^^z0-1\nHello, 12\n"
         let rendered = try stem.render(template, with: loadable).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
@@ -56,7 +56,7 @@ class LoopTests: XCTestCase {
     }
 
     func testNumberThrow() throws {
-        let leaf = try stem.spawnLeaf(raw: "*loop(too, many, arguments)")
+        let leaf = try stem.spawnLeaf(raw: "^loop(too, many, arguments)")
         let context = Context(["too": "", "many": "", "arguments": ""])
         do {
             _ = try stem.render(leaf, with: context).string
@@ -65,7 +65,7 @@ class LoopTests: XCTestCase {
     }
 
     func testInvalidSignature1() throws {
-        let leaf = try stem.spawnLeaf(raw: "*loop(\"invalid\", \"signature\")")
+        let leaf = try stem.spawnLeaf(raw: "^loop(\"invalid\", \"signature\")")
         let context = Context([:])
         do {
             _ = try stem.render(leaf, with: context).string
@@ -74,7 +74,7 @@ class LoopTests: XCTestCase {
     }
 
     func testInvalidSignature2() throws {
-        let leaf = try stem.spawnLeaf(raw: "*loop(invalid, signature)")
+        let leaf = try stem.spawnLeaf(raw: "^loop(invalid, signature)")
         let context = Context([:])
         do {
             _ = try stem.render(leaf, with: context).string
@@ -83,7 +83,7 @@ class LoopTests: XCTestCase {
     }
 
     func testSkipNil() throws {
-        let leaf = try stem.spawnLeaf(raw: "*loop(find-nil, \"inner-name\") { asdfasdfasdfsdf }")
+        let leaf = try stem.spawnLeaf(raw: "^loop(find-nil, \"inner-name\") { asdfasdfasdfsdf }")
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "")
@@ -91,7 +91,7 @@ class LoopTests: XCTestCase {
 
     func testFuzzySingle() throws {
         // single => array
-        let leaf = try stem.spawnLeaf(raw: "*loop(names, \"name\") { Hello, *(name)! }")
+        let leaf = try stem.spawnLeaf(raw: "^loop(names, \"name\") { Hello, ^(name)! }")
         let context = Context(["names": "Rick"])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello, Rick!\n")
