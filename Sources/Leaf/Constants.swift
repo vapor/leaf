@@ -18,4 +18,9 @@ public var defaultTags: [String: Tag] = [
     "uppercased": Uppercased(),
     "embed": Embed(),
     "index": Index(),
+
+    // Layouts
+    "extend": Extend(),
+    "import": Import(),
+    "export": Export(),
 ]
