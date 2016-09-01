@@ -25,16 +25,6 @@ public final class Extend: Tag {
     }
 }
 
-public final class Export: BasicTag {
-    public let name = "export"
-    public func run(arguments: [Argument]) throws -> Node? { return nil }
-}
-
-public final class Import: BasicTag {
-    public let name = "import"
-    public func run(arguments: [Argument]) throws -> Node? { return nil }
-}
-
 extension Leaf {
     func exchangeImports(exports: [String: Leaf]) -> Leaf {
         var comps: [Leaf.Component] = []
