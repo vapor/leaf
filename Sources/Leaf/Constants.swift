@@ -23,4 +23,7 @@ public var defaultTags: [String: Tag] = [
     "extend": Extend(),
     "import": Import(),
     "export": Export(),
+
+    // Raw
+    "raw": Raw()
 ]

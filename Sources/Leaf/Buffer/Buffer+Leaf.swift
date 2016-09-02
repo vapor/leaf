@@ -79,8 +79,14 @@ extension BufferProtocol where Element == Byte {
         // TODO: Body should be leaf components
         let body = try extractBody()
         moveForward()
-        let spawn = try stem.spawnLeaf(raw: body)
-        return TagTemplate(name: name, parameters: parameters, body: spawn)
+
+        let leaf: Leaf?
+        if let tag = stem.tags[name] {
+            leaf = try tag.compileBody(stem: stem, raw: body)
+        } else {
+            leaf = try stem.spawnLeaf(raw: body)
+        }
+        return TagTemplate(name: name, parameters: parameters, body: leaf)
     }
 
     mutating func extractInstructionName() throws -> String {
@@ -111,6 +117,9 @@ extension BufferProtocol where Element == Byte {
 
         var subBodies = 0
         var body = Bytes()
+        /*
+            // TODO: ignore found tokens _inside_ of a tag.
+        */
         while let value = moveForward() {
             // TODO: Account for escaping `\`
             if value == closer && subBodies == 0 { break }

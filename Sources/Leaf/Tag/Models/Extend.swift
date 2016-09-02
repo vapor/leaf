@@ -10,9 +10,8 @@ public final class Extend: Tag {
         leaf: Leaf
     ) throws -> Leaf {
         guard leaf.isExtension else { return leaf }
-        let exports = leaf.gatherExports()
         let base = try stem.loadExtensionBase(for: leaf)
-        return base.exchangeImports(exports: exports)
+        return base.exchangeImports(exporting: leaf)
     }
 
     public func run(
@@ -26,7 +25,9 @@ public final class Extend: Tag {
 }
 
 extension Leaf {
-    func exchangeImports(exports: [String: Leaf]) -> Leaf {
+    func exchangeImports(exporting: Leaf) -> Leaf {
+        let exports = exporting.gatherExports()
+
         var comps: [Leaf.Component] = []
         components.forEach { component in
             guard case let .tagTemplate(template) = component, template.name == "import" else {
@@ -43,7 +44,7 @@ extension Leaf {
             }
         }
 
-        return Leaf(raw: "", components: comps)
+        return Leaf(raw: exporting.raw, components: comps)
     }
 }
 
