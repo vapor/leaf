@@ -11,28 +11,30 @@ Welcome to Leaf. Leaf's goal is to be a simple templating language that can make
 
 # Syntax
 
-Leaf syntax is based around a single token, in this case, the caret: `^`.
+Leaf syntax is based around a single token, in this case, the hashtag: `#`.
 
 
->It's important to note that _all_ carets will be parsed, there is no escaping. Use `^()` to render a plain `^`. `4 ^() 5` => `4 ^ 5`
+>It's important to note that _all_ hashtags will be parsed, there is no escaping. Use `#()` to render a plain `#`. `#()Leaf` => `#Leaf`. Or, for larger sections, use the `raw` tag. `#raw() { #Do #whatever #you #want #to #in #here!. }`
 
 ### Structure
 
 Here we see all the components of a Leaf tag.
 
 ```leaf
-^name(parameter.list, goes, "here") {
+#name(parameter.list, goes, "here") {
   This is an optional body here
 }
 ```
 
 #### Token
 
-> ^
+> #
 
 #### Name
 
 > name
+
+While not strictly enforced, it is HIGHLY encouraged that users only use alphanumeric characters in names. This may be enforced in future versions.
 
 #### Parameter List
 
@@ -40,165 +42,19 @@ Here we see all the components of a Leaf tag.
 
 #### Body
 
-> This is an optional body here
-
-### 1. Token
-
-The first thing we see is the `^` token. This indicates the start of a tag.
-
-All tags MUST be terminated with an open parenthesis, even if there is no parameters. For example, `^empty()`, NOT ~~`^empty`~~
-
-### 2. Name
-
-All tag's MUST have a name. The name will be considered any string in between the token, `^`, and `(`
-
-##### Examples
-
-1. `^()` => `""`
-2. `^someName()` => `"someName"`
-3. `^number1()` => `"number1"`
-
-### 3. Parameter List
-
-The parameter list is signified by the open parenthesis and terminated by the closing parenthesis. There are two types of parameters in leaf. It is a comma separated list of indeterminate length.
-
-##### 1. Context Variable
-
-A context variable is something that will be pulled from the context during rendering and will be different each time Leaf generates the view. There is no special indication.
-
-You can also use `.` to indicate paths when displaying context. For example, given:
-
-```
-[
-  "name": "World",
-  "friends": [
-    [ "name" : "Venus" ],
-    [ "name" : "Mercury" ],
-    [ "name" : "Neptune" ],
-  ]
-]
-```
-
-And the following Leaf.
-
-```
-Hello, ^(friends.1.name)!
-```
-
-We would render:
-
-```
-Hello, Mercury!
-```
-
-##### 1. Static Constant
-
-Static constants are parameters that will never change each time leaf renders a view. They are declared by using surrounding quotations.
-
-```
-Hello, ^("World")!
-```
-
-In the above example, no matter what I pass into the context, it will render as `Hello, World!` because it is a constant. Static constants are most often used for specifying behavior about a tag.
-
-### 4. Body
-
-Sometimes tags require a body, sometimes they will not. A body is generally scoped further into the context in some way, and can be used to control the flow and contents of a layout.
-
-```leaf
-^if(is21) {
-  <h1>Welcome to the Beer Barn!</h1>
-}
-```
-
-
-
-
-#### 1.
-
-Context:
-
-```
-[
-  "name": "World"
-]
-```
-
-Leaf:
-
-```
-Hello, ^(name)!
-```
-
-Render:
-
-```
-Hello, World!
-```
-
-#### 2.
-
-Context:
-
-```
-[
-  "name": "World",
-  "friend": [
-    [ "name" : "Mars" ]
-  ]
-]
-```
-
-Leaf:
-
-```
-Hello, ^(friend.name)!
-```
-
-Render:
-
-```
-Hello, Mars!
-```
-
-#### 3.
-
-Context:
-
-```
-[
-  "name": "World",
-  "friends": [
-    [ "name" : "Venus" ],
-    [ "name" : "Mercury" ],
-    [ "name" : "Neptune" ],
-  ]
-]
-```
-
-Leaf:
-
-```
-Hello, ^(friends.1.name)!
-```
-
-Render:
-
-```
-Hello, Mercury!
-```
-
-
-
-> While not strictly enforced, it is HIGHLY encouraged that users only use alphanumeric characters in names. This may be enforced in future versions.
-
-// TODO:
-
-> This is a low sugar templating language. Some things might not be ideal. The goal is to have flexibility, but first we must be stable. At that point, we will add sugar.
+> This is an optional body here indicated w/ open and closed curly brackets. 
 
 ### Using # in html with Leaf
 
-If you need # to appear alone in your html, simply using `#()` will render as #
+If you need # to appear alone in your html, simply using `#()` will render as #. Alternatively, the raw tag is available for larger sections of code:
+
+```leaf
+#raw() { 
+   Do whatever w/ #'s here, this code
+   won't be rendered as leaf document.
+   It's a great place for things like Javascript or large HTML sections.
+}
+```
 
 # Examples
 
@@ -232,11 +88,59 @@ Loop a variable
 }
 ```
 
-// TODO:
+### Chaining
+
+The double token, `##` indicates a chain. If the previous tag fails, this tag will be given an opportunity to run. It can be applied to any standard tag, for example, above we chain to else, but we could also chain to loops.
+
+```
+#ifEmpty(friends) {
+    Try adding some friends!
+} ##loop(friends, "friend") {
+    <li> #(friend.name) </li>
+}
+```
 
 ## Custom Tags
 
+Look at the existing tags for advanced scenarios, let's look at a basic example by creating `Index` together. This tag will take two arguments, an array, and an index to access.
 
+```
+class Index: BasicTag {
+    let name = "index"
+
+    func run(arguments: [Argument]) throws -> Node? {
+        guard
+            arguments.count == 2,
+            let array = arguments[0].value?.nodeArray,
+            let index = arguments[1].value?.int,
+            index < array.count
+            else { return nil }
+        return array[index]
+    }
+}
+```
+
+Now, after creating our `Stem`, we can register the tag:
+
+```
+stem.register(Index())
+```
+
+And use it like so:
+
+```
+Hello, #index(friends, "0")!
+```
+
+We can also chain `else` to this like we did earlier if we want to check existence first:
+
+```
+#index(friends, "0") {
+    Hello, #(self)!
+} ##else() {
+    Nobody's there!
+}
+```
 
 # Inspiration
 
