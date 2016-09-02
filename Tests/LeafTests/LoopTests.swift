@@ -20,12 +20,12 @@ class LoopTests: XCTestCase {
             "friends": [
                 "asdf",
                 "🐌",
-                "8***z0-1",
+                "8###z0-1",
                 12
             ]
             ])
         let loadable = Context(context)
-        let expectation = "Hello, asdf\nHello, 🐌\nHello, 8***z0-1\nHello, 12\n"
+        let expectation = "Hello, asdf\nHello, 🐌\nHello, 8###z0-1\nHello, 12\n"
         let rendered = try stem.render(template, with: loadable).string
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }

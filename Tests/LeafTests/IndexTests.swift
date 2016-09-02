@@ -9,7 +9,7 @@ class IndexTests: XCTestCase {
     ]
 
     func testBasicIndex() throws {
-        let template = try stem.spawnLeaf(raw: "Hello, #index(friends, idx)!")
+        let template = try stem.spawnLeaf(raw: "Hello, #index(friends, idx) { #(self)! }")
         let context = Context(["friends": ["Joe", "Jan", "Jay", "Jen"], "idx": 3])
         let rendered = try stem.render(template, with: context).string
         let expectation = "Hello, Jen!"

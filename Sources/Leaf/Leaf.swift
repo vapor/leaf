@@ -15,12 +15,6 @@ public final class Leaf {
     // public let components: [Component]
     public let components: List<Component>
 
-    internal init(raw: String) throws {
-        self.raw = raw
-        var buffer = Buffer(raw.bytes.trimmed(.whitespace).array)
-        self.components = List(try buffer.components())
-    }
-
     internal init(raw: String, components: [Component]) {
         self.raw = raw
         self.components = List(components)

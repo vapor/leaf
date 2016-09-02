@@ -16,4 +16,6 @@ XCTMain([
      testCase(TagTemplateTests.allTests),
      testCase(UppercasedTests.allTests),
      testCase(VariableTests.allTests),
+     testCase(LayoutTests.allTests),
+     testCase(RawTests.allTests),
 ])

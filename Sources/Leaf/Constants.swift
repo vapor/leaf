@@ -4,7 +4,7 @@
 /*
     Potentially expose in future
 */
-internal let TOKEN: Byte = .numberSign
+internal let TOKEN = Byte.numberSign
 internal let SUFFIX = ".leaf"
 
 /**
@@ -18,4 +18,12 @@ public var defaultTags: [String: Tag] = [
     "uppercased": Uppercased(),
     "embed": Embed(),
     "index": Index(),
+
+    // Layouts
+    "extend": Extend(),
+    "import": Import(),
+    "export": Export(),
+
+    // Raw
+    "raw": Raw()
 ]

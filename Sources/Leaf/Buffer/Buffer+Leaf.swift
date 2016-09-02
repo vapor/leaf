@@ -1,7 +1,7 @@
 extension BufferProtocol where Element == Byte {
-    mutating func components() throws -> [Leaf.Component] {
+    mutating func components(stem: Stem) throws -> [Leaf.Component] {
         var comps: [Leaf.Component] = []
-        while let next = try nextComponent() {
+        while let next = try nextComponent(stem: stem) {
             if case let .tagTemplate(i) = next, i.isChain {
                 guard comps.count > 0 else {
                     throw ParseError.expectedLeadingTemplate(have: nil)
@@ -30,10 +30,10 @@ extension BufferProtocol where Element == Byte {
         return comps
     }
 
-    mutating func nextComponent() throws -> Leaf.Component? {
+    mutating func nextComponent(stem: Stem) throws -> Leaf.Component? {
         guard let token = current else { return nil }
         guard token == TOKEN else { return .raw(extractUntil { $0 == TOKEN }) }
-        let tagTemplate = try extractInstruction()
+        let tagTemplate = try extractInstruction(stem: stem)
         return .tagTemplate(tagTemplate)
     }
 
@@ -65,21 +65,28 @@ enum ParseError: LeafError {
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
  */
 extension BufferProtocol where Element == Byte {
-    mutating func extractInstruction() throws -> TagTemplate {
+    mutating func extractInstruction(stem: Stem) throws -> TagTemplate {
         let name = try extractInstructionName()
         let parameters = try extractInstructionParameters()
 
         // check if body
         moveForward()
         guard current == .space, next == .openCurly else {
-            return try TagTemplate(name: name, parameters: parameters, body: String?.none)
+            return TagTemplate(name: name, parameters: parameters, body: Leaf?.none)
         }
         moveForward() // queue up `{`
 
         // TODO: Body should be leaf components
         let body = try extractBody()
         moveForward()
-        return try TagTemplate(name: name, parameters: parameters, body: body)
+
+        let leaf: Leaf?
+        if let tag = stem.tags[name] {
+            leaf = try tag.compileBody(stem: stem, raw: body)
+        } else {
+            leaf = try stem.spawnLeaf(raw: body)
+        }
+        return TagTemplate(name: name, parameters: parameters, body: leaf)
     }
 
     mutating func extractInstructionName() throws -> String {
@@ -110,6 +117,9 @@ extension BufferProtocol where Element == Byte {
 
         var subBodies = 0
         var body = Bytes()
+        /*
+            // TODO: ignore found tokens _inside_ of a tag.
+        */
         while let value = moveForward() {
             // TODO: Account for escaping `\`
             if value == closer && subBodies == 0 { break }

@@ -25,7 +25,7 @@ class RenderTests: XCTestCase {
 
     func testBasicRender() throws {
         let template = try stem.spawnLeaf(named: "basic-render")
-        let contexts = ["a", "ab9***", "ajcm301kc,s--11111", "World", "👾"]
+        let contexts = ["a", "ab9###", "ajcm301kc,s--11111", "World", "👾"]
 
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
@@ -41,7 +41,7 @@ class RenderTests: XCTestCase {
         let contextTests: [Node] = [
             try .init(node: ["best-friend": ["name": "World"]]),
             try .init(node: ["best-friend": ["name": "##"]]),
-            try .init(node: ["best-friend": ["name": "!*7D0"]])
+            try .init(node: ["best-friend": ["name": "!#7D0"]])
         ]
 
         try contextTests.forEach { ctxt in

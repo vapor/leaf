@@ -2,6 +2,17 @@ public protocol Tag {
     // ** required
     var name: String { get }
 
+    func compileBody(
+        stem: Stem,
+        raw: String
+    ) throws -> Leaf
+
+    // after a leaf is compiled, an opportunity for specialized tags to modify the leaf itself
+    func postCompile(
+        stem: Stem,
+        leaf: Leaf
+    ) throws -> Leaf
+
     // after a leaf is compiled, an tagTemplate will be passed in for validation/modification if necessary
     func postCompile(
         stem: Stem,
@@ -45,6 +56,20 @@ public protocol Tag {
 }
 
 extension Tag {
+    public func compileBody(
+        stem: Stem,
+        raw: String
+        ) throws -> Leaf {
+        return try stem.spawnLeaf(raw: raw)
+    }
+
+    public func postCompile(
+        stem: Stem,
+        leaf: Leaf
+    ) throws -> Leaf {
+        return leaf
+    }
+
     public func postCompile(
         stem: Stem,
         tagTemplate: TagTemplate
