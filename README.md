@@ -21,20 +21,18 @@ Leaf syntax is based around a single token, in this case, the hashtag: `#`.
 Here we see all the components of a Leaf tag.
 
 ```leaf
-#name(parameter.list, goes, "here") {
+#someTag(parameter.list, goes, "here") {
   This is an optional body here
 }
 ```
 
 #### Token
 
-> #
+> The `#` token will define we're a tag
 
 #### Name
 
-> name
-
-While not strictly enforced, it is HIGHLY encouraged that users only use alphanumeric characters in names. This may be enforced in future versions.
+>In above example, it would be `someTag`. While not strictly enforced, it is HIGHLY encouraged that users only use alphanumeric characters in names. This may be enforced in future versions.
 
 #### Parameter List
 
@@ -42,14 +40,14 @@ While not strictly enforced, it is HIGHLY encouraged that users only use alphanu
 
 #### Body
 
-> This is an optional body here indicated w/ open and closed curly brackets. 
+> This is an optional body here indicated w/ open and closed curly brackets.
 
 ### Using # in html with Leaf
 
 If you need # to appear alone in your html, simply using `#()` will render as #. Alternatively, the raw tag is available for larger sections of code:
 
 ```leaf
-#raw() { 
+#raw() {
    Do whatever w/ #'s here, this code
    won't be rendered as leaf document.
    It's a great place for things like Javascript or large HTML sections.
