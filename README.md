@@ -146,3 +146,4 @@ This library was inspired by:
 
 - [Stencil](https://github.com/kylef/stencil)
 - [Mustache](https://github.com/groue/GRMustache.swift)
+- [Blade](https://laravel.com/docs/5.0/templates)
