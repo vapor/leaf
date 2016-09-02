@@ -1,1 +1,1 @@
-^import("greeting") { Hello }, ^(name)!
+#import("greeting") { Hello }, #(name)!

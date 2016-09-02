@@ -17,7 +17,7 @@ class RenderTests: XCTestCase {
         stem.register(temporaryTag)
         defer { stem.remove(temporaryTag) }
 
-        let leaf = try stem.spawnLeaf(raw: "Custom ^test()")
+        let leaf = try stem.spawnLeaf(raw: "Custom #test()")
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Custom Passed")
@@ -25,7 +25,7 @@ class RenderTests: XCTestCase {
 
     func testBasicRender() throws {
         let template = try stem.spawnLeaf(named: "basic-render")
-        let contexts = ["a", "ab9^^^", "ajcm301kc,s--11111", "World", "👾"]
+        let contexts = ["a", "ab9###", "ajcm301kc,s--11111", "World", "👾"]
 
         try contexts.forEach { context in
             let expectation = "Hello, \(context)!"
@@ -41,7 +41,7 @@ class RenderTests: XCTestCase {
         let contextTests: [Node] = [
             try .init(node: ["best-friend": ["name": "World"]]),
             try .init(node: ["best-friend": ["name": "##"]]),
-            try .init(node: ["best-friend": ["name": "!^7D0"]])
+            try .init(node: ["best-friend": ["name": "!#7D0"]])
         ]
 
         try contextTests.forEach { ctxt in
@@ -54,7 +54,7 @@ class RenderTests: XCTestCase {
 
     func testSpawnThrow() throws {
         do {
-            _ = try stem.spawnLeaf(raw: "Hello, ^badtag()")
+            _ = try stem.spawnLeaf(raw: "Hello, #badtag()")
             XCTFail()
         } catch ParseError.tagTemplateNotFound { }
     }
@@ -63,7 +63,7 @@ class RenderTests: XCTestCase {
         do {
             let tag = Test(name: "test", value: nil, shouldRender: true)
             stem.register(tag)
-            let leaf = try stem.spawnLeaf(raw: "Hello, ^test()")
+            let leaf = try stem.spawnLeaf(raw: "Hello, #test()")
             stem.remove(tag)
             _ = try stem.render(leaf, with: Context([]))
             XCTFail()
@@ -73,7 +73,7 @@ class RenderTests: XCTestCase {
     func testRenderNil() throws {
         let tag = Test(name: "nil", value: nil, shouldRender: true)
         stem.register(tag)
-        let leaf = try stem.spawnLeaf(raw: "^nil()")
+        let leaf = try stem.spawnLeaf(raw: "#nil()")
         let rendered = try stem.render(leaf, with: Context([])).string
         XCTAssert(rendered == "")
     }

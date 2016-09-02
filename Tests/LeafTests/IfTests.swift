@@ -71,7 +71,7 @@ class IfTests: XCTestCase {
     }
 
     func testIfThrow() throws {
-        let leaf = try stem.spawnLeaf(raw: "^if(too, many, arguments) { }")
+        let leaf = try stem.spawnLeaf(raw: "#if(too, many, arguments) { }")
         let context = Context([:])
         do {
             _ = try stem.render(leaf, with: context)
