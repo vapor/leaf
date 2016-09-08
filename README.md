@@ -54,6 +54,12 @@ If you need # to appear alone in your html, simply using `#()` will render as #.
 }
 ```
 
+# Syntax Highlighting
+
+## Atom
+
+[language-leaf](https://atom.io/packages/language-leaf) by ButkiewiczP
+
 # Examples
 
 ### Variable
