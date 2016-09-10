@@ -14,7 +14,7 @@ public enum Argument {
     case constant(value: String)
 }
 
-extension Argument {
+public extension Argument {
     var value: Node? {
         switch self {
         case let .constant(value: value):
