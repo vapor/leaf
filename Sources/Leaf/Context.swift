@@ -24,6 +24,9 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// Prevent conflicts with Node and TLS's Context
+public typealias LeafContext = Context
+
 /**
     The associated context used in rendering
 */
