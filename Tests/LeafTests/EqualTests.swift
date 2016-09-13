@@ -5,6 +5,21 @@ import XCTest
 class EqualTests: XCTestCase {
     static let allTests = [
         ("testBasicEquals", testBasicEqual),
+        ("testFuzzy", testFuzzy),
+        ("testEmpty", testEmpty),
+        ("testArraysFuzzy", testArraysFuzzy),
+        ("testArraysNotEqual", testArraysNotEqual),
+        ("testArraysBadType", testArraysBadType),
+        ("testBytes", testBytes),
+        ("testBytesBadType", testBytesBadType),
+        ("testNumberDouble", testNumberDouble),
+        ("testNumberInt", testNumberInt),
+        ("testNumberUInt", testNumberUInt),
+        ("testObject", testObject),
+        ("testObjectNotEqual", testObjectNotEqual),
+        ("testObjectNotEqualCount", testObjectNotEqualCount),
+        ("testObjectBadType", testObjectBadType),
+        ("testBadSignature", testBadSignature),
     ]
 
     func testBasicEqual() throws {
@@ -26,70 +41,174 @@ class EqualTests: XCTestCase {
         XCTAssertEqual(rendered, expectation)
     }
 
-    func testComplexLoop() throws {
-        let context = try Node(node: [
-            "friends": [
-                [
-                    "name": "Venus",
-                    "age": 12345
-                ],
-                [
-                    "name": "Pluto",
-                    "age": 888
-                ],
-                [
-                    "name": "Mercury",
-                    "age": 9000
-                ]
+    func testEmpty() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes }")
+        let rendered = try stem.render(template, with: Context([:])).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testArraysFuzzy() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes }")
+        let node = try Node(node:
+            [
+                "a": [1,2,3],
+                "b": ["1", "2", "3"]
             ]
-            ])
-
-        let template = try stem.spawnLeaf(named: "complex-loop")
-        let loadable = Context(context)
-        let rendered = try stem.render(template, with: loadable).string
-        let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>\n"
-        XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
     }
 
-    func testNumberThrow() throws {
-        let leaf = try stem.spawnLeaf(raw: "#loop(too, many, arguments)")
-        let context = Context(["too": "", "many": "", "arguments": ""])
+    func testArraysNotEqual() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": [1,2,3],
+                "b": ["1", "2", "3", "4"]
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testArraysBadType() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": [1,2,3],
+                "b": "I'm not an array"
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testBytes() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": .bytes([1,2,3]),
+                "b": .bytes([1,2,3])
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testBytesBadType() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": .bytes([1,2,3]),
+                "b": "I'm not bytes"
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testNumberDouble() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": 3.14,
+                "b": "3.14"
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testNumberInt() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": 42,
+                "b": 42.0
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testNumberUInt() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": UInt(4255),
+                "b": "4255"
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testObject() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": ["name": "same"],
+                "b": ["name": "same"]
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "yes"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testObjectNotEqual() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": ["name": "not"],
+                "b": ["name": "same"]
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testObjectNotEqualCount() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": ["name": "same", "more": "foo"],
+                "b": ["name": "same"]
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testObjectBadType() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
+        let node = try Node(node:
+            [
+                "a": ["name": "a"],
+                "b": "I'm no object"
+            ]
+        )
+        let rendered = try stem.render(template, with: Context(node)).string
+        let expectation = "no"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testBadSignature() throws {
+        let template = try stem.spawnLeaf(raw: "#equal(a, b, c)")
         do {
-            _ = try stem.render(leaf, with: context).string
+            _ = try stem.render(template, with: Context([:])).string
             XCTFail("Should throw")
-        } catch Loop.Error.expectedTwoArguments { }
-    }
-
-    func testInvalidSignature1() throws {
-        let leaf = try stem.spawnLeaf(raw: "#loop(\"invalid\", \"signature\")")
-        let context = Context([:])
-        do {
-            _ = try stem.render(leaf, with: context).string
-            XCTFail("Should throw")
-        } catch Loop.Error.expectedVariable { }
-    }
-
-    func testInvalidSignature2() throws {
-        let leaf = try stem.spawnLeaf(raw: "#loop(invalid, signature)")
-        let context = Context([:])
-        do {
-            _ = try stem.render(leaf, with: context).string
-            XCTFail("Should throw")
-        } catch Loop.Error.expectedConstant { }
-    }
-
-    func testSkipNil() throws {
-        let leaf = try stem.spawnLeaf(raw: "#loop(find-nil, \"inner-name\") { asdfasdfasdfsdf }")
-        let context = Context([:])
-        let rendered = try stem.render(leaf, with: context).string
-        XCTAssert(rendered == "")
-    }
-
-    func testFuzzySingle() throws {
-        // single => array
-        let leaf = try stem.spawnLeaf(raw: "#loop(names, \"name\") { Hello, #(name)! }")
-        let context = Context(["names": "Rick"])
-        let rendered = try stem.render(leaf, with: context).string
-        XCTAssert(rendered == "Hello, Rick!\n")
+        } catch Equal.Error.expected2Arguments {}
     }
 }
