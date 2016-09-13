@@ -5,6 +5,8 @@ XCTMain([
      testCase(BufferTests.allTests),
      testCase(ContextTests.allTests),
      testCase(EmbedTests.allTests),
+     testCase(EqualTests.allTests),
+     testCase(FileLoadTests.allTests),
      testCase(IfTests.allTests),
      testCase(IndexTests.allTests),
      testCase(LinkTests.allTests),
