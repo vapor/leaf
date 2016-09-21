@@ -8,7 +8,7 @@ extension Node {
         case let .number(number):
             return number.description.bytes
         case let .string(str):
-            return str.bytes
+            return str.htmlEscaped().bytes
         case let .bytes(bytes):
             return bytes
         }
