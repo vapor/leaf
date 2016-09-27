@@ -35,7 +35,7 @@ extension Leaf {
                 return
             }
 
-            template.parameters.first?.constant.flatMap { importName in
+            if let importName = template.parameters.first?.constant {
                 if let exported = exports[importName] {
                     comps += exported.components.array
                 } else if let fallback = template.body {
