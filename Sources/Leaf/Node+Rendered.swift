@@ -11,6 +11,8 @@ extension Node {
             return str.bytes
         case let .bytes(bytes):
             return bytes
+        case let .date(date):
+            return date.description.bytes 
         }
     }
 }
