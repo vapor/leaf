@@ -1,4 +1,4 @@
-class Raw: Tag {
+final class Raw: Tag {
     let name = "raw"
 
     func compileBody(stem: Stem, raw: String) throws -> Leaf {
@@ -7,8 +7,11 @@ class Raw: Tag {
     }
 
     func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
-        return nil
+        guard let string = arguments.first?.value?.string else { return nil }
+        let unescaped = string.bytes
+        return .bytes(unescaped)
     }
+
     func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Node?) -> Bool {
         return true
     }
