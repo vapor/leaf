@@ -67,9 +67,11 @@ class LinkTests: XCTestCase {
 
     func testParent() {
         let link = Link(0)
-        link.addParent(Link(1))
+        let parent1 = Link(1)
+        link.addParent(parent1)
         XCTAssert(link.parent?.value == 1)
-        link.addParent(Link(2))
+        let parent2 = Link(2)
+        link.addParent(parent2)
         XCTAssert(link.parent?.value == 2)
         XCTAssert([Int](link.tip()) == [2, 0])
         link.dropParent()
@@ -78,8 +80,10 @@ class LinkTests: XCTestCase {
 
     func testTipAndTail() {
         let link = Link(0)
-        link.addParent(Link(-1))
-        link.parent?.addParent(Link(-2))
+        let parent = Link(-1)
+        let parentParent = Link(-2)
+        link.addParent(parent)
+        link.parent?.addParent(parentParent)
         link.addChild(Link(1))
         link.child?.addChild(Link(2))
 
