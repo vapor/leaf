@@ -5,7 +5,7 @@ public final class Link<Value> { // TODO: Rename Context
     /**
         The immediate parent of this link. `nil` if current branch is tip
     */
-    public private(set) var parent: Link?
+    public private(set) weak var parent: Link?
 
     /**
         The child of this link, `nil` if tail
