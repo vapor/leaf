@@ -9,6 +9,7 @@ class IfTests: XCTestCase {
         ("testBasicIfElse", testBasicIfElse),
         ("testNestedIfElse", testNestedIfElse),
         ("testIfThrow", testIfThrow),
+        ("testIfEmptyString", testIfEmptyString),
     ]
 
     func testBasicIf() throws {
@@ -77,5 +78,23 @@ class IfTests: XCTestCase {
             _ = try stem.render(leaf, with: context)
             XCTFail("should throw")
         } catch If.Error.expectedSingleArgument {}
+    }
+
+    func testIfEmptyString() throws {
+        let template = try stem.spawnLeaf(named: "if-empty-string-test")
+        do {
+            let context = try Node(node: ["name": "name"])
+            let loadable = Context(context)
+            let rendered = try stem.render(template, with: loadable).string
+            let expectation = "Hello, there!"
+            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+        }
+        do {
+            let context = try Node(node: ["name": ""])
+            let loadable = Context(context)
+            let rendered = try stem.render(template, with: loadable).string
+            let expectation = ""
+            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+        }
     }
 }
