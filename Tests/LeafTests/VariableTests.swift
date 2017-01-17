@@ -46,6 +46,6 @@ class VariableTests: XCTestCase {
         let leaf = try stem.spawnLeaf(raw: "This thing: #(content)")
         let context = Context(["content": "\r\n\"/\""])
         let rendered = try stem.render(leaf, with: context).string
-        XCTAssert(rendered == "This thing: \r\n&quot;/&quot;")
+        XCTAssertEqual(rendered, "This thing: \r\n&quot;/&quot;")
     }
 }
