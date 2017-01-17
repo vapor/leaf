@@ -2,10 +2,10 @@ import Foundation
 
 extension Byte {
     // <
-    static let lessThan: Byte = 60
+    static let lessThan: Byte = 0x3C
 
     // >
-    static let greaterThan: Byte = 62
+    static let greaterThan: Byte = 0x3E
 }
 
 extension String {
