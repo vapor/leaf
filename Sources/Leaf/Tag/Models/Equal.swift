@@ -54,5 +54,8 @@ fileprivate func fuzzyEquals(_ lhs: Node?, _ rhs: Node?) -> Bool {
         return true
     case let .string(string):
         return string == rhs.string
+    case let .date(date):
+        guard case let .date(rhs) = rhs else { return false }
+        return date == rhs
     }
 }
