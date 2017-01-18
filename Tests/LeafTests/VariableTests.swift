@@ -8,6 +8,7 @@ class VariableTests: XCTestCase {
         ("testVariableThrows", testVariableThrows),
         ("testVariableEscape", testVariableEscape),
         ("testConstant", testConstant),
+        ("testCarriageReturn", testCarriageReturn),
     ]
 
     func testVariable() throws {
@@ -39,5 +40,12 @@ class VariableTests: XCTestCase {
         let context = Context([:])
         let rendered = try stem.render(leaf, with: context).string
         XCTAssert(rendered == "Hello, World!")
+    }
+
+    func testCarriageReturn() throws {
+        let leaf = try stem.spawnLeaf(raw: "This thing: #(content)")
+        let context = Context(["content": "\r\n\"/\""])
+        let rendered = try stem.render(leaf, with: context).string
+        XCTAssertEqual(rendered, "This thing: \r\n&quot;/&quot;")
     }
 }
