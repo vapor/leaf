@@ -41,8 +41,8 @@ public final class Loop: Tag {
             context.pop()
             return rendered
         }
-        return try array
-            .map(renderItem)
-            .flatMap { $0 + [.newLine] }
+        return try array.map(renderItem)
+            .joined(separator: [.newLine])
+            .flatMap { $0 }
     }
 }
