@@ -36,7 +36,7 @@ class ContextTests: XCTestCase {
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try stem.render(template, with: context).string
-        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!\n"
+        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!"
         XCTAssert(rendered == expectation)
     }
 
