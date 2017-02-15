@@ -27,17 +27,17 @@ extension String {
                 .replacingOccurrences(of: "<", with: "&lt;")
                 .replacingOccurrences(of: ">", with: "&gt;")
         */
-        return bytes
+        return makeBytes()
             .split(separator: .ampersand, omittingEmptySubsequences: false)
-            .joined(separator: "&amp;".bytes)
-            .split(separator: .quotationMark, omittingEmptySubsequences: false)
-            .joined(separator: "&quot;".bytes)
+            .joined(separator: "&amp;".makeBytes())
+            .split(separator: .quote, omittingEmptySubsequences: false)
+            .joined(separator: "&quot;".makeBytes())
             .split(separator: .apostrophe, omittingEmptySubsequences: false)
-            .joined(separator: "&#39;".bytes)
+            .joined(separator: "&#39;".makeBytes())
             .split(separator: .lessThan, omittingEmptySubsequences: false)
-            .joined(separator: "&lt;".bytes)
+            .joined(separator: "&lt;".makeBytes())
             .split(separator: .greaterThan, omittingEmptySubsequences: false)
-            .joined(separator: "&gt;".bytes)
+            .joined(separator: "&gt;".makeBytes())
             .string
     }
 }

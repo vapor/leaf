@@ -51,7 +51,7 @@ class TagTemplateTests: XCTestCase {
     }
 
     func testEquatableComponents() throws {
-        let lhs = Leaf.Component.raw("raw".bytes)
+        let lhs = Leaf.Component.raw("raw".makeBytes())
         let rhs = Leaf.Component.chain([])
         XCTAssertNotEqual(lhs, rhs)
     }

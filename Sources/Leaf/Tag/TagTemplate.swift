@@ -9,9 +9,9 @@ public final class TagTemplate {
     internal init(name: String, parameters: [Parameter], body: Leaf?) {
         // we strip leading token, if another one is there,
         // that means we've found a chain element, ie: @@else {
-        if name.bytes.first == TOKEN {
+        if name.makeBytes().first == TOKEN {
             self.isChain = true
-            self.name = name.bytes.dropFirst().string
+            self.name = name.makeBytes().dropFirst().string
         } else {
             self.isChain = false
             self.name = name

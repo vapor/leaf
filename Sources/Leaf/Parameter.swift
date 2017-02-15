@@ -47,7 +47,7 @@ extension Parameter {
     internal init<S: Sequence>(_ bytes: S) throws where S.Iterator.Element == Byte {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw Error.nonEmptyArgumentRequired }
-        if bytes.count > 1, bytes.first == .quotationMark, bytes.last == .quotationMark {
+        if bytes.count > 1, bytes.first == .quote, bytes.last == .quote {
             self = .constant(value: bytes.dropFirst().dropLast().string)
         } else {
             let path = bytes.split(

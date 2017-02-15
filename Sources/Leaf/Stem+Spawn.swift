@@ -1,6 +1,6 @@
 extension Stem {
     public func spawnLeaf(raw: String) throws -> Leaf {
-        return try spawnLeaf(raw: raw.bytes)
+        return try spawnLeaf(raw: raw.makeBytes())
     }
 
     public func spawnLeaf(raw: Bytes) throws -> Leaf {

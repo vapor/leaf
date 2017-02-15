@@ -9,17 +9,17 @@ class NodeRenderTests: XCTestCase {
 
     func testRender() throws {
         var node = Node("Hello")
-        XCTAssert(try node.rendered() == "Hello".bytes)
+        XCTAssert(try node.rendered() == "Hello".makeBytes())
 
-        node = .bytes("SomeBytes".bytes)
-        XCTAssert(try node.rendered() == "SomeBytes".bytes)
+        node = .bytes("SomeBytes".makeBytes())
+        XCTAssert(try node.rendered() == "SomeBytes".makeBytes())
 
         node = .number(19972)
-        XCTAssert(try node.rendered() == "19972".bytes)
+        XCTAssert(try node.rendered() == "19972".makeBytes())
         node = .number(-98172)
-        XCTAssert(try node.rendered() == "-98172".bytes)
+        XCTAssert(try node.rendered() == "-98172".makeBytes())
         node = .number(73.655)
-        XCTAssert(try node.rendered() == "73.655".bytes)
+        XCTAssert(try node.rendered() == "73.655".makeBytes())
 
         node = .object([:])
         XCTAssert(try node.rendered() == [])
@@ -29,8 +29,8 @@ class NodeRenderTests: XCTestCase {
         XCTAssert(try node.rendered() == [])
 
         node = .bool(true)
-        XCTAssert(try node.rendered() == "true".bytes)
+        XCTAssert(try node.rendered() == "true".makeBytes())
         node = .bool(false)
-        XCTAssert(try node.rendered() == "false".bytes)
+        XCTAssert(try node.rendered() == "false".makeBytes())
     }
 }
