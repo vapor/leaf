@@ -70,7 +70,7 @@ extension Stem {
         context: Context,
         value: Node?,
         tagTemplate: TagTemplate) throws -> Bytes {
-        // return "World".bytes
+        // return "World".makeBytes()
         if let subLeaf = tagTemplate.body {
             if let val = value { context.push(["self": val]) }
             return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)

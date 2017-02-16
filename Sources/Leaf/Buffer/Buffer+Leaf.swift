@@ -71,7 +71,7 @@ extension BufferProtocol where Element == Byte {
 
         // check if body
         moveForward()
-        guard current == .space, next == .openCurly else {
+        guard current == .space, next == .leftCurlyBracket else {
             return TagTemplate(name: name, parameters: parameters, body: Leaf?.none)
         }
         moveForward() // queue up `{`
@@ -91,20 +91,20 @@ extension BufferProtocol where Element == Byte {
 
     mutating func extractInstructionName() throws -> String {
         moveForward() // drop initial token from name. a secondary token implies chain
-        let name = extractUntil { $0 == .openParenthesis }
-        guard current == .openParenthesis else {
+        let name = extractUntil { $0 == .leftParenthesis }
+        guard current == .leftParenthesis else {
             throw ParseError.expectedOpenParenthesis
         }
         return name.string
     }
 
     mutating func extractInstructionParameters() throws -> [Parameter] {
-        return try extractSection(opensWith: .openParenthesis, closesWith: .closedParenthesis)
+        return try extractSection(opensWith: .leftParenthesis, closesWith: .rightParenthesis)
             .extractParameters()
     }
 
     mutating func extractBody() throws -> String {
-        return try extractSection(opensWith: .openCurly, closesWith: .closedCurly)
+        return try extractSection(opensWith: .leftCurlyBracket, closesWith: .rightCurlyBracket)
             .trimmed(.whitespace)
             .string
     }

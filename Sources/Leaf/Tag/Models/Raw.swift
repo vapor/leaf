@@ -2,13 +2,13 @@ final class Raw: Tag {
     let name = "raw"
 
     func compileBody(stem: Stem, raw: String) throws -> Leaf {
-        let component = Leaf.Component.raw(raw.bytes)
+        let component = Leaf.Component.raw(raw.makeBytes())
         return Leaf(raw: raw, components: [component])
     }
 
     func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
         guard let string = arguments.first?.value?.string else { return nil }
-        let unescaped = string.bytes
+        let unescaped = string.makeBytes()
         return .bytes(unescaped)
     }
 

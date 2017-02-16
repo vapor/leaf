@@ -9,7 +9,7 @@ class BufferTests: XCTestCase {
     ]
 
     func testSectionOpenerThrow() throws {
-        var buffer = Buffer("No opener".bytes)
+        var buffer = Buffer("No opener".makeBytes())
         do {
             _ = try buffer.extractSection(opensWith: .period, closesWith: .period)
             XCTFail()
@@ -17,7 +17,7 @@ class BufferTests: XCTestCase {
     }
 
     func testSectionCloserThrow() throws {
-        var buffer = Buffer(". No closer".bytes)
+        var buffer = Buffer(". No closer".makeBytes())
         do {
             _ = try buffer.extractSection(opensWith: .period, closesWith: .period)
             XCTFail()
