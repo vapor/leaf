@@ -1,6 +1,6 @@
 extension Node {
     func rendered() throws -> Bytes {
-        switch self {
+        switch self.wrapped {
         case .array(_), .object(_), .null:
             return []
         case let .bool(bool):

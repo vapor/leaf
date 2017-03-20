@@ -48,13 +48,13 @@ extension Parameter {
         let bytes = bytes.array.trimmed(.whitespace)
         guard !bytes.isEmpty else { throw Error.nonEmptyArgumentRequired }
         if bytes.count > 1, bytes.first == .quote, bytes.last == .quote {
-            self = .constant(value: bytes.dropFirst().dropLast().string)
+            self = .constant(value: bytes.dropFirst().dropLast().makeString())
         } else {
             let path = bytes.split(
                     separator: .period,
                     omittingEmptySubsequences: true
                 )
-                .map { $0.string }
+                .map { $0.makeString() }
             self = .variable(path: path)
         }
     }

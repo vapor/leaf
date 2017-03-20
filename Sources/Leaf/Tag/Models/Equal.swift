@@ -25,16 +25,16 @@ fileprivate func fuzzyEquals(_ lhs: Node?, _ rhs: Node?) -> Bool {
     let lhs = lhs ?? .null
     let rhs = rhs ?? .null
 
-    switch lhs {
+    switch lhs.wrapped {
     case let .array(lhs):
-        guard let rhs = rhs.nodeArray else { return false }
+        guard let rhs = rhs.array else { return false }
         guard lhs.count == rhs.count else { return false }
-        for (l, r) in zip(lhs, rhs) where !fuzzyEquals(l, r) { return false }
+        for (l, r) in zip(lhs, rhs) where !fuzzyEquals(Node(l), r) { return false }
         return true
     case let .bool(bool):
         return bool == rhs.bool
     case let .bytes(bytes):
-        guard case let .bytes(rhs) = rhs else { return false }
+        guard case let .bytes(rhs) = rhs.wrapped else { return false }
         return bytes == rhs
     case .null:
         return rhs.isNull
@@ -48,15 +48,15 @@ fileprivate func fuzzyEquals(_ lhs: Node?, _ rhs: Node?) -> Bool {
             return uint == rhs.uint
         }
     case let .object(lhs):
-        guard let rhs = rhs.nodeObject else { return false }
+        guard let rhs = rhs.object else { return false }
         guard lhs.count == rhs.count else { return false }
-        for (k, v) in lhs where !fuzzyEquals(v, rhs[k]) { return false }
+        for (k, v) in lhs where !fuzzyEquals(Node(v), rhs[k]) { return false }
         return true
     case let .string(string):
         return string == rhs.string
     case let .date(date):
         // FIXME: Add fuzzy date access and equality?
-        guard case let .date(right) = rhs else { return false }
+        guard case let .date(right) = rhs.wrapped else { return false }
         return date == right
     }
 }

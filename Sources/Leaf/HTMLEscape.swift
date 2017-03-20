@@ -38,6 +38,6 @@ extension String {
             .joined(separator: "&lt;".makeBytes())
             .split(separator: .greaterThan, omittingEmptySubsequences: false)
             .joined(separator: "&gt;".makeBytes())
-            .string
+            .makeString()
     }
 }

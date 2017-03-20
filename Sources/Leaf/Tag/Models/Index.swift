@@ -4,7 +4,7 @@ public class Index: BasicTag {
     public func run(arguments: [Argument]) throws -> Node? {
         guard
             arguments.count == 2,
-            let array = arguments[0].value?.nodeArray,
+            let array = arguments[0].value?.array,
             let index = arguments[1].value?.int,
             index < array.count
             else { return nil }
