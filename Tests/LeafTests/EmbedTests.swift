@@ -11,7 +11,7 @@ class EmbedTests: XCTestCase {
     func testBasicEmbed() throws {
         let template = try stem.spawnLeaf(named: "/embed-base")
         let context = Context(["name": "World"])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "Leaf embedded: Hello, World!"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
