@@ -16,7 +16,7 @@ class TagTemplateTests: XCTestCase {
         // let raw = "#uppercased(name)"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "hi"])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "HI"
         XCTAssert(rendered == expectation)
     }

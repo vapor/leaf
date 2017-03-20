@@ -11,7 +11,7 @@ class FileLoadTests: XCTestCase {
         let leaf = try stem.spawnLeaf(named: "random-file.any")
         XCTAssert(Array(leaf.components).count == 1)
 
-        let rendered = try stem.render(leaf, with: Context([])).string
+        let rendered = try stem.render(leaf, with: Context([])).makeString()
         // tags are not parsed in non-leaf document
         let expectation = "This file #(won't) be #rendered() {}\n"
         XCTAssertEqual(rendered, expectation)

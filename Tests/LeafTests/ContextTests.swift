@@ -18,7 +18,7 @@ class ContextTests: XCTestCase {
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
         let context = try Node(node: ["name": "World"])
         let loadable = Context(context)
-        let rendered = try stem.render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).makeString()
         let expectation = "Hello, World!"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -27,7 +27,7 @@ class ContextTests: XCTestCase {
         let raw = "#(best-friend) { Hello, #(self.name)! }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["best-friend": ["name": "World"]])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         XCTAssert(rendered == "Hello, World!")
     }
 
@@ -35,7 +35,7 @@ class ContextTests: XCTestCase {
         let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["friends": ["a", "b", "c", "#loop"]])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!"
         XCTAssert(rendered == expectation)
     }
@@ -44,7 +44,7 @@ class ContextTests: XCTestCase {
         let raw = "#(name) { #(name) }" // redundant, but should render as an inner stem
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "foo"])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "foo"
         XCTAssert(rendered == expectation)
     }
@@ -53,7 +53,7 @@ class ContextTests: XCTestCase {
         let raw = "Let's render #(friend) { #(name) is friends with #(friend.name) } "
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["name": "Foo", "friend": ["name": "Bar"]])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "Let's render Foo is friends with Bar"
         XCTAssertEqual(rendered, expectation)
     }
@@ -62,7 +62,7 @@ class ContextTests: XCTestCase {
         let raw = "#(a) { #(self.b) { #(self.c) { #(self.path.1) } } }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["a": ["b": ["c": ["path": ["array-variant", "HEllo"]]]]])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "HEllo"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -82,7 +82,7 @@ class ContextTests: XCTestCase {
 
         try cases.forEach { key, bool, expectation in
             let context = Context([key: .bool(bool)])
-            let rendered = try stem.render(template, with: context).string
+            let rendered = try stem.render(template, with: context).makeString()
             XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
         }
     }
@@ -101,7 +101,7 @@ class ContextTests: XCTestCase {
 
         let template = try stem.spawnLeaf(raw: raw)
         let loadable = Context(context)
-        let rendered = try stem.render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).makeString()
         let expectation = "Hello, World!"
         XCTAssert(rendered == expectation)
     }

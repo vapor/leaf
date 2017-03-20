@@ -39,7 +39,7 @@ public final class Context {
 
     // TODO: Subscripts
 
-    func get<T: PathIndex>(path: [T]) -> Node? {
+    func get<T: PathIndexer>(path: [T]) -> Node? {
         var next = queue.tip
         repeat {
             if let value = next?.value[path] { return value }

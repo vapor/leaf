@@ -23,7 +23,7 @@ extension Leaf.Component: CustomStringConvertible {
     public var description: String {
         switch self {
         case let .raw(r):
-            return ".raw(\(r.string))"
+            return ".raw(\(r.makeString()))"
         case let .tagTemplate(i):
             return ".tagTemplate(\(i))"
         case let .chain(chain):

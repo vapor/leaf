@@ -9,7 +9,7 @@ class RawTests: XCTestCase {
 
     func testRaw() throws {
         let raw = try stem.spawnLeaf(named: "raw")
-        let rendered = try stem.render(raw, with: Context([:])).string
+        let rendered = try stem.render(raw, with: Context([:])).makeString()
         let expectation = "Everything stays ##@$&"
         XCTAssertEqual(rendered, expectation)
     }
@@ -17,7 +17,7 @@ class RawTests: XCTestCase {
     func testRawVariable() throws {
         let raw = try stem.spawnLeaf(raw: "Hello, #raw(unescaped)!")
         let context = Context(["unescaped": "<b>World</b>"])
-        let rendered = try stem.render(raw, with: context).string
+        let rendered = try stem.render(raw, with: context).makeString()
         let expectation = "Hello, <b>World</b>!"
         XCTAssertEqual(rendered, expectation)
     }

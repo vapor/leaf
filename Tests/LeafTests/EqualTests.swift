@@ -29,21 +29,21 @@ class EqualTests: XCTestCase {
             ("sadf", "no")
         ]
         try cases.forEach { input, expectation in
-            let rendered = try stem.render(template, with: try Context(Node(node: ["name": input]))).string
+            let rendered = try stem.render(template, with: try Context(Node(node: ["name": input]))).makeString()
             XCTAssertEqual(rendered, expectation)
         }
     }
 
     func testFuzzy() throws {
         let template = try stem.spawnLeaf(raw: "#equal(bool, \"true\") { yes }")
-        let rendered = try stem.render(template, with: Context(["bool": true])).string
+        let rendered = try stem.render(template, with: Context(["bool": true])).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
 
     func testEmpty() throws {
         let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes }")
-        let rendered = try stem.render(template, with: Context([:])).string
+        let rendered = try stem.render(template, with: Context([:])).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -56,7 +56,7 @@ class EqualTests: XCTestCase {
                 "b": ["1", "2", "3"]
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -69,7 +69,7 @@ class EqualTests: XCTestCase {
                 "b": ["1", "2", "3", "4"]
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
@@ -82,33 +82,33 @@ class EqualTests: XCTestCase {
                 "b": "I'm not an array"
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
 
     func testBytes() throws {
         let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
-        let node = try Node(node:
+        let node = Node(node:
             [
                 "a": .bytes([1,2,3]),
                 "b": .bytes([1,2,3])
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
 
     func testBytesBadType() throws {
         let template = try stem.spawnLeaf(raw: "#equal(a, b) { yes } ##else() { no }")
-        let node = try Node(node:
+        let node = Node(node:
             [
                 "a": .bytes([1,2,3]),
                 "b": "I'm not bytes"
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
@@ -121,7 +121,7 @@ class EqualTests: XCTestCase {
                 "b": "3.14"
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -134,7 +134,7 @@ class EqualTests: XCTestCase {
                 "b": 42.0
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -147,7 +147,7 @@ class EqualTests: XCTestCase {
                 "b": "4255"
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -160,7 +160,7 @@ class EqualTests: XCTestCase {
                 "b": ["name": "same"]
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "yes"
         XCTAssertEqual(rendered, expectation)
     }
@@ -173,7 +173,7 @@ class EqualTests: XCTestCase {
                 "b": ["name": "same"]
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
@@ -186,7 +186,7 @@ class EqualTests: XCTestCase {
                 "b": ["name": "same"]
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
@@ -199,7 +199,7 @@ class EqualTests: XCTestCase {
                 "b": "I'm no object"
             ]
         )
-        let rendered = try stem.render(template, with: Context(node)).string
+        let rendered = try stem.render(template, with: Context(node)).makeString()
         let expectation = "no"
         XCTAssertEqual(rendered, expectation)
     }
@@ -207,7 +207,7 @@ class EqualTests: XCTestCase {
     func testBadSignature() throws {
         let template = try stem.spawnLeaf(raw: "#equal(a, b, c)")
         do {
-            _ = try stem.render(template, with: Context([:])).string
+            _ = try stem.render(template, with: Context([:])).makeString()
             XCTFail("Should throw")
         } catch Equal.Error.expected2Arguments {}
     }

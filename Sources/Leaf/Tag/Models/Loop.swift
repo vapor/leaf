@@ -24,7 +24,7 @@ public final class Loop: Tag {
         }
 
         guard let unwrapped = value else { return nil }
-        let array = unwrapped.nodeArray ?? [unwrapped]
+        let array = unwrapped.array ?? [unwrapped]
         return .array(array.map { [innername: $0] })
     }
 
@@ -34,7 +34,7 @@ public final class Loop: Tag {
         value: Node?,
         leaf: Leaf
     ) throws -> Bytes {
-        guard let array = value?.nodeArray else { fatalError("run function MUST return an array") }
+        guard let array = value?.array else { fatalError("run function MUST return an array") }
         func renderItem(_ item: Node) throws -> Bytes {
             context.push(item)
             let rendered = try stem.render(leaf, with: context)

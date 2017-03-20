@@ -26,7 +26,7 @@ class LoopTests: XCTestCase {
             ])
         let loadable = Context(context)
         let expectation = "Hello, asdf\nHello, 🐌\nHello, 8###z0-1\nHello, 12"
-        let rendered = try stem.render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).makeString()
         XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
     }
 
@@ -50,7 +50,7 @@ class LoopTests: XCTestCase {
 
         let template = try stem.spawnLeaf(named: "complex-loop")
         let loadable = Context(context)
-        let rendered = try stem.render(template, with: loadable).string
+        let rendered = try stem.render(template, with: loadable).makeString()
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>"
         XCTAssert(rendered == expectation, "have: \(rendered) want: \(expectation)")
     }
@@ -59,7 +59,7 @@ class LoopTests: XCTestCase {
         let leaf = try stem.spawnLeaf(raw: "#loop(too, many, arguments)")
         let context = Context(["too": "", "many": "", "arguments": ""])
         do {
-            _ = try stem.render(leaf, with: context).string
+            _ = try stem.render(leaf, with: context).makeString()
             XCTFail("Should throw")
         } catch Loop.Error.expectedTwoArguments { }
     }
@@ -68,7 +68,7 @@ class LoopTests: XCTestCase {
         let leaf = try stem.spawnLeaf(raw: "#loop(\"invalid\", \"signature\")")
         let context = Context([:])
         do {
-            _ = try stem.render(leaf, with: context).string
+            _ = try stem.render(leaf, with: context).makeString()
             XCTFail("Should throw")
         } catch Loop.Error.expectedVariable { }
     }
@@ -77,7 +77,7 @@ class LoopTests: XCTestCase {
         let leaf = try stem.spawnLeaf(raw: "#loop(invalid, signature)")
         let context = Context([:])
         do {
-            _ = try stem.render(leaf, with: context).string
+            _ = try stem.render(leaf, with: context).makeString()
             XCTFail("Should throw")
         } catch Loop.Error.expectedConstant { }
     }
@@ -85,7 +85,7 @@ class LoopTests: XCTestCase {
     func testSkipNil() throws {
         let leaf = try stem.spawnLeaf(raw: "#loop(find-nil, \"inner-name\") { asdfasdfasdfsdf }")
         let context = Context([:])
-        let rendered = try stem.render(leaf, with: context).string
+        let rendered = try stem.render(leaf, with: context).makeString()
         XCTAssert(rendered == "")
     }
 
@@ -93,7 +93,7 @@ class LoopTests: XCTestCase {
         // single => array
         let leaf = try stem.spawnLeaf(raw: "#loop(names, \"name\") { Hello, #(name)! }")
         let context = Context(["names": "Rick"])
-        let rendered = try stem.render(leaf, with: context).string
+        let rendered = try stem.render(leaf, with: context).makeString()
         XCTAssert(rendered == "Hello, Rick!")
     }
 }

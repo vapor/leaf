@@ -11,7 +11,7 @@ class IndexTests: XCTestCase {
     func testBasicIndex() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #index(friends, idx) { #(self)! }")
         let context = Context(["friends": ["Joe", "Jan", "Jay", "Jen"], "idx": 3])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "Hello, Jen!"
         XCTAssertEqual(rendered, expectation)
     }
@@ -19,7 +19,7 @@ class IndexTests: XCTestCase {
     func testOutOfBounds() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #index(friends, idx)!")
         let context = Context(["friends": [], "idx": 3])
-        let rendered = try stem.render(template, with: context).string
+        let rendered = try stem.render(template, with: context).makeString()
         let expectation = "Hello, !"
         XCTAssertEqual(rendered, expectation)
     }

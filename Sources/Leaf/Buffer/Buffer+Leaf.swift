@@ -95,7 +95,7 @@ extension BufferProtocol where Element == Byte {
         guard current == .leftParenthesis else {
             throw ParseError.expectedOpenParenthesis
         }
-        return name.string
+        return name.makeString()
     }
 
     mutating func extractInstructionParameters() throws -> [Parameter] {
@@ -106,13 +106,13 @@ extension BufferProtocol where Element == Byte {
     mutating func extractBody() throws -> String {
         return try extractSection(opensWith: .leftCurlyBracket, closesWith: .rightCurlyBracket)
             .trimmed(.whitespace)
-            .string
+            .makeString()
     }
 
     mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
         guard current ==  opener else {
-            let have = current.flatMap { [$0] }?.string
-            throw ParseError.missingBodyOpener(expected: [opener].string, have: have)
+            let have = current.flatMap { [$0] }?.makeString()
+            throw ParseError.missingBodyOpener(expected: [opener].makeString(), have: have)
         }
 
         var subBodies = 0
@@ -129,7 +129,7 @@ extension BufferProtocol where Element == Byte {
         }
 
         guard current == closer else {
-            throw ParseError.missingBodyCloser(expected: [closer].string)
+            throw ParseError.missingBodyCloser(expected: [closer].makeString())
         }
 
         return body

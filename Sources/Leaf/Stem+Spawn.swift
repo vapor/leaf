@@ -7,7 +7,7 @@ extension Stem {
         let raw = raw.trimmed(.whitespace)
         var buffer = Buffer(raw)
         let components = try buffer.components(stem: self).map(postCompile)
-        var leaf = Leaf(raw: raw.string, components: components)
+        var leaf = Leaf(raw: raw.makeString(), components: components)
         try tags.values.forEach {
             leaf = try $0.postCompile(stem: self, leaf: leaf)
         }
@@ -26,7 +26,7 @@ extension Stem {
             let path = workingDirectory + name
             let bytes = try Bytes.load(path: path)
             let component = Leaf.Component.raw(bytes)
-            let leaf = Leaf(raw: bytes.string, components: [component])
+            let leaf = Leaf(raw: bytes.makeString(), components: [component])
             cache(leaf, named: name)
             return leaf
         }

@@ -11,7 +11,7 @@ public final class TagTemplate {
         // that means we've found a chain element, ie: @@else {
         if name.makeBytes().first == TOKEN {
             self.isChain = true
-            self.name = name.makeBytes().dropFirst().string
+            self.name = name.makeBytes().dropFirst().makeString()
         } else {
             self.isChain = false
             self.name = name
@@ -38,6 +38,7 @@ extension TagTemplate {
 
 extension TagTemplate: CustomStringConvertible {
     public var description: String {
+        let body = self.body?.description ?? ""
         return "(name: \(name), parameters: \(parameters), body: \(body)"
     }
 }
