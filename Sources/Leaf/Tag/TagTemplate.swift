@@ -38,7 +38,7 @@ extension TagTemplate {
 
 extension TagTemplate: CustomStringConvertible {
     public var description: String {
-        return "(name: \(name), parameters: \(parameters), body: \(body)"
+        return "(name: \(name), parameters: \(parameters), body: \(String(describing: body))"
     }
 }
 
