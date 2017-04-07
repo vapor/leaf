@@ -1,0 +1,1 @@
+#ifnot(say-hello) { Hello, there! }
