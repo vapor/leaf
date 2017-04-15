@@ -15,7 +15,7 @@ class PerformanceTests: XCTestCase {
         let expectation = "Hello, World!".makeBytes()
         let template = try stem.spawnLeaf(raw: raw)
         let ctxt = Context(["name": "World"])
-        measure {
+        measure { // 0.012
             try! (1...500).forEach { _ in
                 let rendered = try stem.render(template, with: ctxt)
                 XCTAssert(rendered == expectation)
@@ -25,7 +25,7 @@ class PerformanceTests: XCTestCase {
 
     func testContextGet() throws {
         let ctxt = Context(["name": "World"])
-        measure {
+        measure { // 0.006
             (1...500).forEach { _ in
                 _ = ctxt.get(path: ["name"])
             }
@@ -34,7 +34,7 @@ class PerformanceTests: XCTestCase {
 
     func testContextPush() throws {
         let ctxt = Context(["name": "World"])
-        measure {
+        measure { // 0.003
             (1...500).forEach { _ in
                 _ = ctxt.push(["self": "..."])
                 defer { ctxt.pop() }
@@ -48,7 +48,7 @@ class PerformanceTests: XCTestCase {
         let template = try stem.spawnLeaf(raw: raw)
         _ = template.description
         let ctxt = Context(["name": "World"])
-        measure {
+        measure { // 0.092
             try! (1...5).forEach { _ in
                 let rendered = try stem.render(template, with: ctxt)
                 XCTAssert(rendered == expectation)

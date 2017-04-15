@@ -63,7 +63,7 @@ enum ParseError: LeafError {
  Syntax
  
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
- */
+*/
 extension BufferProtocol where Element == Byte {
     mutating func extractInstruction(stem: Stem) throws -> TagTemplate {
         let name = try extractInstructionName()
