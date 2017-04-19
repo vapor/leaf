@@ -56,7 +56,7 @@ extension Stem {
             template.name == "extend",
             let name = template.parameters.first?.constant
             else { return leaf }
-        return try spawnLeaf(named: name)
+        return try spawnLeaf(at: name)
     }
 }
 

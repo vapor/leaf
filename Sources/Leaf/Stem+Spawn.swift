@@ -13,14 +13,6 @@ extension Stem {
         }
         return leaf
     }
-
-    public func spawnLeaf(named name: String) throws -> Leaf {
-        var name = name
-        if name.hasPrefix("/") {
-            name = String(name.characters.dropFirst())
-        }
-        return try spawnLeaf(at: workingDirectory + name)
-    }
     
     public func spawnLeaf(at path: String) throws -> Leaf {
         if let existing = cache?[path] {
@@ -31,7 +23,7 @@ extension Stem {
         
         // non-leaf document. rendered as pure bytes
         if path.components(separatedBy: "/").last?.contains(".") == true, !path.hasSuffix(".leaf") {
-            let bytes = try Bytes.load(path: path)
+            let bytes = try file.load(path: path)
             let component = Leaf.Component.raw(bytes)
             leaf = Leaf(raw: bytes.makeString(), components: [component])
         } else {
@@ -39,7 +31,7 @@ extension Stem {
             var path = path
             path = path.finished(with: SUFFIX)
             
-            let raw = try Bytes.load(path: path)
+            let raw = try file.load(path: path)
             leaf = try spawnLeaf(raw: raw)
         }
         

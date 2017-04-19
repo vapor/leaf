@@ -11,7 +11,7 @@ class LayoutTests: XCTestCase {
     ]
 
     func testBasicLayout() throws {
-        let leaf = try stem.spawnLeaf(named: "basic-extension")
+        let leaf = try stem.spawnLeaf(at: "basic-extension")
         let rendered = try stem.render(leaf, with: Context(["name": "World"])).makeString()
         let expectation = "Aloha, World!"
         XCTAssertEqual(rendered, expectation)

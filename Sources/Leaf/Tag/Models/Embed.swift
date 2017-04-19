@@ -15,7 +15,7 @@ public final class Embed: Tag {
                 throw Error.expectedSingleConstant(have: tagTemplate.parameters)
             }
 
-        let body = try stem.spawnLeaf(named: name)
+        let body = try stem.spawnLeaf(at: name)
         return TagTemplate(
             name: tagTemplate.name,
             parameters: [], // no longer need parameters

@@ -14,7 +14,7 @@ class LoopTests: XCTestCase {
     ]
 
     func testBasicLoop() throws {
-        let template = try stem.spawnLeaf(named: "basic-loop")
+        let template = try stem.spawnLeaf(at: "basic-loop")
 
         let context = try Node(node: [
             "friends": [
@@ -48,7 +48,7 @@ class LoopTests: XCTestCase {
             ]
             ])
 
-        let template = try stem.spawnLeaf(named: "complex-loop")
+        let template = try stem.spawnLeaf(at: "complex-loop")
         let loadable = Context(context)
         let rendered = try stem.render(template, with: loadable).makeString()
         let expectation = "<li><b>Venus</b>: 12345</li>\n<li><b>Pluto</b>: 888</li>\n<li><b>Mercury</b>: 9000</li>"
