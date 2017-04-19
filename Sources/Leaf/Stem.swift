@@ -1,7 +1,6 @@
 import Core
 
 public final class Stem {
-    // public let workingDirectory: String
     public let file: FileProtocol
     public var cache: [String: Leaf]?
     public fileprivate(set) var tags: [String: Tag] = defaultTags
