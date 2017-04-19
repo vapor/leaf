@@ -23,7 +23,7 @@ extension Stem {
         
         // non-leaf document. rendered as pure bytes
         if path.components(separatedBy: "/").last?.contains(".") == true, !path.hasSuffix(".leaf") {
-            let bytes = try file.load(path: path)
+            let bytes = try file.read(at: path)
             let component = Leaf.Component.raw(bytes)
             leaf = Leaf(raw: bytes.makeString(), components: [component])
         } else {
@@ -31,7 +31,7 @@ extension Stem {
             var path = path
             path = path.finished(with: SUFFIX)
             
-            let raw = try file.load(path: path)
+            let raw = try file.read(at: path)
             leaf = try spawnLeaf(raw: raw)
         }
         
