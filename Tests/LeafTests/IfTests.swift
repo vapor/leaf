@@ -13,7 +13,7 @@ class IfTests: XCTestCase {
     ]
 
     func testBasicIf() throws {
-        let template = try stem.spawnLeaf(named: "basic-if-test")
+        let template = try stem.spawnLeaf(at: "basic-if-test")
 
         let context = try Node(node: ["say-hello": true])
         let loadable = Context(context)
@@ -23,7 +23,7 @@ class IfTests: XCTestCase {
     }
 
     func testBasicIfFail() throws {
-        let template = try stem.spawnLeaf(named: "basic-if-test")
+        let template = try stem.spawnLeaf(at: "basic-if-test")
 
         let context = try Node(node: ["say-hello": false])
         let loadable = Context(context)
@@ -33,7 +33,7 @@ class IfTests: XCTestCase {
     }
 
     func testBasicIfElse() throws {
-        let template = try stem.spawnLeaf(named: "basic-if-else")
+        let template = try stem.spawnLeaf(at: "basic-if-else")
 
         let helloContext = try Node(node: [
             "entering": true,
@@ -55,7 +55,7 @@ class IfTests: XCTestCase {
     }
 
     func testNestedIfElse() throws {
-        let template = try stem.spawnLeaf(named: "nested-if-else")
+        let template = try stem.spawnLeaf(at: "nested-if-else")
         let expectations: [(input: Node, expectation: String)] = [
             (input: ["a": true], expectation: "Got a."),
             (input: ["b": true], expectation: "Got b."),
@@ -81,7 +81,7 @@ class IfTests: XCTestCase {
     }
 
     func testIfEmptyString() throws {
-        let template = try stem.spawnLeaf(named: "if-empty-string-test")
+        let template = try stem.spawnLeaf(at: "if-empty-string-test")
         do {
             let context = try Node(node: ["name": "name"])
             let loadable = Context(context)

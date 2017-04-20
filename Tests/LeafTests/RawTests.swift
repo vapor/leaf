@@ -8,7 +8,7 @@ class RawTests: XCTestCase {
     ]
 
     func testRaw() throws {
-        let raw = try stem.spawnLeaf(named: "raw")
+        let raw = try stem.spawnLeaf(at: "raw")
         let rendered = try stem.render(raw, with: Context([:])).makeString()
         let expectation = "Everything stays ##@$&"
         XCTAssertEqual(rendered, expectation)

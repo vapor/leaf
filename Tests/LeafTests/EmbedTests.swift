@@ -9,7 +9,7 @@ class EmbedTests: XCTestCase {
     ]
 
     func testBasicEmbed() throws {
-        let template = try stem.spawnLeaf(named: "/embed-base")
+        let template = try stem.spawnLeaf(at: "embed-base")
         let context = Context(["name": "World"])
         let rendered = try stem.render(template, with: context).makeString()
         let expectation = "Leaf embedded: Hello, World!"

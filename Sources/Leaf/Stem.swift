@@ -1,10 +1,12 @@
+import Core
+
 public final class Stem {
-    public let workingDirectory: String
+    public let file: FileProtocol
     public var cache: [String: Leaf]?
     public fileprivate(set) var tags: [String: Tag] = defaultTags
 
-    public init(workingDirectory: String, cache: [String: Leaf]? = [:]) {
-        self.workingDirectory = workingDirectory.finished(with: "/")
+    public init(_ file: FileProtocol, cache: [String: Leaf]? = [:]) {
+        self.file = file
         self.cache = cache
     }
 }

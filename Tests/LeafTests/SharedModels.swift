@@ -10,7 +10,8 @@
     private let workDir = "./Resources/"
 #endif
 
-let stem = Stem(workingDirectory: workDir)
+let file = DataFile(workDir: workDir)
+let stem = Stem(file)
 
 class Test: Tag {
     let name: String
