@@ -13,7 +13,7 @@ public final class Uppercased: Tag {
         arguments: [Argument]) throws -> Node? {
         guard arguments.count == 1 else { throw Error.expectedOneArgument }
         // Ok for nil value
-        guard let value = arguments.first?.value else { return nil }
+        guard let value = arguments.first?.value(with: stem, in: context) else { return nil }
         guard let string = value.string else { throw Error.expectedStringArgument }
         return .string(string.uppercased())
     }

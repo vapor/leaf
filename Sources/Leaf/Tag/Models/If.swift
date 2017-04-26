@@ -20,7 +20,7 @@ public final class If: Tag {
         tagTemplate: TagTemplate,
         arguments: [Argument],
         value: Node?) -> Bool {
-        guard let value = arguments.first?.value else { return false }
+        guard let value = arguments.first?.value(with: stem, in: context) else { return false }
         // Existence of bool, evaluate bool.
         if let bool = value.bool { return bool }
         // Empty string value returns false.

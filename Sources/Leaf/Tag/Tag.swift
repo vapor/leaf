@@ -82,7 +82,7 @@ extension Tag {
         context: Context,
         tagTemplate: TagTemplate
     ) throws -> [Argument]{
-        return tagTemplate.makeArguments(context: context)
+        return try tagTemplate.makeArguments(with: stem, in: context)
     }
 
     public func shouldRender(

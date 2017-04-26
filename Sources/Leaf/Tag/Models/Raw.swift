@@ -7,7 +7,7 @@ final class Raw: Tag {
     }
 
     func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
-        guard let string = arguments.first?.value?.string else { return nil }
+        guard let string = arguments.first?.value(with: stem, in: context)?.string else { return nil }
         let unescaped = string.makeBytes()
         return .bytes(unescaped)
     }
