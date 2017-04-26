@@ -19,9 +19,12 @@ public final class Loop: Tag {
             throw Error.expectedVariable(have: variable)
         }
         let constant = arguments[1]
-        guard case let .constant(value: innername) = constant else {
+        guard case let .constant(value: leaf) = constant else {
             throw Error.expectedConstant(have: constant)
         }
+        let innername = try stem
+            .render(leaf, with: context)
+            .makeString()
 
         guard let unwrapped = value else { return nil }
         let array = unwrapped.array ?? [unwrapped]

@@ -14,6 +14,6 @@ public final class Variable: Tag {
         // ALL tags are interpreted, use `*()` to have an empty `*` rendered
         if arguments.isEmpty { return .string([TOKEN].makeString()) }
         guard arguments.count == 1 else { throw Error.expectedOneArgument }
-        return arguments[0].value
+        return arguments[0].value(with: stem, in: context)
     }
 }

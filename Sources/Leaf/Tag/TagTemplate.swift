@@ -23,14 +23,15 @@ public final class TagTemplate {
 }
 
 extension TagTemplate {
-    func makeArguments(context: Context) -> [Argument] {
-        return parameters.map { arg in
+    func makeArguments(with stem: Stem, in context: Context) throws -> [Argument] {
+        return try parameters.map { arg in
             switch arg {
             case let .variable(path: path):
                 let value = context.get(path: path)
                 return .variable(path: path, value: value)
             case let .constant(c):
-                return .constant(value: c)
+                let leaf = try stem.spawnLeaf(raw: c)
+                return .constant(leaf)
             }
         }
     }

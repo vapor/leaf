@@ -4,6 +4,7 @@ import XCTest
 
 class ContextTests: XCTestCase {
     static let allTests = [
+        ("testConstantSubLeaf", testConstantSubLeaf),
         ("testBasic", testBasic),
         ("testNested", testNested),
         ("testLoop", testLoop),
@@ -13,6 +14,15 @@ class ContextTests: XCTestCase {
         ("testIfChain", testIfChain),
         ("testNestedComplex", testNestedComplex),
     ]
+
+    func testConstantSubLeaf() throws {
+        let raw = "Hello, #(\"Foo #(bar)\")"
+        let template = try stem.spawnLeaf(raw: raw)
+        let loadable = Context(["bar": "Bar"])
+        let rendered = try stem.render(template, with: loadable).makeString()
+        let expectation = "Hello, Foo Bar"
+        XCTAssertEqual(rendered, expectation)
+    }
 
     func testBasic() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")

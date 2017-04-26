@@ -17,7 +17,10 @@ public final class Equal: BasicTag {
         arguments: [Argument],
         value: Node?
     ) -> Bool {
-        return fuzzyEquals(arguments.first?.value, arguments.last?.value)
+        return fuzzyEquals(
+            arguments.first?.value(with: stem, in: context),
+            arguments.last?.value(with: stem, in: context)
+        )
     }
 }
 
