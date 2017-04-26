@@ -138,7 +138,90 @@ extension BufferProtocol where Element == Byte {
 
 extension Sequence where Iterator.Element == Byte {
     func extractParameters() throws -> [Parameter] {
-        return try split(separator: .comma)
-            .map { try Parameter($0) }
+        let parser = ParameterParser(self.array)
+        return try parser.process()
+    }
+}
+
+import Core
+
+fileprivate final class ParameterParser {
+    var buffer: Buffer
+
+    init(_ bytes: Bytes) {
+        buffer = Buffer(bytes: bytes)
+    }
+
+    func process() throws -> [Parameter] {
+        var params = [Parameter]()
+        while let next = try nextParameter() {
+            params.append(next)
+        }
+        return params
+    }
+
+    private func nextParameter() throws -> Parameter? {
+        guard try !buffer.next(matchesAny: .rightParenthesis) else { return nil }
+        guard let next = try buffer.next() else { return nil }
+        buffer.returnToBuffer(next)
+
+        if next == .quote {
+            return try nextConstant()
+        } else {
+            return try nextVariable()
+        }
+    }
+
+    private func nextVariable() throws -> Parameter {
+        let collected = try buffer.collect(until: .comma, .rightParenthesis)
+        // discard `,` or ')'
+        try buffer.discardNext(1)
+        try buffer.skipWhitespace()
+
+        let variable = collected
+            .makeString()
+            .components(separatedBy: ".")
+        return .variable(path: variable)
+
+    }
+
+    private func nextConstant() throws -> Parameter {
+        // discard leading `"`
+        try buffer.discardNext(1)
+
+        var collected = Bytes()
+        while let next = try buffer.next() {
+            if next == .quote, buffer.previous != .backSlash {
+                break
+            }
+            collected.append(next)
+        }
+
+        return .constant(value: collected.makeString())
+    }
+}
+
+
+extension ParameterParser {
+    fileprivate final class Buffer: StaticDataBuffer {
+        var previous: Byte? = nil
+        var current: Byte? = nil
+
+        override init<B: Sequence>(bytes: B) where B.Iterator.Element == Byte {
+            super.init(bytes: bytes)
+        }
+
+        override func next() throws -> Byte? {
+            let n = try super.next()
+            previous = current
+            current = n
+            return n
+        }
+
+        func skipWhitespace() throws {
+            while try next(matches: Bytes.whitespace.contains) {
+                try discardNext(1)
+            }
+        }
     }
 }

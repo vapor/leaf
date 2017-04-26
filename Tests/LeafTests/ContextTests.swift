@@ -24,6 +24,15 @@ class ContextTests: XCTestCase {
         XCTAssertEqual(rendered, expectation)
     }
 
+    func testNestedComma() throws {
+        let raw = "Hello, #(\"foo,bar\")"
+        let template = try stem.spawnLeaf(raw: raw)
+        let loadable = Context(["": ""])
+        let rendered = try stem.render(template, with: loadable).makeString()
+        let expectation = "Hello, foo,bar"
+        XCTAssertEqual(rendered, expectation)
+    }
+
     func testBasic() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
         let context = try Node(node: ["name": "World"])
