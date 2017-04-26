@@ -161,8 +161,11 @@ fileprivate final class ParameterParser {
     }
 
     private func nextParameter() throws -> Parameter? {
+        try buffer.skipWhitespace()
+
         guard try !buffer.next(matchesAny: .rightParenthesis) else { return nil }
         guard let next = try buffer.next() else { return nil }
+        guard next != .comma else { return try nextParameter() }
         buffer.returnToBuffer(next)
 
         if next == .quote {
