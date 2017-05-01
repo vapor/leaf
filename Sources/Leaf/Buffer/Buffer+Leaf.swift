@@ -32,7 +32,15 @@ extension BufferProtocol where Element == Byte {
 
     mutating func nextComponent(stem: Stem) throws -> Leaf.Component? {
         guard let token = current else { return nil }
-        guard token == TOKEN else { return .raw(extractUntil { $0 == TOKEN }) }
+        guard token == TOKEN else {
+            var last = token
+            let raw = extractUntil { token in
+                if token == TOKEN, last != .backSlash { return true }
+                last = token
+                return false
+            }
+            return .raw(raw)
+        }
         let tagTemplate = try extractInstruction(stem: stem)
         return .tagTemplate(tagTemplate)
     }
