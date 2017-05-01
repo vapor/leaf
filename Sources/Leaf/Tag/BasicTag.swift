@@ -1,13 +1,11 @@
 public protocol BasicTag: Tag {
-    func run(arguments: [Argument]) throws -> Node?
+    func run(arguments: ArgumentList) throws -> Node?
 }
 
 extension BasicTag {
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]
+        arguments: ArgumentList
         ) throws -> Node? {
         return try run(arguments: arguments)
     }

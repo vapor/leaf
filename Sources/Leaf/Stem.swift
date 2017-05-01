@@ -17,7 +17,7 @@ public final class Stem {
     public var cache: Cache<Leaf>?
     public fileprivate(set) var tags: [String: Tag] = defaultTags
 
-    public init(_ file: FileProtocol, cache: Cache<Leaf> = .init(maxSize: 500.megabytes)) {
+    public init(_ file: FileProtocol, cache: Cache<Leaf>? = .init(maxSize: 500.megabytes)) {
         self.file = file
         self.cache = cache
     }

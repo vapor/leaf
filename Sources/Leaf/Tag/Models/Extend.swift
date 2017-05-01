@@ -15,10 +15,8 @@ public final class Extend: Tag {
     }
 
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]
+        arguments: ArgumentList
     ) throws -> Node? {
         return nil
     }

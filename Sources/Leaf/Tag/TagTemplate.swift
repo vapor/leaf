@@ -23,8 +23,8 @@ public final class TagTemplate {
 }
 
 extension TagTemplate {
-    func makeArguments(with stem: Stem, in context: Context) throws -> [Argument] {
-        return try parameters.map { arg in
+    func makeArguments(with stem: Stem, in context: Context) throws -> ArgumentList {
+        let args: [Argument] = try parameters.map { arg in
             switch arg {
             case let .variable(path: path):
                 let value = context.get(path: path)
@@ -34,6 +34,8 @@ extension TagTemplate {
                 return .constant(leaf)
             }
         }
+
+        return ArgumentList(list: args, stem: stem, context: context)
     }
 }
 

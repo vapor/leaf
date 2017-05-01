@@ -46,7 +46,7 @@ extension Buffer {
     }
 
     mutating func nextComponent(stem: Stem) throws -> Leaf.Component? {
-        guard let token = current else { return nil }
+        guard let _ = current else { return nil }
         if foundTag() {
             let tagTemplate = try extractInstruction(stem: stem)
             return .tagTemplate(tagTemplate)

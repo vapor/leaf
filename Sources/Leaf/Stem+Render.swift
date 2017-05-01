@@ -49,15 +49,11 @@ extension Stem {
         )
 
         let value = try tag.run(
-            stem: self,
-            context: context,
             tagTemplate: tagTemplate,
             arguments: arguments
         )
 
         let shouldRender = tag.shouldRender(
-            stem: self,
-            context: context,
             tagTemplate: tagTemplate,
             arguments: arguments,
             value: value

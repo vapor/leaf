@@ -24,18 +24,14 @@ public final class Embed: Tag {
     }
 
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Node? {
+        arguments: ArgumentList) throws -> Node? {
         return nil
     }
 
     public func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?) -> Bool {
         // throws at precompile, should always render
         return true

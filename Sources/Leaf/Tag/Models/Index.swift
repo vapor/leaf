@@ -1,11 +1,11 @@
 public class Index: Tag {
     public let name = "index"
 
-    public func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
+    public func run(tagTemplate: TagTemplate, arguments: ArgumentList) throws -> Node? {
         guard
             arguments.count == 2,
-            let array = arguments[0].value(with: stem, in: context)?.array,
-            let index = arguments[1].value(with: stem, in: context)?.int,
+            let array = arguments[0]?.array,
+            let index = arguments[1]?.int,
             index < array.count
             else { return nil }
         return array[index]
