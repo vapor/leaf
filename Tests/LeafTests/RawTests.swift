@@ -37,4 +37,8 @@ class RawTests: XCTestCase {
             XCTAssertEqual(rendered, expectation)
         }
     }
+
+    func testColumnLine() throws {
+
+    }
 }

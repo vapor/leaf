@@ -1,10 +1,10 @@
-extension BufferProtocol where Element == Byte {
+extension Buffer {
     mutating func components(stem: Stem) throws -> [Leaf.Component] {
         var comps: [Leaf.Component] = []
         while let next = try nextComponent(stem: stem) {
             if case let .tagTemplate(i) = next, i.isChain {
                 guard comps.count > 0 else {
-                    throw ParseError.expectedLeadingTemplate(have: nil)
+                    throw ParseError.expectedLeadingTemplate(have: nil, line: line, column: column)
                 }
                 while let last = comps.last {
                     var loop = true
@@ -16,7 +16,7 @@ extension BufferProtocol where Element == Byte {
                         continue
                     default:
                         var mutable = last
-                        try mutable.addToChain(i)
+                        try mutable.addToChain(i, line: line, column: column)
                         comps.append(mutable)
                         loop = false
                     }
@@ -58,10 +58,10 @@ extension BufferProtocol where Element == Byte {
 
 enum ParseError: LeafError {
     case tagTemplateNotFound(name: String)
-    case missingBodyOpener(expected: String, have: String?)
-    case missingBodyCloser(expected: String)
-    case expectedOpenParenthesis
-    case expectedLeadingTemplate(have: Leaf.Component?)
+    case missingBodyOpener(expected: String, have: String?, line: Int, column: Int)
+    case missingBodyCloser(expected: String, line: Int, column: Int)
+    case expectedOpenParenthesis(line: Int, column: Int)
+    case expectedLeadingTemplate(have: Leaf.Component?, line: Int, column: Int)
 }
 
 /*
@@ -69,7 +69,7 @@ enum ParseError: LeafError {
  
  @ + '<bodyName>` + `(` + `<[argument]>` + `)` + ` { ` + <body> + ` }`
  */
-extension BufferProtocol where Element == Byte {
+extension Buffer {
     mutating func extractInstruction(stem: Stem) throws -> TagTemplate {
         let name = try extractInstructionName()
         let parameters = try extractInstructionParameters()
@@ -98,7 +98,7 @@ extension BufferProtocol where Element == Byte {
         moveForward() // drop initial token from name. a secondary token implies chain
         let name = extractUntil { $0 == .leftParenthesis }
         guard current == .leftParenthesis else {
-            throw ParseError.expectedOpenParenthesis
+            throw ParseError.expectedOpenParenthesis(line: line, column: column)
         }
         return name.makeString()
     }
@@ -117,7 +117,12 @@ extension BufferProtocol where Element == Byte {
     mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
         guard current ==  opener else {
             let have = current.flatMap { [$0] }?.makeString()
-            throw ParseError.missingBodyOpener(expected: [opener].makeString(), have: have)
+            throw ParseError.missingBodyOpener(
+                expected: [opener].makeString(),
+                have: have,
+                line: line,
+                column: column
+            )
         }
 
         var subBodies = 0
@@ -134,7 +139,11 @@ extension BufferProtocol where Element == Byte {
         }
 
         guard current == closer else {
-            throw ParseError.missingBodyCloser(expected: [closer].makeString())
+            throw ParseError.missingBodyCloser(
+                expected: [closer].makeString(),
+                line: line,
+                column: column
+            )
         }
 
         return body
