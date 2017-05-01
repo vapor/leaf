@@ -15,9 +15,23 @@ public final class Leaf {
     // public let components: [Component]
     public let components: List<Component>
 
+    public let size: Int
+
     internal init(raw: String, components: [Component]) {
         self.raw = raw
-        self.components = List(components)
+        let components = List(components)
+        self.components = components
+
+        let rawSize = raw.utf8.count
+        // TODO: Verify http://stackoverflow.com/a/40334422/2611971
+        let listSize = malloc_size(Unmanaged.passRetained(components).toOpaque())
+        self.size = rawSize + listSize + MemoryLayout<Int>.size
+    }
+}
+
+extension Leaf: Cacheable {
+    public func cacheSize() -> Size {
+        return size
     }
 }
 
