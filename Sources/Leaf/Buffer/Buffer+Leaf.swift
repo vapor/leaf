@@ -56,17 +56,13 @@ extension Buffer {
         }
     }
 
-    mutating func extractUntil(
-        allowsEscaping: Bool = true,
-        _ until: (Element) -> Bool
-    ) -> [Element] {
+    mutating func extractUntil(_ until: (Element) -> Bool) -> [Element] {
         var collection = Bytes()
         if let current = current {
-            guard !(until(current) && previous != .backSlash) else { return [] }
+            guard !until(current) else { return [] }
             collection.append(current)
         }
-
-        while let value = moveForward(), !(until(value) && previous != .backSlash) {
+        while let value = moveForward(), !until(value) {
             collection.append(value)
         }
 
@@ -77,7 +73,10 @@ extension Buffer {
         var collection = Bytes()
         if let current = current {
             if foundTag() { return [] }
-            collection.append(current)
+
+            if !escapeCurrent() {
+                collection.append(current)
+            }
         }
 
         while let value = moveForward() {
@@ -85,10 +84,15 @@ extension Buffer {
                 return collection
             }
 
+            guard !escapeCurrent() else { continue }
             collection.append(value)
         }
 
         return collection
+    }
+
+    private func escapeCurrent() -> Bool {
+        return next == TOKEN && current == .backSlash
     }
 
     private func foundTag() -> Bool {

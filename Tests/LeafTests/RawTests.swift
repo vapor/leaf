@@ -26,16 +26,16 @@ class RawTests: XCTestCase {
     }
 
     func testEscaping() throws {
-        let expectations = [
-            "\\#fooBar()",
-            "Hello there\\#fooBar",
+        let tests = [
+            (input: "\\#fooBar()", expectation: "#fooBar()"),
+            (input: "Hello there\\#fooBar", expectation: "Hello there#fooBar"),
         ]
 
-        try expectations.forEach { expectation in
-            let raw = try stem.spawnLeaf(raw: expectation)
+        try tests.forEach { test in
+            let raw = try stem.spawnLeaf(raw: test.input)
             let context = Context([:])
             let rendered = try stem.render(raw, with: context).makeString()
-            XCTAssertEqual(rendered, expectation)
+            XCTAssertEqual(rendered, test.expectation)
         }
     }
 
