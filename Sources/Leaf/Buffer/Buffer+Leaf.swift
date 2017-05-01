@@ -40,8 +40,10 @@ extension Buffer {
         return .tagTemplate(tagTemplate)
     }
 
-    mutating func extractUntil(allowsEscaping: Bool = true, _ until: (Element) -> Bool) -> [Element] {
-
+    mutating func extractUntil(
+        allowsEscaping: Bool = true,
+        _ until: (Element) -> Bool
+    ) -> [Element] {
         var collection = Bytes()
         if let current = current {
             guard !(until(current) && previous != .backSlash) else { return [] }
