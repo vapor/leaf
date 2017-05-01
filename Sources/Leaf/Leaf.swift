@@ -26,8 +26,12 @@ public final class Leaf {
         self.components = components
 
         let rawSize = raw.utf8.count
-        // TODO: Verify http://stackoverflow.com/a/40334422/2611971
-        let listSize = malloc_size(Unmanaged.passRetained(components).toOpaque())
+        #if os(Linux)
+            let listSize = malloc_usable_size(Unmanaged.passRetained(components).toOpaque())
+        #else
+            // http://stackoverflow.com/a/40334422/2611971
+            let listSize = malloc_size(Unmanaged.passRetained(components).toOpaque())
+        #endif
         self.size = rawSize + listSize + MemoryLayout<Int>.size
     }
 }
