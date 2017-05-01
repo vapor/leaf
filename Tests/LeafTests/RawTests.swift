@@ -7,6 +7,7 @@ class RawTests: XCTestCase {
         ("testRaw", testRaw),
         ("testRawVariable", testRawVariable),
         ("testEscaping", testEscaping),
+        ("testTagDetection", testTagDetection),
     ]
 
     func testRaw() throws {
@@ -38,7 +39,16 @@ class RawTests: XCTestCase {
         }
     }
 
-    func testColumnLine() throws {
+    func testTagDetection() throws {
+        let expectations = [
+            "<a href=\"#\">"
+        ]
 
+        try expectations.forEach { expectation in
+            let raw = try stem.spawnLeaf(raw: expectation)
+            let context = Context([:])
+            let rendered = try stem.render(raw, with: context).makeString()
+            XCTAssertEqual(rendered, expectation)
+        }
     }
 }

@@ -1,3 +1,18 @@
+public let permittedLeafTagCharacters: Bytes = {
+    var permitted = Bytes(.a ... .z)
+    permitted += Bytes(.A ... .Z)
+    permitted += Bytes(.zero ... .nine)
+    // -_.:
+    permitted += [
+        .hyphen,
+        .underscore,
+        .period,
+        .colon
+    ]
+
+    return permitted
+}()
+
 extension Buffer {
     mutating func components(stem: Stem) throws -> [Leaf.Component] {
         var comps: [Leaf.Component] = []
@@ -32,12 +47,13 @@ extension Buffer {
 
     mutating func nextComponent(stem: Stem) throws -> Leaf.Component? {
         guard let token = current else { return nil }
-        guard token == TOKEN else {
-            let raw = extractUntil { $0 == TOKEN }
+        if foundTag() {
+            let tagTemplate = try extractInstruction(stem: stem)
+            return .tagTemplate(tagTemplate)
+        } else {
+            let raw = nextRawComponent()
             return .raw(raw)
         }
-        let tagTemplate = try extractInstruction(stem: stem)
-        return .tagTemplate(tagTemplate)
     }
 
     mutating func extractUntil(
@@ -55,6 +71,37 @@ extension Buffer {
         }
 
         return collection
+    }
+
+    mutating func nextRawComponent() -> [Element] {
+        var collection = Bytes()
+        if let current = current {
+            if foundTag() { return [] }
+            collection.append(current)
+        }
+
+        while let value = moveForward() {
+            if foundTag() {
+                return collection
+            }
+
+            collection.append(value)
+        }
+
+        return collection
+    }
+
+    private func foundTag() -> Bool {
+        guard let current = current, let next = next else { return false }
+        // make sure we found a token
+        guard current == TOKEN else { return false }
+        // make sure said token isn't escaped
+        guard previous != .backSlash else { return false }
+
+        // allow left parens, special case, ie: '#(' and any valid name
+        // also allow special case double chained
+        let isSpecialCase = (next == .leftParenthesis || next == TOKEN)
+        return isSpecialCase || permittedLeafTagCharacters.contains(next) 
     }
 }
 
