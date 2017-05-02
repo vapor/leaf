@@ -26,3 +26,32 @@ extension Argument {
         }
     }
 }
+
+public struct ArgumentList {
+    public let list: [Argument]
+    public let stem: Stem
+    public let context: Context
+
+    public var isEmpty: Bool { return list.isEmpty }
+    public var count: Int { return list.count }
+
+    public var first: Node? {
+        return self[0]
+    }
+
+    public var last: Node? {
+        let last = list.count - 1
+        return self[last]
+    }
+
+    public init(list: [Argument], stem: Stem, context: Context) {
+        self.list = list
+        self.stem = stem
+        self.context = context
+    }
+
+    public subscript(idx: Int) -> Node? {
+        guard idx < list.count else { return nil }
+        return list[idx].value(with: stem, in: context)
+    }
+}

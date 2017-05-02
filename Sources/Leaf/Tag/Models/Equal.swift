@@ -5,21 +5,19 @@ public final class Equal: BasicTag {
 
     public let name = "equal"
 
-    public func run(arguments: [Argument]) throws -> Node? {
+    public func run(arguments: ArgumentList) throws -> Node? {
         guard arguments.count == 2 else { throw Error.expected2Arguments }
         return nil
     }
 
     public func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?
     ) -> Bool {
         return fuzzyEquals(
-            arguments.first?.value(with: stem, in: context),
-            arguments.last?.value(with: stem, in: context)
+            arguments.first,
+            arguments.last
         )
     }
 }

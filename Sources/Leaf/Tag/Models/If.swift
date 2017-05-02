@@ -6,21 +6,17 @@ public final class If: Tag {
     public let name = "if"
 
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Node? {
-        guard arguments.count == 1 else { throw Error.expectedSingleArgument(have: arguments) }
+        arguments: ArgumentList) throws -> Node? {
+        guard arguments.count == 1 else { throw Error.expectedSingleArgument(have: arguments.list) }
         return nil
     }
 
     public func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?) -> Bool {
-        guard let value = arguments.first?.value(with: stem, in: context) else { return false }
+        guard let value = arguments[0] else { return false }
         // Existence of bool, evaluate bool.
         if let bool = value.bool { return bool }
         // Empty string value returns false.

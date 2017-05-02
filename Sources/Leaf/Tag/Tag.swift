@@ -24,24 +24,20 @@ public protocol Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate
-    ) throws -> [Argument]
+    ) throws -> ArgumentList
 
 
     // ** Required
     // run the tag w/ the specified arguments and returns the value to add to context or render
     func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]
+        arguments: ArgumentList
     ) throws -> Node?
 
     // whether or not the given value should be rendered. Defaults to `!= nil`
     func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?
     ) -> Bool
 
@@ -81,15 +77,13 @@ extension Tag {
         stem: Stem,
         context: Context,
         tagTemplate: TagTemplate
-    ) throws -> [Argument]{
+    ) throws -> ArgumentList {
         return try tagTemplate.makeArguments(with: stem, in: context)
     }
 
     public func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?
     ) -> Bool {
         return value != nil

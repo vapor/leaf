@@ -1,3 +1,6 @@
+import Core
+import libc
+
 /**
     🍃
  
@@ -15,9 +18,23 @@ public final class Leaf {
     // public let components: [Component]
     public let components: List<Component>
 
+    public let size: Int
+
     internal init(raw: String, components: [Component]) {
         self.raw = raw
-        self.components = List(components)
+        let components = List(components)
+        self.components = components
+
+        /// I can't find a way to dynamically infer the size of a given component, so we will use roughly
+        /// double its raw representation
+        let rawSize = raw.utf8.count
+        self.size = rawSize * 2
+    }
+}
+
+extension Leaf: Cacheable {
+    public func cacheSize() -> Size {
+        return size
     }
 }
 

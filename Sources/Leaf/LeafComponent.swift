@@ -7,10 +7,14 @@ extension Leaf {
 }
 
 extension Leaf.Component {
-    internal mutating func addToChain(_ chainedInstruction: TagTemplate) throws {
+    internal mutating func addToChain(
+        _ chainedInstruction: TagTemplate,
+        line: Int,
+        column: Int
+    ) throws {
         switch self {
         case .raw(_):
-            throw ParseError.expectedLeadingTemplate(have: self)
+            throw ParseError.expectedLeadingTemplate(have: self, line: line, column: column)
         case let .tagTemplate(current):
             self = .chain([current, chainedInstruction])
         case let .chain(chain):
