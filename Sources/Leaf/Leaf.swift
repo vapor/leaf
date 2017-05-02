@@ -25,14 +25,10 @@ public final class Leaf {
         let components = List(components)
         self.components = components
 
+        /// I can't find a way to dynamically infer the size of a given component, so we will use roughly
+        /// double its raw representation
         let rawSize = raw.utf8.count
-        #if os(Linux)
-            let listSize = malloc_usable_size(Unmanaged.passRetained(components).toOpaque())
-        #else
-            // http://stackoverflow.com/a/40334422/2611971
-            let listSize = malloc_size(Unmanaged.passRetained(components).toOpaque())
-        #endif
-        self.size = rawSize + listSize + MemoryLayout<Int>.size
+        self.size = rawSize * 2
     }
 }
 
