@@ -28,7 +28,7 @@ extension Argument {
         case let .variable(path: _, value: value):
             return value
         case let .expression(arguments: args):
-            return stem.expression(matching: args)?.evaluate(args)
+            return stem.expression(matching: args)?.evaluate(args, with: stem, in: context)
         }
     }
 }
@@ -76,26 +76,34 @@ extension Sequence where Iterator.Element == Byte {
     var isOperation: Bool { return false }
 }
 
-public let defaultExpressions: [Expression] = [Test()]
+public let defaultExpressions: [Expression] = [
+    EqualsExpression(),
+]
 
 public protocol Expression {
     func matches(_ arguments: [String]) -> Bool
-    func evaluate(_ arguments: [String]) -> Node?
+    func evaluate(_ arguments: [String], with stem: Stem, in context: Context) -> Node?
 }
 
-public struct Test: Expression {
+public final class EqualsExpression: Expression {
     public func matches(_ arguments: [String]) -> Bool {
-        return true
+        return arguments.count == 3
+        && arguments[1] == "=="
     }
 
-    public func evaluate(_ arguments: [String]) -> Node? {
-        return "expression"
+    public func evaluate(_ arguments: [String], with stem: Stem, in context: Context) -> Node? {
+        let lhs = value(for: arguments[0], in: context)
+        let rhs = value(for: arguments[2], in: context)
+        return fuzzyEquals(lhs, rhs).makeNode(in: nil)
     }
 }
 
-//final class Expression {
-//
-//    init(_ args: [String]) {
-//
-//    }
-//}
+extension Expression {
+    public func value(for arg: String, in context: Context) -> Node? {
+        if arg.hasPrefix("\"") && arg.hasSuffix("\"") {
+            return arg.makeBytes().dropFirst().dropLast().makeString().makeNode(in: nil)
+        } else {
+            return context.get(path: arg.components(separatedBy: "."))
+        }
+    }
+}

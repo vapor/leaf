@@ -54,12 +54,22 @@ extension Parameter {
         if bytes.count > 1, bytes.first == .quote, bytes.last == .quote {
             self = .constant(value: bytes.dropFirst().dropLast().makeString())
         } else {
-            let path = bytes.split(
+            if bytes.contains(.space) {
+                let components = bytes.split(
+                    separator: .space,
+                    omittingEmptySubsequences: true
+                )
+                .map { $0.makeString() }
+                self = .expression(components: components)
+            } else {
+                let path = bytes.split(
                     separator: .period,
                     omittingEmptySubsequences: true
                 )
                 .map { $0.makeString() }
-            self = .variable(path: path)
+                self = .variable(path: path)
+            }
+
         }
     }
 }

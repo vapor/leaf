@@ -237,6 +237,9 @@ fileprivate final class ParameterParser {
 
         if next == .quote {
             return try nextConstant()
+        } else if next == .colon {
+            // Most people shouldn't need a leading colon, it's only to disambiguate expressions w/ quotes, ie: #if(:"1" == "1")
+            return try nextExpression()
         } else {
             return try nextVariableOrExpression()
         }
@@ -260,7 +263,21 @@ fileprivate final class ParameterParser {
                 .components(separatedBy: ".")
             return .variable(path: variable)
         }
+    }
 
+    private func nextExpression() throws -> Parameter {
+        // clear disambiguator ':'
+        try buffer.discardNext(1)
+
+        let collected = try buffer.collect(until: .comma, .rightParenthesis).trimmed(.whitespace)
+        // discard `,` or ')'
+        try buffer.discardNext(1)
+        try buffer.skipWhitespace()
+
+        let components = collected
+            .split(separator: .space, omittingEmptySubsequences: true)
+            .map { $0.makeString() }
+        return .expression(components: components)
     }
 
     private func nextConstant() throws -> Parameter {
