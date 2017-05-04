@@ -75,3 +75,15 @@ extension Sequence where Iterator.Element == Byte {
     var isConstant: Bool { return false }
     var isOperation: Bool { return false }
 }
+
+public let defaultExpressions: [Expression] = []
+
+public protocol Expression {
+    func matches(arguments: [String]) -> Bool
+}
+//final class Expression {
+//
+//    init(_ args: [String]) {
+//
+//    }
+//}

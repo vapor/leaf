@@ -33,7 +33,7 @@ extension TagTemplate {
                 let leaf = try stem.spawnLeaf(raw: c)
                 return .constant(leaf)
             case let .expression(e):
-                fatalError()
+                return .expression(arguments: e)
             }
         }
 
