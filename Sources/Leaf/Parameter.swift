@@ -14,6 +14,8 @@ public enum Parameter {
         - parameter value: the value found
      */
     case constant(value: String)
+
+    case expression(components: [String])
 }
 
 extension Parameter: CustomStringConvertible {
@@ -23,6 +25,8 @@ extension Parameter: CustomStringConvertible {
             return ".variable(\(v))"
         case let .constant(c):
             return ".constant(\(c))"
+        case let .expression(e):
+            return ".expression(\(e))"
         }
     }
 }

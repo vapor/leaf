@@ -238,20 +238,28 @@ fileprivate final class ParameterParser {
         if next == .quote {
             return try nextConstant()
         } else {
-            return try nextVariable()
+            return try nextVariableOrExpression()
         }
     }
 
-    private func nextVariable() throws -> Parameter {
-        let collected = try buffer.collect(until: .comma, .rightParenthesis)
+    private func nextVariableOrExpression() throws -> Parameter {
+        let collected = try buffer.collect(until: .comma, .rightParenthesis).trimmed(.whitespace)
         // discard `,` or ')'
         try buffer.discardNext(1)
         try buffer.skipWhitespace()
 
-        let variable = collected
-            .makeString()
-            .components(separatedBy: ".")
-        return .variable(path: variable)
+        // space identifies
+        if collected.contains(.space) {
+            let components = collected
+                .split(separator: .space, omittingEmptySubsequences: true)
+                .map { $0.makeString() }
+            return .expression(components: components)
+        } else {
+            let variable = collected
+                .makeString()
+                .components(separatedBy: ".")
+            return .variable(path: variable)
+        }
 
     }
 

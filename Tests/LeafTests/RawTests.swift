@@ -19,9 +19,11 @@ class RawTests: XCTestCase {
 
     func testRawVariable() throws {
         let raw = try stem.spawnLeaf(raw: "Hello, #raw(unescaped)!")
+
         let context = Context(["unescaped": "<b>World</b>"])
         let rendered = try stem.render(raw, with: context).makeString()
         let expectation = "Hello, <b>World</b>!"
+
         XCTAssertEqual(rendered, expectation)
     }
 
