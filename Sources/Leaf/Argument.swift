@@ -28,7 +28,7 @@ extension Argument {
         case let .variable(path: _, value: value):
             return value
         case let .expression(arguments: args):
-            fatalError()
+            return stem.expression(matching: args)?.evaluate(args)
         }
     }
 }
@@ -76,11 +76,23 @@ extension Sequence where Iterator.Element == Byte {
     var isOperation: Bool { return false }
 }
 
-public let defaultExpressions: [Expression] = []
+public let defaultExpressions: [Expression] = [Test()]
 
 public protocol Expression {
-    func matches(arguments: [String]) -> Bool
+    func matches(_ arguments: [String]) -> Bool
+    func evaluate(_ arguments: [String]) -> Node?
 }
+
+public struct Test: Expression {
+    public func matches(_ arguments: [String]) -> Bool {
+        return true
+    }
+
+    public func evaluate(_ arguments: [String]) -> Node? {
+        return "expression"
+    }
+}
+
 //final class Expression {
 //
 //    init(_ args: [String]) {

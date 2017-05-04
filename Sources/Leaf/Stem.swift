@@ -35,6 +35,6 @@ extension Stem {
 
 extension Stem {
     public func expression(matching arguments: [String]) -> Expression? {
-        return expressions.first { $0.matches(arguments: arguments) }
+        return expressions.first { $0.matches(arguments) }
     }
 }
