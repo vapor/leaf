@@ -126,12 +126,24 @@ extension Buffer {
     mutating func extractInstruction(stem: Stem) throws -> TagTemplate {
         let name = try extractInstructionName()
         let parameters = try extractInstructionParameters()
-
-        // check if body
-        moveForward()
-        guard current == .space, next == .leftCurlyBracket else {
+        
+        // check if body exists
+        
+        // Check for immediate curly brace without whitespace.
+        // If there is an immediate brace, do nothing.
+        if next != .leftCurlyBracket {
+            moveForward()
+        }
+        
+        // Move through any redundant whitespace
+        while current?.isWhitespace == true && next?.isWhitespace == true {
+             moveForward()
+        }
+        
+        guard next == .leftCurlyBracket else {
             return TagTemplate(name: name, parameters: parameters, body: Leaf?.none)
         }
+        
         moveForward() // queue up `{`
 
         // TODO: Body should be leaf components
@@ -153,6 +165,7 @@ extension Buffer {
         guard current == .leftParenthesis else {
             throw ParseError.expectedOpenParenthesis(line: line, column: column)
         }
+        
         return name.makeString()
     }
 
@@ -168,6 +181,7 @@ extension Buffer {
     }
 
     mutating func extractSection(opensWith opener: Byte, closesWith closer: Byte) throws -> Bytes {
+        
         guard current ==  opener else {
             let have = current.flatMap { [$0] }?.makeString()
             throw ParseError.missingBodyOpener(
