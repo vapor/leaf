@@ -26,7 +26,16 @@ public final class Loop: Tag {
 
         guard let unwrapped = value else { return nil }
         let array = unwrapped.array ?? [unwrapped]
-        return .array(array.map { [innername: $0] })
+        let nodes = try array.enumerated().map { idx, val in
+            return try Node(
+                node: [
+                    innername: val,
+                    "index": idx,
+                    "offset": idx + 1
+                ]
+            )
+        }
+        return .array(nodes)
     }
 
     public func render(
