@@ -21,4 +21,5 @@ XCTMain([
      testCase(VariableTests.allTests),
      testCase(LayoutTests.allTests),
      testCase(RawTests.allTests),
+     testCase(BodyWhitespaceTests.allTests)
 ])
