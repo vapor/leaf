@@ -51,11 +51,12 @@ class ContextTests: XCTestCase {
     }
 
     func testLoop() throws {
-        let raw = "#loop(friends, \"friend\") { Hello, #(friend) from #(index)! }"
+        let raw = "#loop(friends, \"friend\") { Hi, #(friend) from #(index)(#(offset))! }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try stem.render(template, with: context).makeString()
-        let expectation =  "Hello, a from 0!\nHello, b from 1!\nHello, c from 2!\nHello, #loop from 3!"
+        let expectation =  "Hi, a from 0(1)!\nHi, b from 1(2)!\nHi, c from 2(3)!\nHi, #loop from 3(4)!"
+        
         XCTAssert(rendered == expectation)
     }
 
