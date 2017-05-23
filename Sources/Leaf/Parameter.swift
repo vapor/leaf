@@ -14,6 +14,8 @@ public enum Parameter {
         - parameter value: the value found
      */
     case constant(value: String)
+
+    case expression(components: [String])
 }
 
 extension Parameter: CustomStringConvertible {
@@ -23,6 +25,8 @@ extension Parameter: CustomStringConvertible {
             return ".variable(\(v))"
         case let .constant(c):
             return ".constant(\(c))"
+        case let .expression(e):
+            return ".expression(\(e))"
         }
     }
 }
@@ -50,12 +54,22 @@ extension Parameter {
         if bytes.count > 1, bytes.first == .quote, bytes.last == .quote {
             self = .constant(value: bytes.dropFirst().dropLast().makeString())
         } else {
-            let path = bytes.split(
+            if bytes.contains(.space) {
+                let components = bytes.split(
+                    separator: .space,
+                    omittingEmptySubsequences: true
+                )
+                .map { $0.makeString() }
+                self = .expression(components: components)
+            } else {
+                let path = bytes.split(
                     separator: .period,
                     omittingEmptySubsequences: true
                 )
                 .map { $0.makeString() }
-            self = .variable(path: path)
+                self = .variable(path: path)
+            }
+
         }
     }
 }

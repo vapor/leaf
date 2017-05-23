@@ -22,7 +22,7 @@ public final class Equal: BasicTag {
     }
 }
 
-fileprivate func fuzzyEquals(_ lhs: Node?, _ rhs: Node?) -> Bool {
+internal func fuzzyEquals(_ lhs: Node?, _ rhs: Node?) -> Bool {
     let lhs = lhs ?? .null
     let rhs = rhs ?? .null
 
