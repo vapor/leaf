@@ -11,6 +11,7 @@ class LoopTests: XCTestCase {
         ("testInvalidSignature2", testInvalidSignature2),
         ("testSkipNil", testSkipNil),
         ("testFuzzySingle", testFuzzySingle),
+        ("testNestedLoop", testNestedLoop),
     ]
 
     func testBasicLoop() throws {
@@ -95,5 +96,20 @@ class LoopTests: XCTestCase {
         let context = Context(["names": "Rick"])
         let rendered = try stem.render(leaf, with: context).makeString()
         XCTAssert(rendered == "Hello, Rick!")
+    }
+
+    func testNestedLoop() throws {
+        let raw = "#loop(data, \"each\") { type: #(each.type)\n#loop(each.sub, \"sub\") { Hello, #(sub)\n } }"
+        let leaf = try stem.spawnLeaf(raw: raw)
+        let context = Context(["data": [["type": "foo", "sub": ["a", "b", "c"]], ["type": "bar"]]])
+        let rendered = try stem.render(leaf, with: context).makeString()
+
+        var expectation = ""
+        expectation += "type: foo\n"
+        expectation += "Hello, a\n"
+        expectation += "Hello, b\n"
+        expectation += "Hello, c\n"
+        expectation += "type: bar\n"
+        XCTAssertEqual(expectation, rendered)
     }
 }
