@@ -3,7 +3,7 @@ public final class IfNot: Tag {
         case expectedSingleArgument(have: [Argument])
     }
 
-    public let name = "if"
+    public let name = "ifnot"
 
     public func run(
         stem: Stem,
