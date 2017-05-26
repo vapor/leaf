@@ -8,7 +8,7 @@ class FileLoadTests: XCTestCase {
     ]
 
     func testLoadRawBytes() throws {
-        let leaf = try stem.spawnLeaf(named: "random-file.any")
+        let leaf = try stem.spawnLeaf(at: "random-file.any")
         XCTAssert(Array(leaf.components).count == 1)
 
         let rendered = try stem.render(leaf, with: Context([])).makeString()
@@ -17,6 +17,6 @@ class FileLoadTests: XCTestCase {
         XCTAssertEqual(rendered, expectation)
 
         // test cache
-        _ = try stem.spawnLeaf(named: "random-file.any")
+        _ = try stem.spawnLeaf(at: "random-file.any")
     }
 }

@@ -15,7 +15,7 @@ public final class Embed: Tag {
                 throw Error.expectedSingleConstant(have: tagTemplate.parameters)
             }
 
-        let body = try stem.spawnLeaf(named: name)
+        let body = try stem.spawnLeaf(at: name)
         return TagTemplate(
             name: tagTemplate.name,
             parameters: [], // no longer need parameters
@@ -24,18 +24,14 @@ public final class Embed: Tag {
     }
 
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]) throws -> Node? {
+        arguments: ArgumentList) throws -> Node? {
         return nil
     }
 
     public func shouldRender(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument],
+        arguments: ArgumentList,
         value: Node?) -> Bool {
         // throws at precompile, should always render
         return true

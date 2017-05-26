@@ -6,13 +6,13 @@ final class Raw: Tag {
         return Leaf(raw: raw, components: [component])
     }
 
-    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
-        guard let string = arguments.first?.value?.string else { return nil }
+    func run(tagTemplate: TagTemplate, arguments: ArgumentList) throws -> Node? {
+        guard let string = arguments[0]?.string else { return nil }
         let unescaped = string.makeBytes()
         return .bytes(unescaped)
     }
 
-    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Node?) -> Bool {
+    func shouldRender(tagTemplate: TagTemplate, arguments: ArgumentList, value: Node?) -> Bool {
         return true
     }
 }

@@ -8,24 +8,34 @@ public final class Loop: Tag {
     public let name = "loop"
 
     public func run(
-        stem: Stem,
-        context: Context,
         tagTemplate: TagTemplate,
-        arguments: [Argument]
+        arguments: ArgumentList
     ) throws -> Node? {
-        guard arguments.count == 2 else { throw Error.expectedTwoArguments(have: arguments) }
-        let variable = arguments[0]
+        guard arguments.count == 2 else { throw Error.expectedTwoArguments(have: arguments.list) }
+        let variable = arguments.list[0]
         guard case let .variable(path: _, value: value) = variable else {
             throw Error.expectedVariable(have: variable)
         }
-        let constant = arguments[1]
-        guard case let .constant(value: innername) = constant else {
+        let constant = arguments.list[1]
+        guard case let .constant(value: leaf) = constant else {
             throw Error.expectedConstant(have: constant)
         }
+        let innername = try arguments.stem
+            .render(leaf, with: arguments.context)
+            .makeString()
 
         guard let unwrapped = value else { return nil }
         let array = unwrapped.array ?? [unwrapped]
-        return .array(array.map { [innername: $0] })
+        let nodes = try array.enumerated().map { idx, val in
+            return try Node(
+                node: [
+                    innername: val,
+                    "index": idx,
+                    "offset": idx + 1
+                ]
+            )
+        }
+        return .array(nodes)
     }
 
     public func render(

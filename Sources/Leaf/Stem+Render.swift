@@ -49,15 +49,11 @@ extension Stem {
         )
 
         let value = try tag.run(
-            stem: self,
-            context: context,
             tagTemplate: tagTemplate,
             arguments: arguments
         )
 
         let shouldRender = tag.shouldRender(
-            stem: self,
-            context: context,
             tagTemplate: tagTemplate,
             arguments: arguments,
             value: value
@@ -73,7 +69,9 @@ extension Stem {
         // return "World".makeBytes()
         if let subLeaf = tagTemplate.body {
             if let val = value { context.push(["self": val]) }
-            return try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
+            let render = try tag.render(stem: self, context: context, value: value, leaf: subLeaf)
+            if value != nil { context.pop() }
+            return render
         } else if let rendered = try value?.rendered() {
             return rendered
         }

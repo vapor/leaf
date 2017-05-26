@@ -10,7 +10,8 @@
     private let workDir = "./Resources/"
 #endif
 
-let stem = Stem(workingDirectory: workDir)
+let file = DataFile(workDir: workDir)
+let stem = Stem(file)
 
 class Test: Tag {
     let name: String
@@ -23,11 +24,11 @@ class Test: Tag {
         self.shouldRender = shouldRender
     }
 
-    func run(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument]) throws -> Node? {
+    func run(tagTemplate: TagTemplate, arguments: ArgumentList) throws -> Node? {
         return value
     }
 
-    func shouldRender(stem: Stem, context: Context, tagTemplate: TagTemplate, arguments: [Argument], value: Node?) -> Bool {
+    func shouldRender(tagTemplate: TagTemplate, arguments: ArgumentList, value: Node?) -> Bool {
         return shouldRender
     }
 }

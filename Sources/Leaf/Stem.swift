@@ -1,10 +1,13 @@
+import Core
+import Bits
+
 public final class Stem {
-    public let workingDirectory: String
-    public var cache: [String: Leaf]?
+    public let file: FileProtocol
+    public var cache: SystemCache<Leaf>?
     public fileprivate(set) var tags: [String: Tag] = defaultTags
 
-    public init(workingDirectory: String, cache: [String: Leaf]? = [:]) {
-        self.workingDirectory = workingDirectory.finished(with: "/")
+    public init(_ file: FileProtocol, cache: SystemCache<Leaf>? = .init(maxSize: 500.megabytes)) {
+        self.file = file
         self.cache = cache
     }
 }

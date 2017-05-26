@@ -4,6 +4,7 @@ import XCTest
 
 class ContextTests: XCTestCase {
     static let allTests = [
+        ("testConstantSubLeaf", testConstantSubLeaf),
         ("testBasic", testBasic),
         ("testNested", testNested),
         ("testLoop", testLoop),
@@ -13,6 +14,24 @@ class ContextTests: XCTestCase {
         ("testIfChain", testIfChain),
         ("testNestedComplex", testNestedComplex),
     ]
+
+    func testConstantSubLeaf() throws {
+        let raw = "Hello, #(\"Foo #(bar)\")"
+        let template = try stem.spawnLeaf(raw: raw)
+        let loadable = Context(["bar": "Bar"])
+        let rendered = try stem.render(template, with: loadable).makeString()
+        let expectation = "Hello, Foo Bar"
+        XCTAssertEqual(rendered, expectation)
+    }
+
+    func testNestedComma() throws {
+        let raw = "Hello, #(\"foo,bar\")"
+        let template = try stem.spawnLeaf(raw: raw)
+        let loadable = Context(["": ""])
+        let rendered = try stem.render(template, with: loadable).makeString()
+        let expectation = "Hello, foo,bar"
+        XCTAssertEqual(rendered, expectation)
+    }
 
     func testBasic() throws {
         let template = try stem.spawnLeaf(raw: "Hello, #(name)!")
@@ -32,11 +51,12 @@ class ContextTests: XCTestCase {
     }
 
     func testLoop() throws {
-        let raw = "#loop(friends, \"friend\") { Hello, #(friend)! }"
+        let raw = "#loop(friends, \"friend\") { Hi, #(friend) from #(index)(#(offset))! }"
         let template = try stem.spawnLeaf(raw: raw)
         let context = Context(["friends": ["a", "b", "c", "#loop"]])
         let rendered = try stem.render(template, with: context).makeString()
-        let expectation =  "Hello, a!\nHello, b!\nHello, c!\nHello, #loop!"
+        let expectation =  "Hi, a from 0(1)!\nHi, b from 1(2)!\nHi, c from 2(3)!\nHi, #loop from 3(4)!"
+        
         XCTAssert(rendered == expectation)
     }
 

@@ -24,7 +24,7 @@ class RenderTests: XCTestCase {
     }
 
     func testBasicRender() throws {
-        let template = try stem.spawnLeaf(named: "basic-render")
+        let template = try stem.spawnLeaf(at: "basic-render")
         let contexts = ["a", "ab9###", "ajcm301kc,s--11111", "World", "👾"]
 
         try contexts.forEach { context in
@@ -36,7 +36,7 @@ class RenderTests: XCTestCase {
     }
 
     func testNestedBodyRender() throws {
-        let template = try stem.spawnLeaf(named: "nested-body")
+        let template = try stem.spawnLeaf(at: "nested-body")
 
         let contextTests: [Node] = [
             try .init(node: ["best-friend": ["name": "World"]]),
