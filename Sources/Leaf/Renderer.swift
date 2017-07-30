@@ -35,7 +35,12 @@ extension Renderer {
     public func render(path: String, context: Data) throws -> Bytes {
         let path = path.finished(with: ".leaf")
         let view = try file.read(at: path)
-        return try render(view, context: context)
+        do {
+            return try render(view, context: context)
+        } catch var error as RenderError {
+            error.path = path
+            throw error
+        }
     }
 
 

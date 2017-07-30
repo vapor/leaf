@@ -21,7 +21,7 @@ public final class Print: Tag {
             throw "could convert input to a string"
         }
 
-        return data.makeBytes()
+        return data.htmlEscaped().makeBytes()
     }
 }
 

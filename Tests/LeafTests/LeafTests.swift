@@ -60,6 +60,32 @@ class LeafTests: XCTestCase {
         try XCTAssert(renderer.render(template, context: Data.empty).contains("hello.leaf"))
     }
 
+    func testError() throws {
+        do {
+            let template = "#if() { }"
+            _ = try renderer.render(template, context: Data.empty)
+        } catch {
+            print("\(error)")
+        }
+
+        do {
+            let template = """
+            Fine
+            ##bad()
+            Good
+            """
+            _ = try renderer.render(template, context: Data.empty)
+        } catch {
+            print("\(error)")
+        }
+
+        do {
+            _ = try renderer.render(path: "##()", context: Data.empty)
+        } catch {
+            print("\(error)")
+        }
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),

@@ -1,0 +1,36 @@
+{
+  "autoPin": true,
+  "pins": [
+    {
+      "package": "Bits",
+      "reason": null,
+      "repositoryURL": "https://github.com/vapor/bits.git",
+      "version": "1.0.0-beta.4"
+    },
+    {
+      "package": "Core",
+      "reason": null,
+      "repositoryURL": "https://github.com/vapor/core.git",
+      "version": "2.0.0-beta.2"
+    },
+    {
+      "package": "Debugging",
+      "reason": null,
+      "repositoryURL": "https://github.com/vapor/debugging.git",
+      "version": "1.0.0-beta.1"
+    },
+    {
+      "package": "Node",
+      "reason": null,
+      "repositoryURL": "https://github.com/vapor/node.git",
+      "version": "2.0.0-beta.1"
+    },
+    {
+      "package": "PathIndexable",
+      "reason": null,
+      "repositoryURL": "https://github.com/vapor/path-indexable.git",
+      "version": "2.0.0-beta.1"
+    }
+  ],
+  "version": 1
+}

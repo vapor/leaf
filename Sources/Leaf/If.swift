@@ -9,15 +9,10 @@ public final class If: Tag {
         body: Bytes?,
         renderer: Renderer
     ) throws -> Bytes {
-        guard parameters.count == 1 else {
-            throw "only one parameter allowed"
-        }
-
-        guard let body = body else {
-            throw "body required for if"
-        }
+        let expr = try requireParameter(0, from: parameters)
+        let body = try requireBody(body)
         
-        if parameters[0].bool != false {
+        if expr.bool != false {
             return body
         } else {
             return []
