@@ -82,6 +82,16 @@ extension Data {
         }
     }
 
+    public var array: [Data]? {
+        switch self {
+        case .array(let array):
+            return array
+        case .future(let future):
+            return future().array
+        default:
+            return nil
+        }
+    }
 
     public var dictionary: [String: Data]? {
         switch self {

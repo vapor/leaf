@@ -53,6 +53,8 @@ final class Parser {
     private func extractTag() throws -> Syntax {
         let start = scanner.makeSourceStart()
 
+        let indent = scanner.column
+
         try expect(.numberSign)
         let id = try extractIdentifier()
         let params = try extractParameters()
@@ -62,7 +64,45 @@ final class Parser {
 
         if let byte = scanner.peek() {
             if byte == .leftCurlyBracket {
-                body = try extractBody()
+                var tempBody = try extractBody()
+
+                // fix indentation
+                if let first = tempBody.first {
+                    if case .raw(var raw) = first.kind {
+                        if raw.first == .newLine {
+                            raw = Array(raw.dropFirst())
+                        }
+                        var removedSpaces = 0
+                        while raw.first == .space {
+                            raw = Array(raw.dropFirst())
+                            removedSpaces += 1
+                            if removedSpaces == indent + 4 {
+                                break
+                            }
+                        }
+                        tempBody[0] = Syntax(kind: .raw(data: raw), source: first.source)
+                    }
+                }
+                if let last = tempBody.last {
+                    if case .raw(var raw) = last.kind {
+                        var removedSpaces = 0
+                        while raw.last == .space {
+                            raw = Array(raw.dropLast())
+                            removedSpaces += 1
+                            if removedSpaces == indent {
+                                break
+                            }
+                        }
+
+                        if raw.last == .newLine {
+                            raw = Array(raw.dropLast())
+                        }
+                        tempBody[tempBody.count - 1] = Syntax(kind: .raw(data: raw), source: last.source)
+                    }
+                }
+
+
+                body = tempBody
             } else {
                 body = nil
             }
@@ -90,6 +130,7 @@ final class Parser {
         let kind: SyntaxKind = .tag(
             name: id,
             parameters: params,
+            indent: indent,
             body: body,
             chained: chained
         )

@@ -2,7 +2,7 @@ import Bits
 
 indirect enum SyntaxKind {
     case raw(data: Bytes)
-    case tag(name: Syntax, parameters: [Syntax], body: [Syntax]?, chained: Syntax?)
+    case tag(name: Syntax, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?)
     case identifier(name: String)
     case constant(Constant)
     case expression(type: Operator, left: Syntax, right: Syntax)
@@ -58,7 +58,7 @@ extension Syntax: CustomStringConvertible {
         switch kind {
         case .raw(let source):
             return "Raw: `\(source.makeString())`"
-        case .tag(let name, let params, let body, _):
+        case .tag(let name, let params, _, let body, _):
             let params = params.map { $0.description }
             let hasBody = body != nil ? true : false
             return "Tag: \(name)(\(params.joined(separator: ", "))) Body: \(hasBody)"

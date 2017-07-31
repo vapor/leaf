@@ -4,6 +4,7 @@ public protocol Tag {
     func render(
         parameters: [Data?],
         context: inout Data,
+        indent: Int,
         body: [Syntax]?,
         renderer: Renderer
     ) throws -> Data?
@@ -12,6 +13,14 @@ public protocol Tag {
 // MARK: Convenience
 
 extension Tag {
+    public func requireArrayParameter(_ n: Int, from parameters: [Data?]) throws -> [Data] {
+        let param = try requireParameter(n, from: parameters)
+        guard let array = param?.array else {
+            throw TagError.invalidParameterType(n, param, expected: [Data].self)
+        }
+        return array
+    }
+
     public func requireStringParameter(_ n: Int, from parameters: [Data?]) throws -> String {
         let param = try requireParameter(n, from: parameters)
         guard let string = param?.string else {
@@ -50,7 +59,8 @@ public var defaultTags: [String: Tag] {
         "": Print(),
         "if": If(),
         "var": Var(),
-        "embed": Embed()
+        "embed": Embed(),
+        "loop": Loop()
     ]
 }
 

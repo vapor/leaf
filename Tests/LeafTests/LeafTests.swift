@@ -104,6 +104,35 @@ class LeafTests: XCTestCase {
         try XCTAssert(renderer.render(template, context: Data.empty).contains("It works!"))
     }
 
+    func testLoop() throws {
+        let template = """
+        <p>
+            <ul>
+                #loop(names, "name") {
+                    <li>#(name)</li>
+                }
+            </ul>
+        </p>
+        """
+
+        let context = Data.dictionary([
+            "names": .array([
+                .string("Vapor"), .string("Leaf"), .string("Bits")
+            ])
+        ])
+
+        let expect = """
+        <p>
+            <ul>
+                <li>Vapor</li>
+                <li>Leaf</li>
+                <li>Bits</li>
+            </ul>
+        </p>
+        """
+        try XCTAssertEqual(renderer.render(template, context: context), expect)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
