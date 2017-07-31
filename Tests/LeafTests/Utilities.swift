@@ -1,27 +1,19 @@
 import Leaf
-import Core
+import Bits
 
 extension Renderer {
     static func makeTestRenderer() -> Renderer {
-        return Renderer(file: TestFiles())
+        return Renderer(fileReader: TestFiles())
     }
 }
 
-final class TestFiles: FileProtocol {
+final class TestFiles: FileReader {
     init() {}
 
     func read(at path: String) throws -> Bytes {
         return """
             Test file name: "\(path)"
             """.makeBytes()
-    }
-
-    func write(_ bytes: Bytes, to path: String) throws {
-        throw "not implemented"
-    }
-
-    func delete(at path: String) throws {
-        throw "not implemented"
     }
 }
 

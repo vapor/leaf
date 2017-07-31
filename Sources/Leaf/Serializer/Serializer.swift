@@ -19,10 +19,19 @@ final class Serializer {
                 switch syntax.kind {
                 case .raw(let data):
                     serialized += data
-                case .tag(let name, let parameters, let body):
-                        serialized += try renderTag(name: name, parameters: parameters, body: body)
+                case .tag(let name, let parameters, let body, let chained):
+                    let bytes: Bytes
+                    if let data = try renderTag(name: name, parameters: parameters, body: body, chained: chained) {
+                        guard let string = data.string else {
+                            throw SerializerError.unexpectedSyntax(syntax)
+                        }
+                        bytes = string.makeBytes()
+                    }else {
+                        bytes = []
+                    }
+                    serialized += bytes
                 default:
-                    throw "unexpected syntax"
+                    throw SerializerError.unexpectedSyntax(syntax)
                 }
             } catch {
                 throw RenderError(
@@ -35,36 +44,41 @@ final class Serializer {
         return serialized
     }
 
-    private func renderTag(name: Syntax, parameters: [Syntax], body: [Syntax]?) throws -> Bytes {
+    private func renderTag(name: Syntax, parameters: [Syntax], body: [Syntax]?, chained: Syntax?) throws -> Data? {
         guard case .identifier(let id) = name.kind else {
-            throw "tag name must be identifier"
+            throw SerializerError.unexpectedSyntax(name)
         }
 
         guard let tag = renderer.tags[id] else {
-            throw "no tag found named \(id)"
+            throw SerializerError.unknownTag(name: id)
         }
 
-        var inputs: [Data] = []
+        var inputs: [Data?] = []
 
         for parameter in parameters {
             let input = try resolveSyntax(parameter)
             inputs.append(input)
         }
 
-        let renderedBody: Bytes?
-        if let body = body {
-            let serializer = Serializer(ast: body, renderer: renderer, context: context)
-            renderedBody = try serializer.serialize()
-        } else {
-            renderedBody = nil
-        }
-
-        return try tag.render(
+        if let data = try tag.render(
             parameters: inputs,
             context: &context,
-            body: renderedBody,
+            body: body,
             renderer: renderer
-        )
+        ) {
+            return data
+        } else if let chained = chained {
+            switch chained.kind {
+            case .tag(let name, let params, let body, let chained):
+                return try renderTag(name: name, parameters: params, body: body, chained: chained)
+            default:
+                throw SerializerError.unexpectedSyntax(chained)
+            }
+        } else {
+            return nil
+        }
+
+
     }
 
     private func resolveConstant(_ const: Constant) throws -> Data {
@@ -84,12 +98,12 @@ final class Serializer {
         let left = try resolveSyntax(left)
         let right = try resolveSyntax(right)
 
-        guard let leftDouble = left.double else {
-            throw "could not resolve left argument to number: \(left)"
+        guard let leftDouble = left?.double else {
+            throw SerializerError.invalidNumber(left)
         }
 
-        guard let rightDouble = right.double else {
-            throw "could not resolve right argument to number: \(right)"
+        guard let rightDouble = right?.double else {
+            throw SerializerError.invalidNumber(right)
         }
 
         switch op {
@@ -104,7 +118,7 @@ final class Serializer {
         }
     }
 
-    private func resolveSyntax(_ syntax: Syntax) throws -> Data {
+    private func resolveSyntax(_ syntax: Syntax) throws -> Data? {
         switch syntax.kind {
         case .constant(let constant):
             return try resolveConstant(constant)
@@ -112,12 +126,13 @@ final class Serializer {
             return try resolveExpression(op, left: left, right: right)
         case .identifier(let id):
             guard let data = context.dictionary?[id] else {
-                throw "could not resolve \(id)"
+                return nil
             }
-
             return data
+        case .tag(let name, let parameters, let body, let chained):
+            return try renderTag(name: name, parameters: parameters, body: body, chained: chained)
         default:
-            throw "unsupported syntax: \(syntax)"
+            throw SerializerError.unexpectedSyntax(syntax)
         }
     }
 }

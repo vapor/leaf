@@ -1,6 +1,5 @@
 import XCTest
 @testable import Leaf
-import Core
 
 class LeafTests: XCTestCase {
     var renderer: Renderer!
@@ -20,12 +19,20 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "<h1>42</h1>")
     }
 
-    func testRecursive() throws {
+    func testInterpolated() throws {
         let template = """
         <p>#("foo: #(foo)")</p>
         """
         let data = Data.dictionary(["foo": .string("bar")])
         try XCTAssertEqual(renderer.render(template, context: data), "<p>foo: bar</p>")
+    }
+
+    func testNested() throws {
+        let template = """
+        <p>#(#(foo))</p>
+        """
+        let data = Data.dictionary(["foo": .string("bar")])
+        try XCTAssertEqual(renderer.render(template, context: data), "<p>bar</p>")
     }
 
     func testExpression() throws {
@@ -86,13 +93,26 @@ class LeafTests: XCTestCase {
         }
     }
 
+    func testChained() throws {
+        let template = """
+            #if(0) {
+
+            } ##if(0) {} ##if(1) {
+                It works!
+            }
+        """
+        try XCTAssert(renderer.render(template, context: Data.empty).contains("It works!"))
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
-        ("testRecursive", testRecursive),
+        ("testInterpolated", testInterpolated),
+        ("testNested", testNested),
         ("testExpression", testExpression),
         ("testBody", testBody),
         ("testRuntime", testRuntime),
         ("testEmbed", testEmbed),
+        ("testChained", testChained)
     ]
 }

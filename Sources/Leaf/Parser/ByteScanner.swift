@@ -30,11 +30,11 @@ extension ByteScanner {
         return pointer.advanced(by: 0).pointee
     }
 
-    @discardableResult
-    public func pop() throws -> Byte {
+    public func pop() -> Byte? {
         guard pointer != endAddress else {
-            throw "Out of range"
+            return nil
         }
+
         defer {
             pointer = pointer.advanced(by: 1)
             offset += 1

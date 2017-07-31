@@ -1,69 +1,5 @@
 import Bits
 
-enum Operator {
-    case add
-    case subtract
-    case lessThan
-    case greaterThan
-}
-
-enum Constant {
-    case int(Int)
-    case double(Double)
-    case string([Syntax])
-}
-
-indirect enum SyntaxKind {
-    case raw(data: Bytes)
-    case tag(name: Syntax, parameters: [Syntax], body: [Syntax]?)
-    case identifier(name: String)
-    case constant(Constant)
-    case expression(type: Operator, left: Syntax, right: Syntax)
-}
-
-struct Syntax {
-    let kind: SyntaxKind
-    let source: Source
-}
-
-public struct Source {
-    let line: Int
-    let column: Int
-    let range: Range<Int>
-}
-
-extension Syntax: CustomStringConvertible {
-    var description: String {
-        switch kind {
-        case .raw(let source):
-            return "Raw: `\(source.makeString())`"
-        case .tag(let name, let params, let body):
-            let params = params.map { $0.description }
-            let hasBody = body != nil ? true : false
-            return "Tag: \(name)(\(params.joined(separator: ", "))) Body: \(hasBody)"
-        case .identifier(let name):
-            return "`\(name)`"
-        case .expression(let type, let left, let right):
-            return "Expr: (\(left) \(type) \(right))"
-        case .constant(let const):
-            return "c:\(const)"
-        }
-    }
-}
-
-extension Constant: CustomStringConvertible {
-    var description: String {
-        switch self {
-        case .double(let double):
-            return double.description
-        case .int(let int):
-            return int.description
-        case .string(let ast):
-            return "(" + ast.map { $0 .description }.joined(separator: ", ") + ")"
-        }
-    }
-}
-
 final class Parser {
     let scanner: ByteScanner
 
@@ -83,7 +19,7 @@ final class Parser {
         } catch {
             throw RenderError(
                 source: Source(
-                    line: scanner.line ,
+                    line: scanner.line,
                     column: scanner.column,
                     range: start..<scanner.offset
                 ),
@@ -105,13 +41,9 @@ final class Parser {
         case .numberSign:
             syntax = try extractTag()
         default:
-            let start = scanner.offset
-            let line = scanner.line
-            let column = scanner.column
-
+            let start = scanner.makeSourceStart()
             let bytes = try extractRaw()
-
-            let source = Source(line: line, column: column, range: start..<scanner.offset)
+            let source = scanner.makeSource(using: start)
             return Syntax(kind: .raw(data: bytes), source: source)
         }
 
@@ -119,9 +51,7 @@ final class Parser {
     }
 
     private func extractTag() throws -> Syntax {
-        let start = scanner.offset
-        let line = scanner.line
-        let column = scanner.column
+        let start = scanner.makeSourceStart()
 
         try expect(.numberSign)
         let id = try extractIdentifier()
@@ -140,13 +70,31 @@ final class Parser {
             body = nil
         }
 
+        var chained: Syntax?
+
+        try skipWhitespace()
+        switch scanner.peek() {
+        case Byte.numberSign:
+            switch scanner.peek() {
+            case Byte.numberSign:
+                // found double ##
+                try expect(.numberSign)
+                chained = try extractTag()
+            default:
+                break
+            }
+        default:
+            break
+        }
+
         let kind: SyntaxKind = .tag(
             name: id,
             parameters: params,
-            body: body
+            body: body,
+            chained: chained
         )
-        
-        let source = Source(line: line, column: column, range: start..<scanner.offset)
+
+        let source = scanner.makeSource(using: start)
         return Syntax(kind: kind, source: source)
     }
 
@@ -167,7 +115,7 @@ final class Parser {
 
         var bytes: Bytes = []
         while let byte = scanner.peek(), byte != until || previous == .backSlash {
-            try scanner.pop()
+            try scanner.requirePop()
             if byte != until && previous == .backSlash {
                 bytes.append(.backSlash)
             }
@@ -181,19 +129,15 @@ final class Parser {
     }
 
     private func extractIdentifier() throws -> Syntax {
-        let start = scanner.offset
-        let line = scanner.line
-        let column = scanner.column
+        let start = scanner.makeSourceStart()
 
-        while let byte = scanner.peek(), byte.isAlphanumeric {
-           try scanner.pop()
+        while let byte = scanner.peek(), byte.isAllowedInIdentifier {
+           try scanner.requirePop()
         }
         
-        let bytes = scanner.bytes[start..<scanner.offset]
-
+        let bytes = scanner.bytes[start.rangeStart..<scanner.offset]
         let kind: SyntaxKind = .identifier(name: bytes.makeString())
-        let source = Source(line: line, column: column, range: start..<scanner.offset)
-
+        let source = scanner.makeSource(using: start)
         return Syntax(kind: kind, source: source)
     }
 
@@ -218,20 +162,20 @@ final class Parser {
 
     private func extractNumber() throws -> Constant {
         let start = scanner.offset
-        while let byte = scanner.peek(), byte.isDigit || byte == .period {
-            try scanner.pop()
+        while let byte = scanner.peek(), byte.isDigit || byte == .period || byte == .hyphen {
+            try scanner.requirePop()
         }
 
         let bytes = scanner.bytes[start..<scanner.offset]
         let string = bytes.makeString()
         if bytes.contains(.period) {
             guard let double = Double(string) else {
-                throw "Unexpected non double"
+                throw ParserError.expectationFailed(expected: "double", got: string)
             }
             return .double(double)
         } else {
             guard let int = Int(string) else {
-                throw "Unexpected non int"
+                throw ParserError.expectationFailed(expected: "integer", got: string)
             }
             return .int(int)
         }
@@ -240,13 +184,10 @@ final class Parser {
 
     private func extractParameter() throws -> Syntax? {
         try skipWhitespace()
-
-        let start = scanner.offset
-        let line = scanner.line
-        let column = scanner.column
+        let start = scanner.makeSourceStart()
 
         guard let byte = scanner.peek() else {
-            throw "Unexpected EOF"
+            throw ParserError.expectationFailed(expected: "bytes", got: "EOF")
         }
 
         let kind: SyntaxKind
@@ -263,8 +204,10 @@ final class Parser {
             kind = .constant(
                 .string(ast)
             )
+        case .numberSign:
+            kind = try extractTag().kind
         default:
-            if byte.isDigit {
+            if byte.isDigit || byte == .hyphen {
                 // constant number
                 let num = try extractNumber()
                 kind = .constant(num)
@@ -293,12 +236,13 @@ final class Parser {
                 }
 
                 if let op = op {
-                    try scanner.pop()
+                    try scanner.requirePop()
 
                     guard let right = try extractParameter() else {
-                        throw "Expected right parameter"
+                        throw ParserError.expectationFailed(expected: "right parameter", got: "nil")
                     }
 
+                    // FIXME: allow for () grouping and proper PEMDAS
                     kind = .expression(
                         type: op,
                         left: id,
@@ -310,38 +254,35 @@ final class Parser {
             }
         }
 
-        let source = Source(line: line, column: column, range: start..<scanner.offset)
+        let source = scanner.makeSource(using: start)
         return Syntax(kind: kind, source: source)
     }
 
     private func skipWhitespace() throws {
         while let byte = scanner.peek(), byte == .space {
-            try scanner.pop()
+            try scanner.requirePop()
         }
     }
 
     private func expect(_ expect: Byte) throws {
         guard let byte = scanner.peek() else {
-            throw "Unexpected EOF"
+            throw ParserError.unexpectedEOF
         }
 
         guard byte == expect else {
-            throw "Expected `\(expect.makeString())`, got `\(byte.makeString())`"
+            throw ParserError.expectationFailed(expected: expect.makeString(), got: byte.makeString())
         }
 
-        try scanner.pop()
+        try scanner.requirePop()
     }
 }
 
-extension Byte {
-    static let lessThan: Byte = 0x3C
-    static let greaterThan: Byte = 0x3E
-}
-
-extension Byte {
-    func makeString() -> String {
-        return [self].makeString()
+extension ByteScanner {
+    @discardableResult
+    func requirePop() throws -> Byte {
+        guard let byte = pop() else {
+            throw ParserError.unexpectedEOF
+        }
+        return byte
     }
 }
-
-extension String: Error { }

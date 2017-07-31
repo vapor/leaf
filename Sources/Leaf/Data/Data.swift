@@ -5,6 +5,8 @@ public enum Data {
     case double(Double)
     case dictionary([String: Data])
     case array([Data])
+    public typealias Future = () -> (Data)
+    case future(Future)
 }
 
 // MARK: Convenience Fetch
@@ -20,6 +22,8 @@ extension Data {
             return double.description
         case .bool(let bool):
             return bool.description
+        case .future(let future):
+            return future().string
         default:
             return nil
         }
@@ -33,6 +37,8 @@ extension Data {
             return Double(int)
         case .string(let string):
             return Double(string)
+        case .future(let future):
+            return future().double
         default:
             return nil
         }
@@ -69,6 +75,8 @@ extension Data {
             default:
                 return nil
             }
+        case .future(let future):
+            return future().bool
         default:
             return nil
         }
@@ -79,6 +87,8 @@ extension Data {
         switch self {
         case .dictionary(let dict):
             return dict
+        case .future(let future):
+            return future().dictionary
         default:
             return nil
         }

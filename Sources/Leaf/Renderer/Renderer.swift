@@ -1,13 +1,12 @@
 import Bits
-import Core
 
 public final class Renderer {
     public let tags: [String: Tag]
-    public let file: FileProtocol
+    public let fileReader: FileReader
 
-    public init(tags: [String: Tag]? = nil, file: FileProtocol) {
+    public init(tags: [String: Tag]? = nil, fileReader: FileReader) {
         self.tags = tags ?? defaultTags
-        self.file = file
+        self.fileReader = fileReader
     }
 
     private var _cachedASTs: [Int: [Syntax]] = [:]
@@ -24,6 +23,10 @@ public final class Renderer {
             _cachedASTs[hash] = ast
         }
 
+        return try render(ast, context: context)
+    }
+
+    public func render(_ ast: [Syntax], context: Data) throws -> Bytes {
         let serializer = Serializer(ast: ast, renderer: self, context: context)
         return try serializer.serialize()
     }
@@ -33,8 +36,8 @@ public final class Renderer {
 
 extension Renderer {
     public func render(path: String, context: Data) throws -> Bytes {
-        let path = path.finished(with: ".leaf")
-        let view = try file.read(at: path)
+        let path = path.hasSuffix(".leaf") ? path : path + ".leaf"
+        let view = try fileReader.read(at: path)
         do {
             return try render(view, context: context)
         } catch var error as RenderError {
