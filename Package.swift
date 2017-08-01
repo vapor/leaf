@@ -7,7 +7,7 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/bits.git", from: "2.0.0-alpha.1"),
+        .package(url: "https://github.com/vapor/bits.git", from: "1.1.0"),
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["Bits"]),
