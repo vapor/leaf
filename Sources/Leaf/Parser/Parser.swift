@@ -37,17 +37,73 @@ final class Parser {
 
         let syntax: Syntax
 
-        switch byte {
-        case .numberSign:
-            syntax = try extractTag()
-        default:
+        if byte == .numberSign {
+            if try shouldExtractTag() {
+                syntax = try extractTag()
+            } else {
+                let byte = try scanner.requirePop()
+                let start = scanner.makeSourceStart()
+                let bytes = try [byte] + extractRaw()
+                let source = scanner.makeSource(using: start)
+                syntax = Syntax(kind: .raw(data: bytes), source: source)
+            }
+        } else {
             let start = scanner.makeSourceStart()
             let bytes = try extractRaw()
             let source = scanner.makeSource(using: start)
-            return Syntax(kind: .raw(data: bytes), source: source)
+            syntax = Syntax(kind: .raw(data: bytes), source: source)
         }
 
         return syntax
+    }
+
+    private func shouldExtractTag() throws -> Bool {
+        var i = 1
+        var previous: Byte?
+        while let byte = scanner.peek(by: i) {
+            if byte == .forwardSlash || byte == .asterisk {
+                if previous == .forwardSlash {
+                    return true
+                }
+            } else if byte == .leftParenthesis {
+                return true
+            } else if !byte.isAllowedInIdentifier {
+                return false
+            }
+            previous = byte
+            i += 1
+        }
+        return false
+    }
+
+    private func shouldExtractBody() throws -> Bool {
+        var i = 1
+        while let byte = scanner.peek(by: i) {
+            if byte == .leftCurlyBracket {
+                return true
+            }
+            if byte != .space {
+                return false
+            }
+            i += 1
+        }
+        return false
+    }
+
+    private func shouldExtractChainedTag() throws -> Bool {
+        var i = 1
+        var previous: Byte?
+        while let byte = scanner.peek(by: i) {
+            if byte == .numberSign && previous == .numberSign {
+                return true
+            }
+            if byte != .space && byte != .numberSign {
+                return false
+            }
+            previous = byte
+            i += 1
+        }
+        return false
     }
 
     private func extractTag() throws -> Syntax {
@@ -57,12 +113,20 @@ final class Parser {
 
         try expect(.numberSign)
 
-        let id = try extractIdentifier()
-        guard case .identifier(let name) = id.kind else {
-            throw ParserError.expectationFailed(expected: "tag name", got: "\(id)")
+        let id = try extractTagName()
+
+        // verify tag names containg / or * are comment tag names
+        if id.contains(where: { $0 == .forwardSlash || $0 == .asterisk }) {
+            switch id {
+            case [.forwardSlash, .forwardSlash], [.forwardSlash, .asterisk]:
+                break
+            default:
+                throw ParserError.expectationFailed(expected: "Valid tag name", got: id.makeString())
+            }
         }
 
         let params: [Syntax]
+        let name = id.makeString()
 
         switch name {
         case "for":
@@ -93,23 +157,29 @@ final class Parser {
                 val,
                 keyConstant
             ]
+        case "//":
+            params = []
         default:
             params = try extractParameters()
         }
 
-
-        try skipWhitespace()
-
         let body: [Syntax]?
-
-        if let byte = scanner.peek() {
-            if byte == .leftCurlyBracket {
+        if name == "//" {
+            let s = scanner.makeSourceStart()
+            let bytes = try self.bytes(until: .newLine)
+            // pop the newline
+            try scanner.requirePop()
+            body = [Syntax(
+                kind: .raw(data: bytes),
+                source: scanner.makeSource(using: s)
+            )]
+        } else {
+            if try shouldExtractBody() {
+                try skipWhitespace()
                 body = try extractBody(indent: indent)
             } else {
                 body = nil
             }
-        } else {
-            body = nil
         }
 
         let kind: SyntaxKind
@@ -132,12 +202,19 @@ final class Parser {
                 body: body,
                 chained: nil
             )
+        case "//":
+            kind = .tag(
+                name: "comment",
+                parameters: params,
+                indent: indent,
+                body: body,
+                chained: nil
+            )
         default:
             var chained: Syntax?
 
-            try skipWhitespace()
-            if scanner.peekMatches([.numberSign, .numberSign]) {
-                // found double ##
+            if try shouldExtractChainedTag() {
+                try skipWhitespace()
                 try expect(.numberSign)
                 chained = try extractTag()
             }
@@ -271,6 +348,16 @@ final class Parser {
         let kind: SyntaxKind = .identifier(name: bytes.makeString())
         let source = scanner.makeSource(using: start)
         return Syntax(kind: kind, source: source)
+    }
+
+    private func extractTagName() throws -> Bytes {
+        let start = scanner.offset
+
+        while let byte = scanner.peek(), byte.isAllowedInIdentifier || byte == .forwardSlash || byte == .asterisk {
+            try scanner.requirePop()
+        }
+
+        return Array(scanner.bytes[start..<scanner.offset])
     }
 
     private func extractParameters() throws -> [Syntax] {

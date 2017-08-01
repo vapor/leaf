@@ -152,6 +152,22 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
     }
 
+    func testCommentSugar() throws {
+        let template = """
+        #("foo")
+        #// this is a comment!
+        bar
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "foo\nbar")
+    }
+
+    func testHashtag() throws {
+        let template = """
+        #("hi") #thisIsNotATag...
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "hi #thisIsNotATag...")
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -163,5 +179,7 @@ class LeafTests: XCTestCase {
         ("testEmbed", testEmbed),
         ("testChained", testChained),
         ("testIfSugar", testIfSugar),
+        ("testCommentSugar", testCommentSugar),
+        ("testHashtag", testHashtag),
     ]
 }

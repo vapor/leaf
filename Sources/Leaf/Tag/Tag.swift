@@ -60,7 +60,8 @@ public var defaultTags: [String: Tag] {
         "ifElse": IfElse(),
         "var": Var(),
         "embed": Embed(),
-        "loop": Loop()
+        "loop": Loop(),
+        "comment": Comment()
     ]
 }
 
