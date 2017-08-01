@@ -56,8 +56,48 @@ final class Parser {
         let indent = scanner.column
 
         try expect(.numberSign)
+
         let id = try extractIdentifier()
-        let params = try extractParameters()
+        guard case .identifier(let name) = id.kind else {
+            throw ParserError.expectationFailed(expected: "tag name", got: "\(id)")
+        }
+
+        let params: [Syntax]
+
+        switch name {
+        case "for":
+            try expect(.leftParenthesis)
+            let key = try extractIdentifier()
+            try expect(.space)
+            try expect(.i)
+            try expect(.n)
+            try expect(.space)
+            let val = try extractIdentifier()
+            try expect(.rightParenthesis)
+
+            guard case .identifier(let name) = key.kind else {
+                throw ParserError.expectationFailed(expected: "key name", got: "\(key)")
+            }
+
+            let raw = Syntax(
+                kind: .raw(data: name.makeBytes()),
+                source: key.source
+            )
+
+            let keyConstant = Syntax(
+                kind: .constant(.string([raw])),
+                source: key.source
+            )
+
+            params = [
+                val,
+                keyConstant
+            ]
+        default:
+            params = try extractParameters()
+        }
+
+
         try skipWhitespace()
 
         let body: [Syntax]?
@@ -72,10 +112,6 @@ final class Parser {
             body = nil
         }
 
-        guard case .identifier(let name) = id.kind else {
-            throw ParserError.expectationFailed(expected: "tag name", got: "\(id)")
-        }
-
         let kind: SyntaxKind
 
         switch name {
@@ -87,6 +123,14 @@ final class Parser {
                 indent: indent,
                 body: body,
                 chained: chained
+            )
+        case "for":
+            kind = .tag(
+                name: "loop",
+                parameters: params,
+                indent: indent,
+                body: body,
+                chained: nil
             )
         default:
             var chained: Syntax?

@@ -99,20 +99,22 @@ class LeafTests: XCTestCase {
 
     func testChained() throws {
         let template = """
-            #ifElse(0) {
+        #ifElse(0) {
 
-            } ##ifElse(0) {} ##ifElse(1) {
-                It works!
-            }
+        } ##ifElse(0) {
+
+        } ##ifElse(1) {
+            It works!
+        }
         """
-        try XCTAssert(renderer.render(template, context: Data.empty).contains("It works!"))
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "It works!")
     }
 
-    func testLoop() throws {
+    func testForSugar() throws {
         let template = """
         <p>
             <ul>
-                #loop(names, "name") {
+                #for(name in names) {
                     <li>#(name)</li>
                 }
             </ul>
