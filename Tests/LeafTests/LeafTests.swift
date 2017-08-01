@@ -189,6 +189,25 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
     }
 
+    func testFuture() throws {
+        let template = """
+        #if(false) {
+            #(foo)
+        }
+        """
+
+        var didAccess = false
+        let context = Data.dictionary([
+            "foo": .future({
+                didAccess = true
+                return .string("hi")
+            })
+        ])
+
+        try XCTAssertEqual(renderer.render(template, context: context), "")
+        XCTAssertEqual(didAccess, false)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -202,5 +221,6 @@ class LeafTests: XCTestCase {
         ("testIfSugar", testIfSugar),
         ("testCommentSugar", testCommentSugar),
         ("testHashtag", testHashtag),
+        ("testNot", testNot),
     ]
 }
