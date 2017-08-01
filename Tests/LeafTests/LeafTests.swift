@@ -177,6 +177,18 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "hi #thisIsNotATag...")
     }
 
+    func testNot() throws {
+        let template = """
+        #if(!false) {
+            Good
+        } #if(!true) {
+            Bad
+        }
+        """
+
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),

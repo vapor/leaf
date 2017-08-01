@@ -114,6 +114,10 @@ final class Serializer {
             return .bool(leftDouble > rightDouble)
         case .lessThan:
             return .bool(leftDouble < rightDouble)
+        case .multiply:
+            return .double(leftDouble * rightDouble)
+        case .divide:
+            return .double(leftDouble / rightDouble)
         }
     }
 
@@ -130,6 +134,36 @@ final class Serializer {
             return data
         case .tag(let name, let parameters, let indent, let body, let chained):
             return try renderTag(name: name, parameters: parameters, indent: indent, body: body, chained: chained)
+        case .not(let syntax):
+            switch syntax.kind {
+            case .identifier(let id):
+                guard let data = context.dictionary?[id] else {
+                    return .bool(true)
+                }
+
+                if data.bool == true {
+                    return .bool(false)
+                } else {
+                    return .bool(true)
+                }
+            case .constant(let c):
+                let ret: Bool
+
+                switch c {
+                case .bool(let bool):
+                    ret = !bool
+                case .double(let double):
+                    ret = double != 1
+                case .int(let int):
+                    ret = int != 1
+                case .string(_):
+                    throw SerializerError.unexpectedSyntax(syntax)
+                }
+
+                return .bool(ret)
+            default:
+                throw SerializerError.unexpectedSyntax(syntax)
+            }
         default:
             throw SerializerError.unexpectedSyntax(syntax)
         }

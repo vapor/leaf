@@ -447,6 +447,12 @@ final class Parser {
             kind = .constant(
                 .string(ast)
             )
+        case .exclamation:
+            try expect(.exclamation)
+            guard let param = try extractParameter() else {
+                throw ParserError.expectationFailed(expected: "parameter", got: "nil")
+            }
+            kind = .not(param)
         case .numberSign:
             kind = try extractTag().kind
         default:
@@ -477,6 +483,10 @@ final class Parser {
                         op = .subtract
                     case .plus:
                         op = .add
+                    case .asterisk:
+                        op = .multiply
+                    case .forwardSlash:
+                        op = .divide
                     default:
                         op = nil
                     }

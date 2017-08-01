@@ -6,6 +6,7 @@ indirect enum SyntaxKind {
     case identifier(name: String)
     case constant(Constant)
     case expression(type: Operator, left: Syntax, right: Syntax)
+    case not(Syntax)
 }
 
 enum Operator {
@@ -13,6 +14,8 @@ enum Operator {
     case subtract
     case lessThan
     case greaterThan
+    case multiply
+    case divide
 }
 
 enum Constant {
@@ -69,6 +72,8 @@ extension Syntax: CustomStringConvertible {
             return "Expr: (\(left) \(type) \(right))"
         case .constant(let const):
             return "c:\(const)"
+        case .not(let syntax):
+            return "!:\(syntax)"
         }
     }
 }
