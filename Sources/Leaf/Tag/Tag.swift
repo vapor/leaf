@@ -57,7 +57,7 @@ extension Tag {
 public var defaultTags: [String: Tag] {
     return [
         "": Print(),
-        "if": If(),
+        "ifElse": IfElse(),
         "var": Var(),
         "embed": Embed(),
         "loop": Loop()

@@ -23,11 +23,11 @@ public final class ByteScanner {
 // MARK: Core
 
 extension ByteScanner {
-    public func peek() -> Byte? {
-        guard pointer.advanced(by: 0) < endAddress else {
+    public func peek(by amount: Int = 0) -> Byte? {
+        guard pointer.advanced(by: amount) < endAddress else {
             return nil
         }
-        return pointer.advanced(by: 0).pointee
+        return pointer.advanced(by: amount).pointee
     }
 
     public func pop() -> Byte? {

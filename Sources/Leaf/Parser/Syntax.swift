@@ -2,7 +2,7 @@ import Bits
 
 indirect enum SyntaxKind {
     case raw(data: Bytes)
-    case tag(name: Syntax, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?)
+    case tag(name: String, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?)
     case identifier(name: String)
     case constant(Constant)
     case expression(type: Operator, left: Syntax, right: Syntax)
@@ -16,6 +16,7 @@ enum Operator {
 }
 
 enum Constant {
+    case bool(Bool)
     case int(Int)
     case double(Double)
     case string([Syntax])
@@ -75,6 +76,8 @@ extension Syntax: CustomStringConvertible {
 extension Constant: CustomStringConvertible {
     var description: String {
         switch self {
+        case .bool(let bool):
+            return bool.description
         case .double(let double):
             return double.description
         case .int(let int):

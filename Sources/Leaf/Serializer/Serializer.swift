@@ -44,13 +44,9 @@ final class Serializer {
         return serialized
     }
 
-    private func renderTag(name: Syntax, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?) throws -> Data? {
-        guard case .identifier(let id) = name.kind else {
-            throw SerializerError.unexpectedSyntax(name)
-        }
-
-        guard let tag = renderer.tags[id] else {
-            throw SerializerError.unknownTag(name: id)
+    private func renderTag(name: String, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?) throws -> Data? {
+        guard let tag = renderer.tags[name] else {
+            throw SerializerError.unknownTag(name: name)
         }
 
         var inputs: [Data?] = []
@@ -84,6 +80,8 @@ final class Serializer {
 
     private func resolveConstant(_ const: Constant) throws -> Data {
         switch const {
+        case .bool(let bool):
+            return .bool(bool)
         case .double(let double):
             return .double(double)
         case .int(let int):

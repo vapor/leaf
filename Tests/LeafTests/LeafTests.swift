@@ -45,7 +45,11 @@ class LeafTests: XCTestCase {
     }
 
     func testBody() throws {
-        let template = "#if(show){hi}"
+        let template = """
+        #if(show) {
+            hi
+        }
+        """
         let noShow = Data.dictionary(["show": .bool(false)])
         let yesShow = Data.dictionary(["show": .bool(true)])
         try XCTAssertEqual(renderer.render(template, context: noShow), "")
@@ -95,9 +99,9 @@ class LeafTests: XCTestCase {
 
     func testChained() throws {
         let template = """
-            #if(0) {
+            #ifElse(0) {
 
-            } ##if(0) {} ##if(1) {
+            } ##ifElse(0) {} ##ifElse(1) {
                 It works!
             }
         """
@@ -133,6 +137,19 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: context), expect)
     }
 
+    func testIfSugar() throws {
+        let template = """
+        #if(false) {
+            Bad
+        } else if (true) {
+            Good
+        } else {
+            Bad
+        }
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -142,6 +159,7 @@ class LeafTests: XCTestCase {
         ("testBody", testBody),
         ("testRuntime", testRuntime),
         ("testEmbed", testEmbed),
-        ("testChained", testChained)
+        ("testChained", testChained),
+        ("testIfSugar", testIfSugar),
     ]
 }

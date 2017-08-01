@@ -64,45 +64,7 @@ final class Parser {
 
         if let byte = scanner.peek() {
             if byte == .leftCurlyBracket {
-                var tempBody = try extractBody()
-
-                // fix indentation
-                if let first = tempBody.first {
-                    if case .raw(var raw) = first.kind {
-                        if raw.first == .newLine {
-                            raw = Array(raw.dropFirst())
-                        }
-                        var removedSpaces = 0
-                        while raw.first == .space {
-                            raw = Array(raw.dropFirst())
-                            removedSpaces += 1
-                            if removedSpaces == indent + 4 {
-                                break
-                            }
-                        }
-                        tempBody[0] = Syntax(kind: .raw(data: raw), source: first.source)
-                    }
-                }
-                if let last = tempBody.last {
-                    if case .raw(var raw) = last.kind {
-                        var removedSpaces = 0
-                        while raw.last == .space {
-                            raw = Array(raw.dropLast())
-                            removedSpaces += 1
-                            if removedSpaces == indent {
-                                break
-                            }
-                        }
-
-                        if raw.last == .newLine {
-                            raw = Array(raw.dropLast())
-                        }
-                        tempBody[tempBody.count - 1] = Syntax(kind: .raw(data: raw), source: last.source)
-                    }
-                }
-
-
-                body = tempBody
+                body = try extractBody(indent: indent)
             } else {
                 body = nil
             }
@@ -110,41 +72,126 @@ final class Parser {
             body = nil
         }
 
-        var chained: Syntax?
+        guard case .identifier(let name) = id.kind else {
+            throw ParserError.expectationFailed(expected: "tag name", got: "\(id)")
+        }
 
-        try skipWhitespace()
-        switch scanner.peek() {
-        case Byte.numberSign:
-            switch scanner.peek() {
-            case Byte.numberSign:
+        let kind: SyntaxKind
+
+        switch name {
+        case "if":
+            let chained = try extractIfElse(indent: indent)
+            kind = .tag(
+                name: "ifElse",
+                parameters: params,
+                indent: indent,
+                body: body,
+                chained: chained
+            )
+        default:
+            var chained: Syntax?
+
+            try skipWhitespace()
+            if scanner.peekMatches([.numberSign, .numberSign]) {
                 // found double ##
                 try expect(.numberSign)
                 chained = try extractTag()
-            default:
-                break
             }
-        default:
-            break
-        }
 
-        let kind: SyntaxKind = .tag(
-            name: id,
-            parameters: params,
-            indent: indent,
-            body: body,
-            chained: chained
-        )
+            kind = .tag(
+                name: name,
+                parameters: params,
+                indent: indent,
+                body: body,
+                chained: chained
+            )
+        }
 
         let source = scanner.makeSource(using: start)
         return Syntax(kind: kind, source: source)
     }
 
-    private func extractBody() throws -> [Syntax] {
+    private func extractIfElse(indent: Int) throws -> Syntax? {
+        try skipWhitespace()
+        let start = scanner.makeSourceStart()
+
+        if scanner.peekMatches([.e, .l, .s, .e]) {
+            try scanner.requirePop(n: 4)
+            try skipWhitespace()
+
+            let params: [Syntax]
+            if scanner.peekMatches([.i, .f]) {
+                try scanner.requirePop(n: 2)
+                try skipWhitespace()
+                params = try extractParameters()
+            } else {
+                let syntax = Syntax(
+                    kind: .constant(.bool(true)),
+                    source: Source(line: scanner.line, column: scanner.column, range: scanner.offset..<scanner.offset + 1
+                ))
+                params = [syntax]
+            }
+            try skipWhitespace()
+            let elseBody = try extractBody(indent: indent)
+
+            let kind: SyntaxKind = .tag(
+                name: "ifElse",
+                parameters: params,
+                indent: indent,
+                body: elseBody,
+                chained: try extractIfElse(indent: indent)
+            )
+
+            let source = scanner.makeSource(using: start)
+            return Syntax(kind: kind, source: source)
+        }
+
+        return nil
+    }
+
+    private func extractBody(indent: Int) throws -> [Syntax] {
         try expect(.leftCurlyBracket)
         let body = try bytes(until: .rightCurlyBracket)
         try expect(.rightCurlyBracket)
         let parser = Parser(body)
-        return try parser.parse()
+        var ast = try parser.parse()
+
+        // fix indentation
+        if let first = ast.first {
+            if case .raw(var raw) = first.kind {
+                if raw.first == .newLine {
+                    raw = Array(raw.dropFirst())
+                }
+                var removedSpaces = 0
+                while raw.first == .space {
+                    raw = Array(raw.dropFirst())
+                    removedSpaces += 1
+                    if removedSpaces == indent + 4 {
+                        break
+                    }
+                }
+                ast[0] = Syntax(kind: .raw(data: raw), source: first.source)
+            }
+        }
+        if let last = ast.last {
+            if case .raw(var raw) = last.kind {
+                var removedSpaces = 0
+                while raw.last == .space {
+                    raw = Array(raw.dropLast())
+                    removedSpaces += 1
+                    if removedSpaces == indent {
+                        break
+                    }
+                }
+
+                if raw.last == .newLine {
+                    raw = Array(raw.dropLast())
+                }
+                ast[ast.count - 1] = Syntax(kind: .raw(data: raw), source: last.source)
+            }
+        }
+
+        return ast
     }
 
     private func extractRaw() throws -> Bytes {
@@ -252,6 +299,12 @@ final class Parser {
                 // constant number
                 let num = try extractNumber()
                 kind = .constant(num)
+            } else if scanner.peekMatches([.t, .r, .u, .e]) {
+                try scanner.requirePop(n: 4)
+                kind = .constant(.bool(true))
+            } else if scanner.peekMatches([.f, .a, .l, .s, .e]) {
+                try scanner.requirePop(n: 5)
+                kind = .constant(.bool(false))
             } else {
                 let id = try extractIdentifier()
 
@@ -325,5 +378,27 @@ extension ByteScanner {
             throw ParserError.unexpectedEOF
         }
         return byte
+    }
+
+    func requirePop(n: Int) throws {
+        for _ in 0..<n {
+            try requirePop()
+        }
+    }
+
+    func peekMatches(_ bytes: Bytes) -> Bool {
+        var iterator = bytes.makeIterator()
+        var i = 0
+        while let next = iterator.next() {
+            switch peek(by: i) {
+            case next:
+                i += 1
+                continue
+            default:
+                return false
+            }
+        }
+
+        return true
     }
 }

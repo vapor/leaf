@@ -1,6 +1,6 @@
 import Bits
 
-public final class If: Tag {
+public final class IfElse: Tag {
     public init() {}
 
     public func render(
