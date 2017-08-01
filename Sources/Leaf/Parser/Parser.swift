@@ -157,7 +157,7 @@ final class Parser {
                 val,
                 keyConstant
             ]
-        case "//":
+        case "//", "/*":
             params = []
         default:
             params = try extractParameters()
@@ -169,6 +169,30 @@ final class Parser {
             let bytes = try self.bytes(until: .newLine)
             // pop the newline
             try scanner.requirePop()
+            body = [Syntax(
+                kind: .raw(data: bytes),
+                source: scanner.makeSource(using: s)
+            )]
+        } else if name == "/*" {
+            let s = scanner.makeSourceStart()
+            var i = 0
+            var previous: Byte?
+            while let byte = scanner.peek(by: i) {
+                if byte == .forwardSlash && previous == .asterisk {
+                    break
+                }
+                previous = byte
+                i += 1
+            }
+
+            // pop comment text, w/o trailing */
+            try scanner.requirePop(n: i - 1)
+
+            let bytes = Array(scanner.bytes[s.rangeStart..<scanner.offset])
+
+            // pop */
+            try scanner.requirePop(n: 2)
+
             body = [Syntax(
                 kind: .raw(data: bytes),
                 source: scanner.makeSource(using: s)
@@ -202,7 +226,7 @@ final class Parser {
                 body: body,
                 chained: nil
             )
-        case "//":
+        case "//", "/*":
             kind = .tag(
                 name: "comment",
                 parameters: params,

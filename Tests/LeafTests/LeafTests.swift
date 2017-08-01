@@ -158,7 +158,16 @@ class LeafTests: XCTestCase {
         #// this is a comment!
         bar
         """
+
+        let multilineTemplate = """
+        #("foo")
+        #/*
+            this is a comment!
+        */
+        bar
+        """
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "foo\nbar")
+        try XCTAssertEqual(renderer.render(multilineTemplate, context: Data.empty), "foo\n\nbar")
     }
 
     func testHashtag() throws {
