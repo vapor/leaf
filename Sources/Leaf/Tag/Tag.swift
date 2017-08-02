@@ -19,6 +19,7 @@ public var defaultTags: [String: Tag] {
         "loop": Loop(),
         "comment": Comment(),
         "contains": Contains(),
-        "lowercase": Lowercase()
+        "lowercase": Lowercase(),
+        "count": Count()
     ]
 }
