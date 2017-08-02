@@ -217,7 +217,7 @@ final class Parser {
             )]
         } else {
             if try shouldExtractBody() {
-                try skipWhitespace()
+                try extractSpaces()
                 body = try extractBody(indent: indent)
             } else {
                 body = nil
@@ -258,7 +258,7 @@ final class Parser {
             var chained: Syntax?
 
             if try shouldExtractChainedTag() {
-                try skipWhitespace()
+                try extractSpaces()
                 try expect(.numberSign)
                 try expect(.numberSign)
                 chained = try extractTag()
@@ -278,17 +278,17 @@ final class Parser {
     }
 
     private func extractIfElse(indent: Int) throws -> Syntax? {
-        try skipWhitespace()
+        try extractSpaces()
         let start = scanner.makeSourceStart()
 
         if scanner.peekMatches([.e, .l, .s, .e]) {
             try scanner.requirePop(n: 4)
-            try skipWhitespace()
+            try extractSpaces()
 
             let params: [Syntax]
             if scanner.peekMatches([.i, .f]) {
                 try scanner.requirePop(n: 2)
-                try skipWhitespace()
+                try extractSpaces()
                 params = try extractParameters()
             } else {
                 let syntax = Syntax(
@@ -297,7 +297,7 @@ final class Parser {
                 ))
                 params = [syntax]
             }
-            try skipWhitespace()
+            try extractSpaces()
             let elseBody = try extractBody(indent: indent)
 
             let kind: SyntaxKind = .tag(
@@ -374,6 +374,8 @@ final class Parser {
         // bytes
         var bytes: Bytes = []
 
+        var onlySpacesExtracted = true
+
         // continue to peek until we fine a signal byte, then exit!
         // the inner loop takes care that we will not hit any
         // properly escaped signal bytes
@@ -385,7 +387,9 @@ final class Parser {
             // we need to check if next byte is a signal byte
             if byte == .backSlash {
                 // check if the next byte is a signal byte
-                if let next = scanner.peek(), signalBytes.contains(next) {
+                // note: special case, any raw leading with a left curly must
+                // be properly escaped (have the \ removed)
+                if let next = scanner.peek(), signalBytes.contains(next) || onlySpacesExtracted && next == .leftCurlyBracket {
                     // if it is, it has been properly escaped.
                     // add it now, skipping the backslash and popping
                     // so the next iteration of this loop won't see it
@@ -398,6 +402,10 @@ final class Parser {
             } else {
                 // just a normal byte
                 bytes.append(byte)
+            }
+
+            if byte != .space {
+                onlySpacesExtracted = false
             }
         }
 
@@ -479,7 +487,7 @@ final class Parser {
     }
 
     private func extractParameter() throws -> Syntax? {
-        try skipWhitespace()
+        try extractSpaces()
         let start = scanner.makeSourceStart()
 
         guard let byte = scanner.peek() else {
@@ -522,7 +530,7 @@ final class Parser {
             } else {
                 let id = try extractIdentifier()
 
-                try skipWhitespace()
+                try extractSpaces()
 
                 let op: Operator?
 
@@ -582,7 +590,7 @@ final class Parser {
         return Syntax(kind: kind, source: source)
     }
 
-    private func skipWhitespace() throws {
+    private func extractSpaces() throws {
         while let byte = scanner.peek(), byte == .space {
             try scanner.requirePop()
         }

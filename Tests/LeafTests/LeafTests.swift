@@ -251,6 +251,20 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: context), "User 42!")
     }
 
+    func testEscapeExtraneousBody() throws {
+        let template = """
+        extension #("User") \\{
+
+        }
+        """
+        let expected = """
+        extension User {
+
+        }
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -265,5 +279,10 @@ class LeafTests: XCTestCase {
         ("testCommentSugar", testCommentSugar),
         ("testHashtag", testHashtag),
         ("testNot", testNot),
+        ("testFuture", testFuture),
+        ("testNestedBodies", testNestedBodies),
+        ("testDotSyntax", testDotSyntax),
+        ("testEqual", testEqual),
+        ("testEscapeExtraneousBody", testEscapeExtraneousBody),
     ]
 }
