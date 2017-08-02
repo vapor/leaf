@@ -97,6 +97,15 @@ final class Serializer {
         let left = try resolveSyntax(left)
         let right = try resolveSyntax(right)
 
+        switch op {
+        case .equal:
+            return .bool(left?.string == right?.string)
+        case .notEqual:
+            return .bool(left?.string != right?.string)
+        default:
+            break
+        }
+
         guard let leftDouble = left?.double else {
             throw SerializerError.invalidNumber(left)
         }
@@ -118,6 +127,8 @@ final class Serializer {
             return .double(leftDouble * rightDouble)
         case .divide:
             return .double(leftDouble / rightDouble)
+        default:
+            return .bool(false)
         }
     }
 
@@ -128,7 +139,7 @@ final class Serializer {
         case .expression(let op, let left, let right):
             return try resolveExpression(op, left: left, right: right)
         case .identifier(let id):
-            guard let data = try fetch(id) else {
+            guard let data = try contextFetch(path: id) else {
                 return nil
             }
             return data
@@ -137,7 +148,7 @@ final class Serializer {
         case .not(let syntax):
             switch syntax.kind {
             case .identifier(let id):
-                guard let data = try fetch(id) else {
+                guard let data = try contextFetch(path: id) else {
                     return .bool(true)
                 }
 
@@ -169,13 +180,10 @@ final class Serializer {
         }
     }
 
-    private func fetch(_ string: String) throws -> Data? {
+    private func contextFetch(path: [String]) throws -> Data? {
         var current = context
 
-        let parts = string.split(separator: ".").map(String.init)
-
-
-        for part in parts {
+        for part in path {
             guard let sub = current.dictionary?[part] else {
                 return nil
             }

@@ -29,10 +29,10 @@ class LeafTests: XCTestCase {
 
     func testNested() throws {
         let template = """
-        <p>#(#(foo))</p>
+        <p>#(embed(foo))</p>
         """
         let data = Data.dictionary(["foo": .string("bar")])
-        try XCTAssertEqual(renderer.render(template, context: data), "<p>bar</p>")
+        try XCTAssertEqual(renderer.render(template, context: data), "<p>Test file name: &quot;bar.leaf&quot;</p>")
     }
 
     func testExpression() throws {
@@ -99,11 +99,11 @@ class LeafTests: XCTestCase {
 
     func testChained() throws {
         let template = """
-        #ifElse(0) {
+        #ifElse(false) {
 
-        } ##ifElse(0) {
+        } ##ifElse(false) {
 
-        } ##ifElse(1) {
+        } ##ifElse(true) {
             It works!
         }
         """
@@ -206,6 +206,49 @@ class LeafTests: XCTestCase {
 
         try XCTAssertEqual(renderer.render(template, context: context), "")
         XCTAssertEqual(didAccess, false)
+    }
+
+    func testNestedBodies() throws {
+        let template = """
+        #if(true) {
+            #if(true) {Hello\\}}
+        }
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Hello}")
+    }
+
+    func testDotSyntax() throws {
+        let template = """
+        #if(user.isAdmin) {
+            Hello, #(user.name)!
+        }
+        """
+
+        let context = Data.dictionary([
+            "user": .dictionary([
+                "isAdmin": .bool(true),
+                "name": .string("Tanner")
+            ])
+        ])
+        try XCTAssertEqual(renderer.render(template, context: context), "Hello, Tanner!")
+    }
+
+    func testEqual() throws {
+        let template = """
+        #if(user.id == 42) {
+            User 42!
+        } #if(user.id != 42) {
+            Shouldn't show up
+        }
+        """
+
+        let context = Data.dictionary([
+            "user": .dictionary([
+                "id": .int(42),
+                "name": .string("Tanner")
+            ])
+        ])
+        try XCTAssertEqual(renderer.render(template, context: context), "User 42!")
     }
 
     static var allTests = [

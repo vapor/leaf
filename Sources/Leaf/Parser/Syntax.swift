@@ -3,7 +3,7 @@ import Bits
 indirect enum SyntaxKind {
     case raw(data: Bytes)
     case tag(name: String, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?)
-    case identifier(name: String)
+    case identifier(path: [String])
     case constant(Constant)
     case expression(type: Operator, left: Syntax, right: Syntax)
     case not(Syntax)
@@ -16,6 +16,8 @@ enum Operator {
     case greaterThan
     case multiply
     case divide
+    case equal
+    case notEqual
 }
 
 enum Constant {
