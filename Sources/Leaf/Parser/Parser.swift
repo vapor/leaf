@@ -327,21 +327,36 @@ final class Parser {
         }
         try expect(.rightCurlyBracket)
 
+        /*
         // fix indentation
         if let first = ast.first {
             if case .raw(var raw) = first.kind {
                 if raw.first == .newLine {
                     raw = Array(raw.dropFirst())
                 }
-                var removedSpaces = 0
-                while raw.first == .space {
-                    raw = Array(raw.dropFirst())
-                    removedSpaces += 1
-                    if removedSpaces == indent + 4 {
-                        break
-                    }
-                }
                 ast[0] = Syntax(kind: .raw(data: raw), source: first.source)
+            }
+        }
+
+        for (i, syntax) in ast.enumerated() {
+            if case .raw(var raw) = syntax.kind {
+                var lines = raw.split(separator: .newLine).map(Array.init)
+
+                for (i, line) in lines.enumerated() {
+                    print(line.makeString())
+                    var fixedLine = line
+                    var removedSpaces = 0
+                    while fixedLine.first == .space {
+                        fixedLine = Array(fixedLine.dropFirst())
+                        removedSpaces += 1
+                        if removedSpaces == indent + 4 {
+                            break
+                        }
+                    }
+                    lines[i] = fixedLine
+                }
+                raw = Array(lines.joined(separator: [.newLine]))
+                ast[i] = Syntax(kind: .raw(data: raw), source: syntax.source)
             }
         }
         if let last = ast.last {
@@ -360,7 +375,7 @@ final class Parser {
                 }
                 ast[ast.count - 1] = Syntax(kind: .raw(data: raw), source: last.source)
             }
-        }
+        }*/
 
         return ast
     }
