@@ -78,7 +78,7 @@ final class Parser {
     }
 
     private func shouldExtractBody() throws -> Bool {
-        var i = 1
+        var i = 0
         while let byte = scanner.peek(by: i) {
             if byte == .leftCurlyBracket {
                 return true
@@ -487,65 +487,77 @@ final class Parser {
                 kind = try extractTag().kind
             } else {
                 let id = try extractIdentifier()
-
-                try extractSpaces()
-
-                let op: Operator?
-
-                if let byte = scanner.peek() {
-                    switch byte {
-                    case .lessThan:
-                        op = .lessThan
-                    case .greaterThan:
-                        op = .greaterThan
-                    case .hyphen:
-                        op = .subtract
-                    case .plus:
-                        op = .add
-                    case .asterisk:
-                        op = .multiply
-                    case .forwardSlash:
-                        op = .divide
-                    case .equals:
-                        op = .equal
-                    case .exclamation:
-                        op = .notEqual
-                    default:
-                        op = nil
-                    }
-                } else {
-                    op = nil
-                }
-
-                if let op = op {
-                    try scanner.requirePop()
-
-                    switch op {
-                    case .equal, .notEqual:
-                        // should expect another equals sign
-                        try expect(.equals)
-                    default:
-                        break
-                    }
-
-                    guard let right = try extractParameter() else {
-                        throw ParserError.expectationFailed(expected: "right parameter", got: "nil")
-                    }
-
-                    // FIXME: allow for () grouping and proper PEMDAS
-                    kind = .expression(
-                        type: op,
-                        left: id,
-                        right: right
-                    )
-                } else {
-                    kind = id.kind
-                }
+                kind = id.kind
             }
         }
 
-        let source = scanner.makeSource(using: start)
-        return Syntax(kind: kind, source: source)
+        let syntax = Syntax(kind: kind, source: scanner.makeSource(using: start))
+
+        try extractSpaces()
+
+        let op: Operator?
+
+        if let byte = scanner.peek() {
+            switch byte {
+            case .lessThan:
+                op = .lessThan
+            case .greaterThan:
+                op = .greaterThan
+            case .hyphen:
+                op = .subtract
+            case .plus:
+                op = .add
+            case .asterisk:
+                op = .multiply
+            case .forwardSlash:
+                op = .divide
+            case .equals:
+                op = .equal
+            case .exclamation:
+                op = .notEqual
+            case .pipe:
+                op = .or
+            case .ampersand:
+                op = .and
+            default:
+                op = nil
+            }
+        } else {
+            op = nil
+        }
+
+        if let op = op {
+            try scanner.requirePop()
+
+            // two byte operators must
+            // expect their second byte
+            switch op {
+            case .equal, .notEqual:
+                try expect(.equals)
+            case .and:
+                try expect(.ampersand)
+            case .or:
+                try expect(.pipe)
+            default:
+                break
+            }
+
+            guard let right = try extractParameter() else {
+                throw ParserError.expectationFailed(expected: "right parameter", got: "nil")
+            }
+
+            // FIXME: allow for () grouping and proper PEMDAS
+            let exp: SyntaxKind = .expression(
+                type: op,
+                left: syntax,
+                right: right
+            )
+            let source = scanner.makeSource(using: start)
+            return Syntax(kind: exp, source: source)
+        } else {
+            return syntax
+        }
+
     }
 
     private func extractSpaces() throws {
@@ -597,4 +609,8 @@ extension ByteScanner {
 
         return true
     }
+}
+
+extension Byte {
+    static let pipe: Byte = 0x7C
 }

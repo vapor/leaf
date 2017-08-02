@@ -18,6 +18,8 @@ enum Operator {
     case divide
     case equal
     case notEqual
+    case and
+    case or
 }
 
 enum Constant {

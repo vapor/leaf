@@ -9,7 +9,10 @@ public final class IfElse: Tag {
         body: [Syntax]?,
         renderer: Renderer
     ) throws -> Data? {
-        let expr = try requireParameter(0, from: parameters)
+        guard parameters.count == 1 else {
+            throw TagError.missingParameter(0)
+        }
+        let expr = parameters[0]
         let body = try requireBody(body)
 
         if expr.bool != false {

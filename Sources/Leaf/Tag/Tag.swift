@@ -53,14 +53,11 @@ extension Tag {
 
 // MARK: Global
 
-public var defaultTags: [String: Tag] {
-    return [
-        "": Print(),
-        "ifElse": IfElse(),
-        "var": Var(),
-        "embed": Embed(),
-        "loop": Loop(),
-        "comment": Comment()
-    ]
-}
-
+public var defaultTags: [String: Tag] = [
+    "": Print(),
+    "ifElse": IfElse(),
+    "var": Var(),
+    "embed": Embed(),
+    "loop": Loop(),
+    "comment": Comment()
+]
