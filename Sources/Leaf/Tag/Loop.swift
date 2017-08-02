@@ -6,7 +6,6 @@ public final class Loop: Tag {
     public func render(
         parameters: [Data?],
         context: inout Data,
-        indent: Int,
         body: [Syntax]?,
         renderer: Renderer
     ) throws -> Data? {
@@ -20,11 +19,7 @@ public final class Loop: Tag {
 
         var string: String = ""
 
-        for (i, item) in array.enumerated() {
-            if i != 0 {
-                string.append("\n")
-                string.append(String(repeating: " ", count: indent))
-            }
+        for (_, item) in array.enumerated() {
             dict[key] = item
             let temp = Data.dictionary(dict)
             let bytes = try renderer.render(body, context: temp)

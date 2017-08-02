@@ -109,7 +109,6 @@ final class Parser {
 
     private func extractTag() throws -> Syntax {
         let start = scanner.makeSourceStart()
-        let indent = scanner.column - 1
 
         // NAME
 
@@ -218,7 +217,7 @@ final class Parser {
         } else {
             if try shouldExtractBody() {
                 try extractSpaces()
-                body = try extractBody(indent: indent)
+                body = try extractBody()
             } else {
                 body = nil
             }
@@ -230,11 +229,10 @@ final class Parser {
 
         switch name {
         case "if":
-            let chained = try extractIfElse(indent: indent)
+            let chained = try extractIfElse()
             kind = .tag(
                 name: "ifElse",
                 parameters: params,
-                indent: indent,
                 body: body,
                 chained: chained
             )
@@ -242,7 +240,6 @@ final class Parser {
             kind = .tag(
                 name: "loop",
                 parameters: params,
-                indent: indent,
                 body: body,
                 chained: nil
             )
@@ -250,7 +247,6 @@ final class Parser {
             kind = .tag(
                 name: "comment",
                 parameters: params,
-                indent: indent,
                 body: body,
                 chained: nil
             )
@@ -267,7 +263,6 @@ final class Parser {
             kind = .tag(
                 name: name,
                 parameters: params,
-                indent: indent,
                 body: body,
                 chained: chained
             )
@@ -277,7 +272,7 @@ final class Parser {
         return Syntax(kind: kind, source: source)
     }
 
-    private func extractIfElse(indent: Int) throws -> Syntax? {
+    private func extractIfElse() throws -> Syntax? {
         try extractSpaces()
         let start = scanner.makeSourceStart()
 
@@ -298,14 +293,13 @@ final class Parser {
                 params = [syntax]
             }
             try extractSpaces()
-            let elseBody = try extractBody(indent: indent)
+            let elseBody = try extractBody()
 
             let kind: SyntaxKind = .tag(
                 name: "ifElse",
                 parameters: params,
-                indent: indent,
                 body: elseBody,
-                chained: try extractIfElse(indent: indent)
+                chained: try extractIfElse()
             )
 
             let source = scanner.makeSource(using: start)
@@ -315,7 +309,7 @@ final class Parser {
         return nil
     }
 
-    private func extractBody(indent: Int) throws -> [Syntax] {
+    private func extractBody() throws -> [Syntax] {
         try expect(.leftCurlyBracket)
 
         var ast: [Syntax] = []
@@ -326,57 +320,6 @@ final class Parser {
             }
         }
         try expect(.rightCurlyBracket)
-
-        /*
-        // fix indentation
-        if let first = ast.first {
-            if case .raw(var raw) = first.kind {
-                if raw.first == .newLine {
-                    raw = Array(raw.dropFirst())
-                }
-                ast[0] = Syntax(kind: .raw(data: raw), source: first.source)
-            }
-        }
-
-        for (i, syntax) in ast.enumerated() {
-            if case .raw(var raw) = syntax.kind {
-                var lines = raw.split(separator: .newLine).map(Array.init)
-
-                for (i, line) in lines.enumerated() {
-                    print(line.makeString())
-                    var fixedLine = line
-                    var removedSpaces = 0
-                    while fixedLine.first == .space {
-                        fixedLine = Array(fixedLine.dropFirst())
-                        removedSpaces += 1
-                        if removedSpaces == indent + 4 {
-                            break
-                        }
-                    }
-                    lines[i] = fixedLine
-                }
-                raw = Array(lines.joined(separator: [.newLine]))
-                ast[i] = Syntax(kind: .raw(data: raw), source: syntax.source)
-            }
-        }
-        if let last = ast.last {
-            if case .raw(var raw) = last.kind {
-                var removedSpaces = 0
-                while raw.last == .space {
-                    raw = Array(raw.dropLast())
-                    removedSpaces += 1
-                    if removedSpaces == indent {
-                        break
-                    }
-                }
-
-                if raw.last == .newLine {
-                    raw = Array(raw.dropLast())
-                }
-                ast[ast.count - 1] = Syntax(kind: .raw(data: raw), source: last.source)
-            }
-        }*/
-
         return ast
     }
 

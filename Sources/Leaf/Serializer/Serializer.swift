@@ -19,9 +19,9 @@ final class Serializer {
                 switch syntax.kind {
                 case .raw(let data):
                     serialized += data
-                case .tag(let name, let parameters, let indent, let body, let chained):
+                case .tag(let name, let parameters, let body, let chained):
                     let bytes: Bytes
-                    if let data = try renderTag(name: name, parameters: parameters, indent: indent, body: body, chained: chained) {
+                    if let data = try renderTag(name: name, parameters: parameters, body: body, chained: chained) {
                         guard let string = data.string else {
                             throw SerializerError.unexpectedSyntax(syntax)
                         }
@@ -44,7 +44,7 @@ final class Serializer {
         return serialized
     }
 
-    private func renderTag(name: String, parameters: [Syntax], indent: Int, body: [Syntax]?, chained: Syntax?) throws -> Data? {
+    private func renderTag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?) throws -> Data? {
         guard let tag = renderer.tags[name] else {
             throw SerializerError.unknownTag(name: name)
         }
@@ -59,15 +59,14 @@ final class Serializer {
         if let data = try tag.render(
             parameters: inputs,
             context: &context,
-            indent: indent,
             body: body,
             renderer: renderer
         ) {
             return data
         } else if let chained = chained {
             switch chained.kind {
-            case .tag(let name, let params, let indent, let body, let chained):
-                return try renderTag(name: name, parameters: params, indent: indent, body: body, chained: chained)
+            case .tag(let name, let params, let body, let chained):
+                return try renderTag(name: name, parameters: params, body: body, chained: chained)
             default:
                 throw SerializerError.unexpectedSyntax(chained)
             }
@@ -143,8 +142,8 @@ final class Serializer {
                 return nil
             }
             return data
-        case .tag(let name, let parameters, let indent, let body, let chained):
-            return try renderTag(name: name, parameters: parameters, indent: indent, body: body, chained: chained)
+        case .tag(let name, let parameters, let body, let chained):
+            return try renderTag(name: name, parameters: parameters, body: body, chained: chained)
         case .not(let syntax):
             switch syntax.kind {
             case .identifier(let id):

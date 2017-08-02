@@ -46,9 +46,7 @@ class LeafTests: XCTestCase {
 
     func testBody() throws {
         let template = """
-        #if(show) {
-            hi
-        }
+        #if(show) {hi}
         """
         let noShow = Data.dictionary(["show": .bool(false)])
         let yesShow = Data.dictionary(["show": .bool(true)])
@@ -103,9 +101,7 @@ class LeafTests: XCTestCase {
 
         } ##ifElse(false) {
 
-        } ##ifElse(true) {
-            It works!
-        }
+        } ##ifElse(true) {It works!}
         """
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "It works!")
     }
@@ -114,9 +110,7 @@ class LeafTests: XCTestCase {
         let template = """
         <p>
             <ul>
-                #for(name in names) {
-                    <li>#(name)</li>
-                }
+                #for(name in names) {<li>#(name)</li>}
             </ul>
         </p>
         """
@@ -130,9 +124,7 @@ class LeafTests: XCTestCase {
         let expect = """
         <p>
             <ul>
-                <li>Vapor</li>
-                <li>Leaf</li>
-                <li>Bits</li>
+                <li>Vapor</li><li>Leaf</li><li>Bits</li>
             </ul>
         </p>
         """
@@ -141,13 +133,7 @@ class LeafTests: XCTestCase {
 
     func testIfSugar() throws {
         let template = """
-        #if(false) {
-            Bad
-        } else if (true) {
-            Good
-        } else {
-            Bad
-        }
+        #if(false) {Bad} else if (true) {Good} else {Bad}
         """
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
     }
@@ -179,11 +165,7 @@ class LeafTests: XCTestCase {
 
     func testNot() throws {
         let template = """
-        #if(!false) {
-            Good
-        } #if(!true) {
-            Bad
-        }
+        #if(!false) {Good} #if(!true) {Bad}
         """
 
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
@@ -210,18 +192,14 @@ class LeafTests: XCTestCase {
 
     func testNestedBodies() throws {
         let template = """
-        #if(true) {
-            #if(true) {Hello\\}}
-        }
+        #if(true) {#if(true) {Hello\\}}}
         """
         try XCTAssertEqual(renderer.render(template, context: Data.empty), "Hello}")
     }
 
     func testDotSyntax() throws {
         let template = """
-        #if(user.isAdmin) {
-            Hello, #(user.name)!
-        }
+        #if(user.isAdmin) {Hello, #(user.name)!}
         """
 
         let context = Data.dictionary([
@@ -235,9 +213,7 @@ class LeafTests: XCTestCase {
 
     func testEqual() throws {
         let template = """
-        #if(user.id == 42) {
-            User 42!
-        } #if(user.id != 42) {
+        #if(user.id == 42) {User 42!} #if(user.id != 42) {
             Shouldn't show up
         }
         """
