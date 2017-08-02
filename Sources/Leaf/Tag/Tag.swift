@@ -10,7 +10,6 @@ public protocol Tag {
 
 // MARK: Global
 
-<<<<<<< HEAD
 public var defaultTags: [String: Tag] {
     return [
         "": Print(),
@@ -23,14 +22,3 @@ public var defaultTags: [String: Tag] {
         "lowercase": Lowercase()
     ]
 }
-
-=======
-public var defaultTags: [String: Tag] = [
-    "": Print(),
-    "ifElse": IfElse(),
-    "var": Var(),
-    "embed": Embed(),
-    "loop": Loop(),
-    "comment": Comment()
-]
->>>>>>> 81028ad840e134b10634292d06e789edb0c9782a
