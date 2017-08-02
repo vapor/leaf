@@ -4,7 +4,7 @@ public final class Loop: Tag {
     public init() {}
 
     public func render(
-        parameters: [Data?],
+        parameters: [Data],
         context: inout Data,
         body: [Syntax]?,
         renderer: Renderer

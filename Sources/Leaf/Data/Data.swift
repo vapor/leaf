@@ -7,6 +7,7 @@ public enum Data {
     case array([Data])
     public typealias Future = () -> (Data)
     case future(Future)
+    case null
 }
 
 // MARK: Convenience Fetch

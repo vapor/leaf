@@ -49,11 +49,11 @@ final class Serializer {
             throw SerializerError.unknownTag(name: name)
         }
 
-        var inputs: [Data?] = []
+        var inputs: [Data] = []
 
         for parameter in parameters {
             let input = try resolveSyntax(parameter)
-            inputs.append(input)
+            inputs.append(input ?? .null)
         }
 
         if let data = try tag.render(
