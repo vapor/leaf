@@ -14,13 +14,19 @@ public final class Loop: Tag {
 
         var string: String = ""
 
-        for (_, item) in array.enumerated() {
+        for (i, item) in array.enumerated() {
+            let isLast = i == array.count - 1
+            let loop = Data.dictionary([
+                "index": .int(i),
+                "isFirst": .bool(i == 0),
+                "isLast": .bool(isLast)
+            ])
+            dict["loop"] = loop
             dict[key] = item
             let temp = Data.dictionary(dict)
             let bytes = try renderer.render(body, context: temp)
             string.append(bytes.makeString())
         }
-
         return .string(string)
     }
 }

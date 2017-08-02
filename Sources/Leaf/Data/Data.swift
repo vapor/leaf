@@ -78,6 +78,8 @@ extension Data {
             }
         case .future(let future):
             return future().bool
+        case .null:
+            return false
         default:
             return nil
         }

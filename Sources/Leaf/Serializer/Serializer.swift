@@ -101,6 +101,10 @@ final class Serializer {
             return .bool(left?.string == right?.string)
         case .notEqual:
             return .bool(left?.string != right?.string)
+        case .and:
+            return .bool(left?.bool != false && right?.bool != false)
+        case .or:
+            return .bool(left?.bool != false || right?.bool != false)
         default:
             break
         }
@@ -139,7 +143,7 @@ final class Serializer {
             return try resolveExpression(op, left: left, right: right)
         case .identifier(let id):
             guard let data = try contextFetch(path: id) else {
-                return nil
+                return .null
             }
             return data
         case .tag(let name, let parameters, let body, let chained):
