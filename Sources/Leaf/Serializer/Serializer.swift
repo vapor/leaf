@@ -56,10 +56,10 @@ final class Serializer {
             inputs.append(input ?? .null)
         }
 
+        let parsed = ParsedTag(name: name, parameters: inputs, body: body)
         if let data = try tag.render(
-            parameters: inputs,
+            parsed: parsed,
             context: &context,
-            body: body,
             renderer: renderer
         ) {
             return data

@@ -3,14 +3,10 @@ import Bits
 public final class IfElse: Tag {
     public init() {}
 
-    public func render(
-        parameters: [Data],
-        context: inout Data,
-        body: [Syntax]?,
-        renderer: Renderer
-    ) throws -> Data? {
-        let expr = try requireParameter(0, from: parameters)
-        let body = try requireBody(body)
+    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
+        try parsed.requireParameterCount(1)
+        let body = try parsed.requireBody()
+        let expr = parsed.parameters[0]
 
         if expr.bool != false {
             let bytes = try renderer.render(body, context: context)

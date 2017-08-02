@@ -125,3 +125,25 @@ extension Data: DataRepresentable {
         return self
     }
 }
+
+// MARK: Equatable
+
+extension Data: Equatable {
+    public static func ==(lhs: Data, rhs: Data) -> Bool {
+        switch (lhs, rhs) {
+        case (.array(let a), .array(let b)):
+            guard a.count == b.count else {
+                return false
+            }
+            for i in 0..<a.count {
+                if a[i] != b[i] {
+                    return false
+                }
+            }
+            return true
+        default:
+            return lhs.string == rhs.string
+        }
+    }
+}
+

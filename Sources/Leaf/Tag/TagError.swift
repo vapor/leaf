@@ -1,7 +1,10 @@
-enum TagError: Error {
-    case missingParameter(Int)
-    case invalidParameterType(Int, Data?, expected: Any.Type)
+public struct TagError: Error {
+    public let tag: String
+    public let kind: TagErrorKind
+}
+
+public enum TagErrorKind {
+    case invalidParameterCount(need: Int, have: Int)
     case missingBody
     case extraneousBody
-    case custom(String)
 }

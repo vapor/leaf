@@ -2,14 +2,9 @@ import Bits
 
 public final class Embed: Tag {
     public init() {}
-
-    public func render(
-        parameters: [Data],
-        context: inout Data,
-        body: [Syntax]?,
-        renderer: Renderer
-    ) throws -> Data? {
-        let name = try requireStringParameter(0, from: parameters)
+    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
+        try parsed.requireParameterCount(1)
+        let name = parsed.parameters[0].string ?? ""
         let bytes = try renderer.render(path: name, context: context)
         return .string(bytes.makeString())
     }

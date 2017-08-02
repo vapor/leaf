@@ -2,20 +2,15 @@ import Bits
 
 public final class Loop: Tag {
     public init() {}
-
-    public func render(
-        parameters: [Data],
-        context: inout Data,
-        body: [Syntax]?,
-        renderer: Renderer
-    ) throws -> Data? {
+    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
         guard case .dictionary(var dict) = context else {
-            throw TagError.custom("context must be a dictionary to set it")
+            return nil
         }
 
-        let body = try requireBody(body)
-        let array = try requireArrayParameter(0, from: parameters)
-        let key = try requireStringParameter(1, from: parameters)
+        let body = try parsed.requireBody()
+        try parsed.requireParameterCount(2)
+        let array = parsed.parameters[0].array ?? []
+        let key = parsed.parameters[1].string ?? ""
 
         var string: String = ""
 

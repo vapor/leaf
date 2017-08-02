@@ -3,31 +3,28 @@ import Bits
 public final class Var: Tag {
     public init() {}
 
-    public func render(
-        parameters: [Data],
-        context: inout Data,
-        body: [Syntax]?,
-        renderer: Renderer
-    ) throws -> Data? {
+    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
         guard case .dictionary(var dict) = context else {
-            throw TagError.custom("context must be a dictionary to set it")
+            return nil
         }
 
-        switch parameters.count {
+        switch parsed.parameters.count {
         case 1:
-            let body = try requireBody(body)
-            let key = try requireStringParameter(0, from: parameters)
+            let body = try parsed.requireBody()
+            let key = parsed.parameters[0].string ?? ""
             let rendered = try renderer.render(body, context: context)
             dict[key] = .string(rendered.makeString())
         case 2:
-            let key = try requireStringParameter(0, from: parameters)
-            dict[key] = parameters[1]
+            let key = parsed.parameters[0].string ?? ""
+            dict[key] = parsed.parameters[1]
         default:
-            throw TagError.custom("1 or 2 params required")
+            throw TagError(
+                tag: parsed.name,
+                kind: .invalidParameterCount(need: 2, have: parsed.parameters.count)
+            )
         }
 
         context = .dictionary(dict)
         return .string("")
     }
 }
-
