@@ -6,7 +6,7 @@ extension Byte {
     }
 
     var isAllowedInIdentifier: Bool {
-        return isAlphanumeric || self == .hyphen || self == .underscore || self == .colon
+        return isAlphanumeric || self == .hyphen || self == .underscore || self == .colon || self == .period
     }
 }
 

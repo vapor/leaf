@@ -344,20 +344,25 @@ final class Parser {
     }
 
     private func bytes(until: Byte) throws -> Bytes {
-        var previous: Byte?
-
         var bytes: Bytes = []
-        while let byte = scanner.peek(), byte != until || previous == .backSlash {
+        while let byte = scanner.peek(), byte != until {
             try scanner.requirePop()
-            if byte != until && previous == .backSlash {
-                bytes.append(.backSlash)
-            }
-            if byte != .backSlash {
+            if byte == .backSlash {
+                guard let next = scanner.peek() else {
+                    continue
+                }
+                switch next {
+                // ESCAPABLE CHARS
+                case .leftCurlyBracket, .rightCurlyBracket, .numberSign:
+                    bytes.append(next)
+                    try scanner.requirePop()
+                default:
+                    bytes.append(byte)
+                }
+            } else {
                 bytes.append(byte)
             }
-            previous = byte
         }
-
         return bytes
     }
 

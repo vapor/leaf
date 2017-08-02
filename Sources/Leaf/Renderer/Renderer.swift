@@ -11,7 +11,7 @@ public final class Renderer {
 
     private var _cachedASTs: [Int: [Syntax]] = [:]
 
-    public func render(_ view: Bytes, context: Data) throws -> Bytes {
+    public func render(_ view: Bytes, context: DataRepresentable) throws -> Bytes {
         let hash = view.makeString().hashValue
 
         let ast: [Syntax]
@@ -26,8 +26,8 @@ public final class Renderer {
         return try render(ast, context: context)
     }
 
-    public func render(_ ast: [Syntax], context: Data) throws -> Bytes {
-        let serializer = Serializer(ast: ast, renderer: self, context: context)
+    public func render(_ ast: [Syntax], context: DataRepresentable) throws -> Bytes {
+        let serializer = try Serializer(ast: ast, renderer: self, context: context.makeLeafData())
         return try serializer.serialize()
     }
 }
@@ -35,7 +35,7 @@ public final class Renderer {
 // MARK: Convenience
 
 extension Renderer {
-    public func render(path: String, context: Data) throws -> Bytes {
+    public func render(path: String, context: DataRepresentable) throws -> Bytes {
         let path = path.hasSuffix(".leaf") ? path : path + ".leaf"
         let view = try fileReader.read(at: path)
         do {
@@ -47,7 +47,7 @@ extension Renderer {
     }
 
 
-    public func render(_ view: String, context: Data) throws -> String {
+    public func render(_ view: String, context: DataRepresentable) throws -> String {
         return try render(view.makeBytes(), context: context).makeString()
     }
 }

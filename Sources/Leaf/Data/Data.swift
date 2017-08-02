@@ -112,3 +112,15 @@ extension Data {
         return .dictionary([:])
     }
 }
+
+// MARK: Protocols
+
+public protocol DataRepresentable {
+    func makeLeafData() throws -> Data
+}
+
+extension Data: DataRepresentable {
+    public func makeLeafData() throws -> Data {
+        return self
+    }
+}

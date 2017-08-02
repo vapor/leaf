@@ -128,7 +128,7 @@ final class Serializer {
         case .expression(let op, let left, let right):
             return try resolveExpression(op, left: left, right: right)
         case .identifier(let id):
-            guard let data = context.dictionary?[id] else {
+            guard let data = try fetch(id) else {
                 return nil
             }
             return data
@@ -137,7 +137,7 @@ final class Serializer {
         case .not(let syntax):
             switch syntax.kind {
             case .identifier(let id):
-                guard let data = context.dictionary?[id] else {
+                guard let data = try fetch(id) else {
                     return .bool(true)
                 }
 
@@ -167,6 +167,23 @@ final class Serializer {
         default:
             throw SerializerError.unexpectedSyntax(syntax)
         }
+    }
+
+    private func fetch(_ string: String) throws -> Data? {
+        var current = context
+
+        let parts = string.split(separator: ".").map(String.init)
+
+
+        for part in parts {
+            guard let sub = current.dictionary?[part] else {
+                return nil
+            }
+
+            current = sub
+        }
+
+        return current
     }
 }
 
