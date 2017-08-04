@@ -27,6 +27,7 @@ public final class Loop: Tag {
             let bytes = try renderer.render(body, context: temp)
             string.append(bytes.makeString())
         }
+
         return .string(string)
     }
 }

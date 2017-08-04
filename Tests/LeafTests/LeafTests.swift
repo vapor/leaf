@@ -241,6 +241,40 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.empty), expected)
     }
 
+    func testIndentationCorrection() throws {
+        let template = """
+        <p>
+            <ul>
+                #for(item in items) {
+                    #if(true) {
+                        <li>#(item)</li>
+                        <br>
+                    }
+                }
+            </ul>
+        </p>
+        """
+
+        let expected = """
+        <p>
+            <ul>
+                <li>foo</li>
+                <br>
+                <li>bar</li>
+                <br>
+                <li>baz</li>
+                <br>
+            </ul>
+        </p>
+        """
+
+        let context: Leaf.Data = .dictionary([
+            "items": .array([.string("foo"), .string("bar"), .string("baz")])
+        ])
+
+        try XCTAssertEqual(renderer.render(template, context: context), expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),

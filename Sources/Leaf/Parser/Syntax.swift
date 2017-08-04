@@ -1,7 +1,7 @@
 import Bits
 
 indirect enum SyntaxKind {
-    case raw(data: Bytes)
+    case raw(Bytes)
     case tag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?)
     case identifier(path: [String])
     case constant(Constant)
