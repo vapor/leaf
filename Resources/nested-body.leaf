@@ -1,3 +1,0 @@
-#(best-friend) {
-    Hello, #(self.name)!
-}
