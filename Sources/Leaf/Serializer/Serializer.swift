@@ -98,9 +98,9 @@ final class Serializer {
 
         switch op {
         case .equal:
-            return .bool(left?.string == right?.string)
+            return .bool(left == right)
         case .notEqual:
-            return .bool(left?.string != right?.string)
+            return .bool(left != right)
         case .and:
             return .bool(left?.bool != false && right?.bool != false)
         case .or:

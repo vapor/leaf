@@ -8,6 +8,8 @@ public final class IfElse: Tag {
         let body = try parsed.requireBody()
         let expr = parsed.parameters[0]
 
+        print(expr.bool)
+
         if expr.bool != false {
             let bytes = try renderer.render(body, context: context)
             return .string(bytes.makeString())

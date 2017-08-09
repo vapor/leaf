@@ -16,7 +16,7 @@ class LeafTests: XCTestCase {
 
     func testConstant() throws {
         let template = "<h1>#(42)</h1>"
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "<h1>42</h1>")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "<h1>42</h1>")
     }
 
     func testInterpolated() throws {
@@ -59,20 +59,20 @@ class LeafTests: XCTestCase {
             #var("foo", "bar")
             Runtime: #(foo)"
         """
-        try XCTAssert(renderer.render(template, context: Data.empty).contains("Runtime: bar"))
+        try XCTAssert(renderer.render(template, context: Data.null).contains("Runtime: bar"))
     }
 
     func testEmbed() throws {
         let template = """
             #embed("hello")
         """
-        try XCTAssert(renderer.render(template, context: Data.empty).contains("hello.leaf"))
+        try XCTAssert(renderer.render(template, context: Data.null).contains("hello.leaf"))
     }
 
     func testError() throws {
         do {
             let template = "#if() { }"
-            _ = try renderer.render(template, context: Data.empty)
+            _ = try renderer.render(template, context: Data.null)
         } catch {
             print("\(error)")
         }
@@ -83,13 +83,13 @@ class LeafTests: XCTestCase {
             ##bad()
             Good
             """
-            _ = try renderer.render(template, context: Data.empty)
+            _ = try renderer.render(template, context: Data.null)
         } catch {
             print("\(error)")
         }
 
         do {
-            _ = try renderer.render(path: "##()", context: Data.empty)
+            _ = try renderer.render(path: "##()", context: Data.null)
         } catch {
             print("\(error)")
         }
@@ -103,7 +103,7 @@ class LeafTests: XCTestCase {
 
         } ##ifElse(true) {It works!}
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "It works!")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "It works!")
     }
 
     func testForSugar() throws {
@@ -139,7 +139,7 @@ class LeafTests: XCTestCase {
         let template = """
         #if(false) {Bad} else if (true) {Good} else {Bad}
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "Good")
     }
 
     func testCommentSugar() throws {
@@ -156,15 +156,15 @@ class LeafTests: XCTestCase {
         */
         bar
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "foobar")
-        try XCTAssertEqual(renderer.render(multilineTemplate, context: Data.empty), "foo\nbar")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "foobar")
+        try XCTAssertEqual(renderer.render(multilineTemplate, context: Data.null), "foo\nbar")
     }
 
     func testHashtag() throws {
         let template = """
         #("hi") #thisIsNotATag...
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "hi #thisIsNotATag...")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "hi #thisIsNotATag...")
     }
 
     func testNot() throws {
@@ -172,7 +172,7 @@ class LeafTests: XCTestCase {
         #if(!false) {Good} #if(!true) {Bad}
         """
 
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Good")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "Good")
     }
 
     func testFuture() throws {
@@ -198,7 +198,7 @@ class LeafTests: XCTestCase {
         let template = """
         #if(true) {#if(true) {Hello\\}}}
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "Hello}")
+        try XCTAssertEqual(renderer.render(template, context: Data.null), "Hello}")
     }
 
     func testDotSyntax() throws {
@@ -217,9 +217,7 @@ class LeafTests: XCTestCase {
 
     func testEqual() throws {
         let template = """
-        #if(user.id == 42) {User 42!} #if(user.id != 42) {
-            Shouldn't show up
-        }
+        #if(user.id == 42) { User 42! } #if(user.id != 42) { Shouldn't show up }
         """
 
         let context = Data.dictionary([
@@ -242,7 +240,7 @@ class LeafTests: XCTestCase {
 
         }
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), expected)
+        try XCTAssertEqual(renderer.render(template, context: Data.null), expected)
     }
 
     func testIndentationCorrection() throws {
