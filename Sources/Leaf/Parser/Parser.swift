@@ -4,41 +4,7 @@ final class Parser {
     let scanner: ByteScanner
 
     init(_ data: Bytes) {
-        //let data = try! Parser.fix(data)
-        print(data.makeString())
         self.scanner = ByteScanner(data)
-    }
-
-    static func fix(_ bytes: Bytes) throws -> Bytes {
-        var fixed: [(byte: Byte, shouldInclude: Bool)] = []
-        let scanner = ByteScanner(bytes)
-
-        while let byte = scanner.pop() {
-            fixed.append((byte, true))
-
-            switch byte {
-            case .rightCurlyBracket, .numberSign:
-                skipwhitespace: for i in (0..<fixed.count - 1).reversed() {
-                    switch fixed[i].byte {
-                    case .space, .newLine:
-                        fixed[i] = (byte, false)
-                    default:
-                        break skipwhitespace
-                    }
-                }
-                break
-            default:
-                break
-            }
-        }
-
-        return fixed.flatMap { tuple in
-            if tuple.shouldInclude {
-                return tuple.byte
-            } else {
-                return nil
-            }
-        }
     }
 
     func parse() throws -> [Syntax] {
@@ -158,23 +124,25 @@ final class Parser {
     private func extractTag(indent: Int, previous: inout Syntax) throws -> Syntax {
         let start = scanner.makeSourceStart()
 
-        if case .raw(var bytes) = previous.kind {
+        trim: if case .raw(var bytes) = previous.kind {
             var offset = 0
 
             skipwhitespace: for i in (0..<bytes.count).reversed() {
                 offset = i
                 switch bytes[i] {
-                case .space, .newLine:
+                case .space:
                     break
-                default:
+                case .newLine:
                     break skipwhitespace
+                default:
+                    break trim
                 }
             }
 
             if offset == 0 {
                 bytes = []
             } else {
-                bytes = Array(bytes[0...offset])
+                bytes = Array(bytes[0..<offset])
             }
             previous = Syntax(kind: .raw(bytes), source: previous.source)
         }
@@ -283,7 +251,7 @@ final class Parser {
         } else {
             if try shouldExtractBody() {
                 try extractSpaces()
-                var rawBody = try extractBody(indent: indent + 4)
+                let rawBody = try extractBody(indent: indent + 4)
                 body = try correctIndentation(rawBody, to: indent)
             } else {
                 body = nil
@@ -453,23 +421,25 @@ final class Parser {
             }
         }
 
-        if let last = ast.last, case .raw(var bytes) = last.kind {
+        trim: if let last = ast.last, case .raw(var bytes) = last.kind {
             var offset = 0
 
             skipwhitespace: for i in (0..<bytes.count).reversed() {
                 offset = i
                 switch bytes[i] {
-                case .space, .newLine:
+                case .space:
                     break
-                default:
+                case .newLine:
                     break skipwhitespace
+                default:
+                    break trim
                 }
             }
 
             if offset == 0 {
                 bytes = []
             } else {
-                bytes = Array(bytes[0...offset])
+                bytes = Array(bytes[0..<offset])
             }
             ast[ast.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
         }

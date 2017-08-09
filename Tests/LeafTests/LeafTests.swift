@@ -110,7 +110,9 @@ class LeafTests: XCTestCase {
         let template = """
         <p>
             <ul>
-                #for(name in names) {<li>#(name)</li>}
+                #for(name in names) {
+                    <li>#(name)</li>
+                }
             </ul>
         </p>
         """
@@ -124,7 +126,9 @@ class LeafTests: XCTestCase {
         let expect = """
         <p>
             <ul>
-                <li>Vapor</li><li>Leaf</li><li>Bits</li>
+                <li>Vapor</li>
+                <li>Leaf</li>
+                <li>Bits</li>
             </ul>
         </p>
         """
@@ -152,8 +156,8 @@ class LeafTests: XCTestCase {
         */
         bar
         """
-        try XCTAssertEqual(renderer.render(template, context: Data.empty), "foo\nbar")
-        try XCTAssertEqual(renderer.render(multilineTemplate, context: Data.empty), "foo\n\nbar")
+        try XCTAssertEqual(renderer.render(template, context: Data.empty), "foobar")
+        try XCTAssertEqual(renderer.render(multilineTemplate, context: Data.empty), "foo\nbar")
     }
 
     func testHashtag() throws {
