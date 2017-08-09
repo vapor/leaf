@@ -1,3 +1,5 @@
+/// Data structure for passing data
+/// into Leaf templates as a context.
 public enum Data {
     case bool(Bool)
     case string(String)
@@ -12,6 +14,8 @@ public enum Data {
 
 // MARK: Protocols
 
+/// Types conforming to this protocol can be
+/// represented as Leaf data.
 public protocol DataRepresentable {
     func makeLeafData() throws -> Data
 }

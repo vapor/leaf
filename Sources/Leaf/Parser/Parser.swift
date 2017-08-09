@@ -1,47 +1,30 @@
 import Bits
 
-final class Parser {
+/// Parses leaf templates into a cacheable AST
+/// that can be later combined with Leaf Data to
+/// serialized a View.
+public final class Parser {
     let scanner: ByteScanner
 
-    init(_ data: Bytes) {
+    /// Creates a new Leaf parser with the supplied bytes.
+    public init(_ data: Bytes) {
         self.scanner = ByteScanner(data)
     }
 
-    func parse() throws -> [Syntax] {
+    /// Parses the AST.
+    /// throws `RenderError`. 
+    public func parse() throws -> [Syntax] {
         var ast: [Syntax] = []
-        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
 
-        var start = scanner.offset
-        do {
-            while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
-                start = scanner.offset
-                ast.append(syntax)
-            }
-        } catch {
-            throw RenderError(
-                source: Source(
-                    line: scanner.line,
-                    column: scanner.column,
-                    range: start..<scanner.offset
-                ),
-                error: error
-            )
+        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
+        while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
+            ast.append(syntax)
         }
 
         return ast
     }
 
-    func isWhitespace(_ bytes: Bytes) -> Bool {
-        for byte in bytes {
-            switch byte {
-            case .space, .newLine:
-                break
-            default:
-                return false
-            }
-        }
-        return true
-    }
+    // MARK: Private
 
     // base level extraction. checks for `#` or extracts raw
     private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout Syntax) throws -> Syntax? {
@@ -72,6 +55,9 @@ final class Parser {
         return syntax
     }
 
+    // checks ahead to see if a tag should be parsed.
+    // avoids parsing if like `#foo`.
+    // must be in format `#tag()`
     private func shouldExtractTag() throws -> Bool {
         var i = 1
         var previous: Byte?
@@ -91,6 +77,8 @@ final class Parser {
         return false
     }
 
+    // checks ahead to see if a body should be parsed.
+    // fixme: should fix `\{`
     private func shouldExtractBody() throws -> Bool {
         var i = 0
         while let byte = scanner.peek(by: i) {
@@ -105,6 +93,7 @@ final class Parser {
         return false
     }
 
+    // checks ahead to see if a chained tag `##if` should be parsed.
     private func shouldExtractChainedTag() throws -> Bool {
         var i = 1
         var previous: Byte?
@@ -121,6 +110,7 @@ final class Parser {
         return false
     }
 
+    // extracts a tag, recursively extracting chained tags and tag parameters and bodies.
     private func extractTag(indent: Int, previous: inout Syntax) throws -> Syntax {
         let start = scanner.makeSourceStart()
 
@@ -156,7 +146,11 @@ final class Parser {
             case [.forwardSlash, .forwardSlash], [.forwardSlash, .asterisk]:
                 break
             default:
-                throw ParserError.expectationFailed(expected: "Valid tag name", got: id.makeString())
+                throw ParserError.expectationFailed(
+                    expected: "Valid tag name",
+                    got: id.makeString(),
+                    source: scanner.makeSource(using: start)
+                )
             }
         }
 
@@ -173,24 +167,40 @@ final class Parser {
             try expect(.n)
             try expect(.space)
             guard let val = try extractParameter() else {
-                throw ParserError.expectationFailed(expected: "right parameter", got: "nil")
+                throw ParserError.expectationFailed(
+                    expected: "right parameter",
+                    got: "nil",
+                    source: scanner.makeSource(using: start)
+                )
             }
 
             switch val.kind {
             case .identifier, .tag:
                 break
             default:
-                throw ParserError.expectationFailed(expected: "identifier or tag", got: "\(val)")
+                throw ParserError.expectationFailed(
+                    expected: "identifier or tag",
+                    got: "\(val)",
+                    source: scanner.makeSource(using: start)
+                )
             }
 
             try expect(.rightParenthesis)
 
             guard case .identifier(let name) = key.kind else {
-                throw ParserError.expectationFailed(expected: "key name", got: "\(key)")
+                throw ParserError.expectationFailed(
+                    expected: "key name",
+                    got: "\(key)",
+                    source: scanner.makeSource(using: start)
+                )
             }
 
             guard name.count == 1 else {
-                throw ParserError.expectationFailed(expected: "single key", got: "\(name)")
+                throw ParserError.expectationFailed(
+                    expected: "single key",
+                    got: "\(name)",
+                    source: scanner.makeSource(using: start)
+                )
             }
 
             let raw = Syntax(
@@ -307,6 +317,8 @@ final class Parser {
         return Syntax(kind: kind, source: source)
     }
 
+    // corrects body indentation by splitting on newlines
+    // and stitching toogether w/ supplied indent level
     func correctIndentation(_ ast: [Syntax], to indent: Int) throws -> [Syntax] {
         var corrected: [Syntax] = []
 
@@ -355,23 +367,10 @@ final class Parser {
             }
         }
 
-//        if let first = corrected.first, case .raw(var bytes) = first.kind {
-//            if bytes.first == .newLine {
-//                bytes = Array(bytes.dropFirst())
-//                corrected[0] = Syntax(kind: .raw(bytes), source: first.source)
-//            }
-//        }
-//
-//        if let last = corrected.last, case .raw(var bytes) = last.kind {
-//            if bytes.last == .newLine {
-//                bytes = Array(bytes.dropLast())
-//                corrected[corrected.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
-//            }
-//        }
-
         return Array(corrected)
     }
 
+    // extracts if/else syntax sugar
     private func extractIfElse(indent: Int) throws -> Syntax? {
         try extractSpaces()
         let start = scanner.makeSourceStart()
@@ -409,6 +408,7 @@ final class Parser {
         return nil
     }
 
+    // extracts a tag body { to }
     private func extractBody(indent: Int) throws -> [Syntax] {
         try expect(.leftCurlyBracket)
 
@@ -448,10 +448,13 @@ final class Parser {
         return ast
     }
 
+    // extracts a raw chunk of text (until unescaped number sign)
     private func extractRaw(untilUnescaped signalBytes: Bytes) throws -> Bytes {
         return try extractBytes(untilUnescaped: signalBytes + [.numberSign])
     }
 
+    // extracts bytes until an unescaped signal byte is found.
+    // note: escaped bytes have the leading `\` removed
     private func extractBytes(untilUnescaped signalBytes: Bytes) throws -> Bytes {
         // needs to be an array for the time being b/c we may skip
         // bytes
@@ -495,6 +498,7 @@ final class Parser {
         return bytes
     }
 
+    // extracts a string of characters allowed in identifier
     private func extractIdentifier() throws -> Syntax {
         let start = scanner.makeSourceStart()
 
@@ -518,6 +522,7 @@ final class Parser {
         return Syntax(kind: kind, source: source)
     }
 
+    // extracts a string of characters allowed in tag names
     private func extractTagName() throws -> Bytes {
         let start = scanner.offset
 
@@ -528,6 +533,7 @@ final class Parser {
         return Array(scanner.bytes[start..<scanner.offset])
     }
 
+    // extracts parameters until closing right parens is found
     private func extractParameters() throws -> [Syntax] {
         try expect(.leftParenthesis)
 
@@ -547,34 +553,49 @@ final class Parser {
         return params
     }
 
+    // extracts a raw number
     private func extractNumber() throws -> Constant {
-        let start = scanner.offset
+        let start = scanner.makeSourceStart()
+
         while let byte = scanner.peek(), byte.isDigit || byte == .period || byte == .hyphen {
             try scanner.requirePop()
         }
 
-        let bytes = scanner.bytes[start..<scanner.offset]
+        let bytes = scanner.bytes[start.rangeStart..<scanner.offset]
         let string = bytes.makeString()
         if bytes.contains(.period) {
             guard let double = Double(string) else {
-                throw ParserError.expectationFailed(expected: "double", got: string)
+                throw ParserError.expectationFailed(
+                    expected: "double",
+                    got: string,
+                    source: scanner.makeSource(using: start)
+                )
             }
             return .double(double)
         } else {
             guard let int = Int(string) else {
-                throw ParserError.expectationFailed(expected: "integer", got: string)
+                throw ParserError.expectationFailed(
+                    expected: "integer",
+                    got: string,
+                    source: scanner.makeSource(using: start)
+                )
             }
             return .int(int)
         }
 
     }
 
+    // extracts a single tag parameter. this is recursive.
     private func extractParameter() throws -> Syntax? {
         try extractSpaces()
         let start = scanner.makeSourceStart()
 
         guard let byte = scanner.peek() else {
-            throw ParserError.expectationFailed(expected: "bytes", got: "EOF")
+            throw ParserError.expectationFailed(
+                expected: "bytes",
+                got: "EOF",
+                source: scanner.makeSource(using: start)
+            )
         }
 
         let kind: SyntaxKind
@@ -594,7 +615,11 @@ final class Parser {
         case .exclamation:
             try expect(.exclamation)
             guard let param = try extractParameter() else {
-                throw ParserError.expectationFailed(expected: "parameter", got: "nil")
+                throw ParserError.expectationFailed(
+                    expected: "parameter",
+                    got: "nil",
+                    source: scanner.makeSource(using: start)
+                )
             }
             kind = .not(param)
         default:
@@ -669,7 +694,11 @@ final class Parser {
             }
 
             guard let right = try extractParameter() else {
-                throw ParserError.expectationFailed(expected: "right parameter", got: "nil")
+                throw ParserError.expectationFailed(
+                    expected: "right parameter",
+                    got: "nil",
+                    source: scanner.makeSource(using: start)
+                )
             }
 
             // FIXME: allow for () grouping and proper PEMDAS
@@ -686,30 +715,41 @@ final class Parser {
 
     }
 
+    // extracts all spaces. used for extracting: `#tag()__{`
     private func extractSpaces() throws {
         while let byte = scanner.peek(), byte == .space {
             try scanner.requirePop()
         }
     }
 
+    // expects the supplied byte is current byte or throws an error
     private func expect(_ expect: Byte) throws {
+        let start = scanner.makeSourceStart()
+
         guard let byte = scanner.peek() else {
-            throw ParserError.unexpectedEOF
+            throw ParserError.unexpectedEOF(source: scanner.makeSource(using: start))
         }
 
         guard byte == expect else {
-            throw ParserError.expectationFailed(expected: expect.makeString(), got: byte.makeString())
+            throw ParserError.expectationFailed(
+                expected: expect.makeString(),
+                got: byte.makeString(),
+                source: scanner.makeSource(using: start)
+            )
         }
 
         try scanner.requirePop()
     }
 }
 
+// mark: file private scanner conveniences
+
 extension ByteScanner {
     @discardableResult
     func requirePop() throws -> Byte {
+        let start = makeSourceStart()
         guard let byte = pop() else {
-            throw ParserError.unexpectedEOF
+            throw ParserError.unexpectedEOF(source: makeSource(using: start))
         }
         return byte
     }
@@ -735,8 +775,4 @@ extension ByteScanner {
 
         return true
     }
-}
-
-extension Byte {
-    static let pipe: Byte = 0x7C
 }

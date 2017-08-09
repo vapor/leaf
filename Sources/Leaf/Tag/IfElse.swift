@@ -9,7 +9,8 @@ public final class IfElse: Tag {
         let expr = parsed.parameters[0]
 
         if expr.bool != false {
-            let bytes = try renderer.render(body, context: context)
+            let serializer = Serializer(ast: body, renderer: renderer, context: context)
+            let bytes = try serializer.serialize()
             return .string(bytes.makeString())
         } else {
             return nil

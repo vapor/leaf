@@ -94,6 +94,12 @@ class LeafTests: XCTestCase {
         } catch {
             print("\(error)")
         }
+
+        do {
+            _ = try renderer.render("#if(1 == /)", context: Data.null)
+        } catch {
+            print("\(error)")
+        }
     }
 
     func testChained() throws {
@@ -244,6 +250,17 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: Data.null), expected)
     }
 
+
+    func testEscapeTag() throws {
+        let template = """
+        #("foo") \\#("bar")
+        """
+        let expected = """
+        foo #("bar")
+        """
+        try XCTAssertEqual(renderer.render(template, context: Data.null), expected)
+    }
+
     func testIndentationCorrection() throws {
         let template = """
         <p>
@@ -297,5 +314,7 @@ class LeafTests: XCTestCase {
         ("testDotSyntax", testDotSyntax),
         ("testEqual", testEqual),
         ("testEscapeExtraneousBody", testEscapeExtraneousBody),
+        ("testEscapeTag", testEscapeTag),
+        ("testIndentationCorrection", testIndentationCorrection),
     ]
 }

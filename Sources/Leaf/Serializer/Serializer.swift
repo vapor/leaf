@@ -1,52 +1,51 @@
 import Bits
 
-final class Serializer {
+/// Serializes parsed Leaf ASTs into view bytes.
+public final class Serializer {
     let ast: [Syntax]
     var context: Data
     let renderer: Renderer
 
-    init(ast: [Syntax], renderer: Renderer,  context: Data) {
+    /// Creates a new Serializer.
+    public init(ast: [Syntax], renderer: Renderer,  context: Data) {
         self.ast = ast
         self.context = context
         self.renderer = renderer
     }
 
+    /// Serializes the AST into Bytes.
     func serialize() throws -> Bytes {
         var serialized: Bytes = []
 
         for syntax in ast {
-            do {
-                switch syntax.kind {
-                case .raw(let data):
-                    serialized += data
-                case .tag(let name, let parameters, let body, let chained):
-                    let bytes: Bytes
-                    if let data = try renderTag(name: name, parameters: parameters, body: body, chained: chained) {
-                        guard let string = data.string else {
-                            throw SerializerError.unexpectedSyntax(syntax)
-                        }
-                        bytes = string.makeBytes()
-                    }else {
-                        bytes = []
+            switch syntax.kind {
+            case .raw(let data):
+                serialized += data
+            case .tag(let name, let parameters, let body, let chained):
+                let bytes: Bytes
+                if let data = try renderTag(name: name, parameters: parameters, body: body, chained: chained, source: syntax.source) {
+                    guard let string = data.string else {
+                        throw SerializerError.unexpectedSyntax(syntax)
                     }
-                    serialized += bytes
-                default:
-                    throw SerializerError.unexpectedSyntax(syntax)
+                    bytes = string.makeBytes()
+                }else {
+                    bytes = []
                 }
-            } catch {
-                throw RenderError(
-                    source: syntax.source,
-                    error: error
-                )
+                serialized += bytes
+            default:
+                throw SerializerError.unexpectedSyntax(syntax)
             }
         }
 
         return serialized
     }
 
-    private func renderTag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?) throws -> Data? {
+    // MARK: private
+
+    // renders a tag using the supplied context
+    private func renderTag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?, source: Source) throws -> Data? {
         guard let tag = renderer.tags[name] else {
-            throw SerializerError.unknownTag(name: name)
+            throw SerializerError.unknownTag(name: name, source: source)
         }
 
         var inputs: [Data] = []
@@ -56,7 +55,7 @@ final class Serializer {
             inputs.append(input ?? .null)
         }
 
-        let parsed = ParsedTag(name: name, parameters: inputs, body: body)
+        let parsed = ParsedTag(name: name, parameters: inputs, body: body, source: source)
         if let data = try tag.render(
             parsed: parsed,
             context: &context,
@@ -65,8 +64,8 @@ final class Serializer {
             return data
         } else if let chained = chained {
             switch chained.kind {
-            case .tag(let name, let params, let body, let chained):
-                return try renderTag(name: name, parameters: params, body: body, chained: chained)
+            case .tag(let name, let params, let body, let c):
+                return try renderTag(name: name, parameters: params, body: body, chained: c, source: chained.source)
             default:
                 throw SerializerError.unexpectedSyntax(chained)
             }
@@ -77,6 +76,7 @@ final class Serializer {
 
     }
 
+    // resolves a constant to data
     private func resolveConstant(_ const: Constant) throws -> Data {
         switch const {
         case .bool(let bool):
@@ -92,29 +92,30 @@ final class Serializer {
         }
     }
 
+    // resolves an expression to data
     private func resolveExpression(_ op: Operator, left: Syntax, right: Syntax) throws -> Data {
-        let left = try resolveSyntax(left)
-        let right = try resolveSyntax(right)
+        let leftData = try resolveSyntax(left)
+        let rightData = try resolveSyntax(right)
 
         switch op {
         case .equal:
-            return .bool(left == right)
+            return .bool(leftData == rightData)
         case .notEqual:
-            return .bool(left != right)
+            return .bool(leftData != rightData)
         case .and:
-            return .bool(left?.bool != false && right?.bool != false)
+            return .bool(leftData?.bool != false && rightData?.bool != false)
         case .or:
-            return .bool(left?.bool != false || right?.bool != false)
+            return .bool(leftData?.bool != false || rightData?.bool != false)
         default:
             break
         }
 
-        guard let leftDouble = left?.double else {
-            throw SerializerError.invalidNumber(left)
+        guard let leftDouble = leftData?.double else {
+            throw SerializerError.invalidNumber(leftData, source: left.source)
         }
 
-        guard let rightDouble = right?.double else {
-            throw SerializerError.invalidNumber(right)
+        guard let rightDouble = rightData?.double else {
+            throw SerializerError.invalidNumber(rightData, source: right.source)
         }
 
         switch op {
@@ -135,6 +136,7 @@ final class Serializer {
         }
     }
 
+    // resolves syntax to data (or fails)
     private func resolveSyntax(_ syntax: Syntax) throws -> Data? {
         switch syntax.kind {
         case .constant(let constant):
@@ -147,7 +149,7 @@ final class Serializer {
             }
             return data
         case .tag(let name, let parameters, let body, let chained):
-            return try renderTag(name: name, parameters: parameters, body: body, chained: chained)
+            return try renderTag(name: name, parameters: parameters, body: body, chained: chained, source: syntax.source)
         case .not(let syntax):
             switch syntax.kind {
             case .identifier(let id):
@@ -183,6 +185,7 @@ final class Serializer {
         }
     }
 
+    // fetches data from the context
     private func contextFetch(path: [String]) throws -> Data? {
         var current = context
 

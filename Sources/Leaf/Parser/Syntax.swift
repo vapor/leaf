@@ -29,6 +29,18 @@ enum Constant {
     case string([Syntax])
 }
 
+extension SyntaxKind {
+    var name: String {
+        switch self {
+        case .constant: return "constant"
+        case .expression: return "expression"
+        case .identifier: return "identifier"
+        case .not: return "not"
+        case .raw: return "raw"
+        case .tag: return "tag"
+        }
+    }
+}
 
 public struct Syntax {
     let kind: SyntaxKind

@@ -2,11 +2,13 @@ public struct ParsedTag {
     public let name: String
     public let parameters: [Data]
     public let body: [Syntax]?
+    public let source: Source
 
-    init(name: String, parameters: [Data], body: [Syntax]?) {
+    init(name: String, parameters: [Data], body: [Syntax]?, source: Source) {
         self.name = name
         self.parameters = parameters
         self.body = body
+        self.source = source
     }
 }
 
@@ -16,7 +18,8 @@ extension ParsedTag {
         guard parameters.count == n else {
             throw TagError(
                 tag: name,
-                kind: .invalidParameterCount(need: n, have: parameters.count)
+                source: source,
+                reason: "Invalid parameter count: \(parameters.count)/\(n)."
             )
         }
     }
@@ -25,7 +28,8 @@ extension ParsedTag {
         guard let body = body else {
             throw TagError(
                 tag: name,
-                kind: .missingBody
+                source: source,
+                reason: "Missing body."
             )
         }
 
@@ -36,7 +40,8 @@ extension ParsedTag {
         guard body == nil else {
             throw TagError(
                 tag: name,
-                kind: .extraneousBody
+                source: source,
+                reason: "Extraneous body."
             )
         }
     }

@@ -12,16 +12,14 @@ public final class Var: Tag {
         case 1:
             let body = try parsed.requireBody()
             let key = parsed.parameters[0].string ?? ""
-            let rendered = try renderer.render(body, context: context)
+            let serializer = Serializer(ast: body, renderer: renderer, context: context)
+            let rendered = try serializer.serialize()
             dict[key] = .string(rendered.makeString())
         case 2:
             let key = parsed.parameters[0].string ?? ""
             dict[key] = parsed.parameters[1]
         default:
-            throw TagError(
-                tag: parsed.name,
-                kind: .invalidParameterCount(need: 2, have: parsed.parameters.count)
-            )
+            try parsed.requireParameterCount(2)
         }
 
         context = .dictionary(dict)

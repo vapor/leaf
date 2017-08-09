@@ -1,14 +1,19 @@
 import Bits
 
-public final class ByteScanner {
+/// Used to facilitate parsing byte arrays
+final class ByteScanner {
+    /// Source location information
     var offset: Int
     var line: Int
     var column: Int
+
+    /// Byte location information
     var pointer: UnsafePointer<Byte>
     let endAddress: UnsafePointer<Byte>
     var buffer: UnsafeBufferPointer<Byte>
     public let bytes: Bytes
 
+    /// Create a new byte scanner
     public init(_ bytes: Bytes) {
         self.bytes = bytes
         self.buffer = bytes.withUnsafeBufferPointer { $0 }
@@ -23,14 +28,16 @@ public final class ByteScanner {
 // MARK: Core
 
 extension ByteScanner {
-    public func peek(by amount: Int = 0) -> Byte? {
+    /// Peeks ahead to bytes in front of current byte
+    func peek(by amount: Int = 0) -> Byte? {
         guard pointer.advanced(by: amount) < endAddress else {
             return nil
         }
         return pointer.advanced(by: amount).pointee
     }
 
-    public func pop() -> Byte? {
+    /// Returns current byte and increments byte pointer.
+    func pop() -> Byte? {
         guard pointer != endAddress else {
             return nil
         }

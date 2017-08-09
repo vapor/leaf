@@ -24,7 +24,8 @@ public final class Loop: Tag {
             dict["loop"] = loop
             dict[key] = item
             let temp = Data.dictionary(dict)
-            let bytes = try renderer.render(body, context: temp)
+            let serializer = Serializer(ast: body, renderer: renderer, context: temp)
+            let bytes = try serializer.serialize()
             string.append(bytes.makeString())
         }
 
