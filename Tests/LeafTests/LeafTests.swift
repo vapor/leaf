@@ -59,7 +59,8 @@ class LeafTests: XCTestCase {
             #var("foo", "bar")
             Runtime: #(foo)"
         """
-        try XCTAssert(renderer.render(template, context: Data.null).contains("Runtime: bar"))
+        let res = try renderer.render(template, context: Data.dictionary([:]))
+        XCTAssert(res.contains("Runtime: bar"))
     }
 
     func testEmbed() throws {
@@ -217,7 +218,7 @@ class LeafTests: XCTestCase {
 
     func testEqual() throws {
         let template = """
-        #if(user.id == 42) { User 42! } #if(user.id != 42) { Shouldn't show up }
+        #if(user.id == 42) {User 42!} #if(user.id != 42) {Shouldn't show up}
         """
 
         let context = Data.dictionary([
