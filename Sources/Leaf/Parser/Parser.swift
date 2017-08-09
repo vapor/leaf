@@ -4,15 +4,50 @@ final class Parser {
     let scanner: ByteScanner
 
     init(_ data: Bytes) {
+        //let data = try! Parser.fix(data)
+        print(data.makeString())
         self.scanner = ByteScanner(data)
+    }
+
+    static func fix(_ bytes: Bytes) throws -> Bytes {
+        var fixed: [(byte: Byte, shouldInclude: Bool)] = []
+        let scanner = ByteScanner(bytes)
+
+        while let byte = scanner.pop() {
+            fixed.append((byte, true))
+
+            switch byte {
+            case .rightCurlyBracket, .numberSign:
+                skipwhitespace: for i in (0..<fixed.count - 1).reversed() {
+                    switch fixed[i].byte {
+                    case .space, .newLine:
+                        fixed[i] = (byte, false)
+                    default:
+                        break skipwhitespace
+                    }
+                }
+                break
+            default:
+                break
+            }
+        }
+
+        return fixed.flatMap { tuple in
+            if tuple.shouldInclude {
+                return tuple.byte
+            } else {
+                return nil
+            }
+        }
     }
 
     func parse() throws -> [Syntax] {
         var ast: [Syntax] = []
+        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
 
         var start = scanner.offset
         do {
-            while let syntax = try extractSyntax(indent: 0) {
+            while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
                 start = scanner.offset
                 ast.append(syntax)
             }
@@ -27,7 +62,7 @@ final class Parser {
             )
         }
 
-        return try prune(ast)
+        return ast
     }
 
     func isWhitespace(_ bytes: Bytes) -> Bool {
@@ -42,79 +77,8 @@ final class Parser {
         return true
     }
 
-    func removeLeadingWhitespace(_ bytes: Bytes) -> Bytes {
-        var offset = 0
-        main: for byte in bytes {
-            switch byte {
-            case .space, .newLine:
-                offset += 1
-                break
-            default:
-                break main
-            }
-        }
-        let res =  Array(bytes[offset..<bytes.count])
-        print("L>>" + res.makeString() + "<<")
-        return res
-    }
-
-    func removeTrailingWhitespace(_ bytes: Bytes) -> Bytes {
-        var offset = 0
-        main: for byte in bytes.reversed() {
-            switch byte {
-            case .space, .newLine:
-                offset += 1
-                break
-            default:
-                break main
-            }
-        }
-        let res = Array(bytes[0..<bytes.count - offset])
-        print("T>>" + res.makeString() + "<<")
-        return res
-    }
-
-    func prune(_ ast: [Syntax]) throws -> [Syntax] {
-        var pruned: [Syntax] = []
-
-        for (i, syntax) in ast.enumerated() {
-            var syntax = syntax
-
-            switch syntax.kind {
-            case .raw(let bytes):
-                if i + 1 < ast.count {
-                    switch ast[i + 1].kind {
-                    case .tag:
-                        syntax = Syntax(kind: .raw(removeTrailingWhitespace(bytes)), source: syntax.source)
-                    default:
-                        break
-                    }
-                }
-            case .tag(let name, let parameters, let rawBody, let chained):
-                let body: [Syntax]?
-                if let raw = rawBody {
-                    body = try prune(raw)
-                } else {
-                    body = nil
-                }
-                let syn = Syntax(
-                    kind: .tag(name: name, parameters: parameters, body: body, chained: chained),
-                    source: syntax.source
-                )
-                syntax = syn
-            default:
-                break
-            }
-
-            pruned.append(syntax)
-        }
-
-        print(pruned)
-
-        return pruned
-    }
-
-    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int) throws -> Syntax? {
+    // base level extraction. checks for `#` or extracts raw
+    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout Syntax) throws -> Syntax? {
         guard let byte = scanner.peek() else {
             return nil
         }
@@ -124,7 +88,7 @@ final class Parser {
         if byte == .numberSign {
             if try shouldExtractTag() {
                 try expect(.numberSign)
-                syntax = try extractTag(indent: indent)
+                syntax = try extractTag(indent: indent, previous: &previous)
             } else {
                 let byte = try scanner.requirePop()
                 let start = scanner.makeSourceStart()
@@ -191,8 +155,29 @@ final class Parser {
         return false
     }
 
-    private func extractTag(indent: Int) throws -> Syntax {
+    private func extractTag(indent: Int, previous: inout Syntax) throws -> Syntax {
         let start = scanner.makeSourceStart()
+
+        if case .raw(var bytes) = previous.kind {
+            var offset = 0
+
+            skipwhitespace: for i in (0..<bytes.count).reversed() {
+                offset = i
+                switch bytes[i] {
+                case .space, .newLine:
+                    break
+                default:
+                    break skipwhitespace
+                }
+            }
+
+            if offset == 0 {
+                bytes = []
+            } else {
+                bytes = Array(bytes[0...offset])
+            }
+            previous = Syntax(kind: .raw(bytes), source: previous.source)
+        }
 
         // NAME
         let id = try extractTagName()
@@ -210,8 +195,6 @@ final class Parser {
         // PARAMS
         let params: [Syntax]
         let name = id.makeString()
-
-        print("\(name): \(indent)")
 
         switch name {
         case "for":
@@ -300,7 +283,7 @@ final class Parser {
         } else {
             if try shouldExtractBody() {
                 try extractSpaces()
-                let rawBody = try extractBody(indent: indent + 4)
+                var rawBody = try extractBody(indent: indent + 4)
                 body = try correctIndentation(rawBody, to: indent)
             } else {
                 body = nil
@@ -341,7 +324,7 @@ final class Parser {
                 try extractSpaces()
                 try expect(.numberSign)
                 try expect(.numberSign)
-                chained = try extractTag(indent: indent)
+                chained = try extractTag(indent: indent, previous: &previous)
             }
 
             kind = .tag(
@@ -462,12 +445,35 @@ final class Parser {
         try expect(.leftCurlyBracket)
 
         var ast: [Syntax] = []
-        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent) {
+        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
+        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
             if scanner.peek() == .rightCurlyBracket {
                 break
             }
         }
+
+        if let last = ast.last, case .raw(var bytes) = last.kind {
+            var offset = 0
+
+            skipwhitespace: for i in (0..<bytes.count).reversed() {
+                offset = i
+                switch bytes[i] {
+                case .space, .newLine:
+                    break
+                default:
+                    break skipwhitespace
+                }
+            }
+
+            if offset == 0 {
+                bytes = []
+            } else {
+                bytes = Array(bytes[0...offset])
+            }
+            ast[ast.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
+        }
+
         try expect(.rightCurlyBracket)
         return ast
     }
@@ -633,7 +639,8 @@ final class Parser {
                 try scanner.requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                kind = try extractTag(indent: 0).kind
+                var syntax = Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1))
+                kind = try extractTag(indent: 0, previous: &syntax).kind
             } else {
                 let id = try extractIdentifier()
                 kind = id.kind
