@@ -21,6 +21,8 @@ public final class If: Tag {
         if let bool = value.bool { return bool }
         // Empty string value returns false.
         if value.string == "" { return false }
+        // Empty array value returns false.
+        if let array = value.array, array.isEmpty { return false }
         // Otherwise, not-nil returns true.
         return true
     }
