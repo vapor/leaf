@@ -1,10 +1,10 @@
 public struct ParsedTag {
     public let name: String
-    public let parameters: [Data]
+    public let parameters: [Context]
     public let body: [Syntax]?
     public let source: Source
 
-    init(name: String, parameters: [Data], body: [Syntax]?, source: Source) {
+    init(name: String, parameters: [Context], body: [Syntax]?, source: Source) {
         self.name = name
         self.parameters = parameters
         self.body = body

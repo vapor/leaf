@@ -1,54 +1,53 @@
-import Bits
+import Foundation
 
 /// Serializes parsed Leaf ASTs into view bytes.
 public final class Serializer {
     let ast: [Syntax]
-    var context: Data
+    var context: Context
     let renderer: Renderer
 
     /// Creates a new Serializer.
-    public init(ast: [Syntax], renderer: Renderer,  context: Data) {
+    public init(ast: [Syntax], renderer: Renderer,  context: Context) {
         self.ast = ast
         self.context = context
         self.renderer = renderer
     }
 
     /// Serializes the AST into Bytes.
-    func serialize() throws -> Bytes {
-        var serialized: Bytes = []
+    func serialize() throws -> Data {
+        var serialized = DispatchData.empty
 
         for syntax in ast {
             switch syntax.kind {
             case .raw(let data):
-                serialized += data
+                serialized.append(data)
             case .tag(let name, let parameters, let body, let chained):
-                let bytes: Bytes
                 if let data = try renderTag(name: name, parameters: parameters, body: body, chained: chained, source: syntax.source) {
                     guard let string = data.string else {
                         throw SerializerError.unexpectedSyntax(syntax)
                     }
-                    bytes = string.makeBytes()
-                }else {
-                    bytes = []
+                    guard let data = string.data(using: .utf8) else {
+                        throw "could not convert string to data"
+                    }
+                    serialized.append(data.dispatchData)
                 }
-                serialized += bytes
             default:
                 throw SerializerError.unexpectedSyntax(syntax)
             }
         }
 
-        return serialized
+        return Data(serialized)
     }
 
     // MARK: private
 
     // renders a tag using the supplied context
-    private func renderTag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?, source: Source) throws -> Data? {
+    private func renderTag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?, source: Source) throws -> Context? {
         guard let tag = renderer.tags[name] else {
             throw SerializerError.unknownTag(name: name, source: source)
         }
 
-        var inputs: [Data] = []
+        var inputs: [Context] = []
 
         for parameter in parameters {
             let input = try resolveSyntax(parameter)
@@ -77,7 +76,7 @@ public final class Serializer {
     }
 
     // resolves a constant to data
-    private func resolveConstant(_ const: Constant) throws -> Data {
+    private func resolveConstant(_ const: Constant) throws -> Context {
         switch const {
         case .bool(let bool):
             return .bool(bool)
@@ -88,12 +87,15 @@ public final class Serializer {
         case .string(let ast):
             let serializer = Serializer(ast: ast, renderer: renderer, context: context)
             let bytes = try serializer.serialize()
-            return .string(bytes.makeString())
+            guard let string = String(data: bytes, encoding: .utf8) else {
+                throw "could not parse string"
+            }
+            return .string(string)
         }
     }
 
     // resolves an expression to data
-    private func resolveExpression(_ op: Operator, left: Syntax, right: Syntax) throws -> Data {
+    private func resolveExpression(_ op: Operator, left: Syntax, right: Syntax) throws -> Context {
         let leftData = try resolveSyntax(left)
         let rightData = try resolveSyntax(right)
 
@@ -137,7 +139,7 @@ public final class Serializer {
     }
 
     // resolves syntax to data (or fails)
-    private func resolveSyntax(_ syntax: Syntax) throws -> Data? {
+    private func resolveSyntax(_ syntax: Syntax) throws -> Context? {
         switch syntax.kind {
         case .constant(let constant):
             return try resolveConstant(constant)
@@ -186,7 +188,7 @@ public final class Serializer {
     }
 
     // fetches data from the context
-    private func contextFetch(path: [String]) throws -> Data? {
+    private func contextFetch(path: [String]) throws -> Context? {
         var current = context
 
         for part in path {

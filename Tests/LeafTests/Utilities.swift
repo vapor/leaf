@@ -1,5 +1,5 @@
+import Foundation
 import Leaf
-import Bits
 
 extension Renderer {
     static func makeTestRenderer() -> Renderer {
@@ -10,10 +10,12 @@ extension Renderer {
 final class TestFiles: FileReader {
     init() {}
 
-    func read(at path: String) throws -> Bytes {
-        return """
+
+    func read(at path: String, completion: (Data) -> ()) {
+        let data = """
             Test file name: "\(path)"
-            """.makeBytes()
+            """.data(using: .utf8)!
+        completion(data)
     }
 }
 

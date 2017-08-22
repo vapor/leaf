@@ -1,5 +1,5 @@
 public final class Contains: Leaf.Tag {
-    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
+    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Context? {
         try parsed.requireParameterCount(2)
 
         guard let array = parsed.parameters[0].array else {

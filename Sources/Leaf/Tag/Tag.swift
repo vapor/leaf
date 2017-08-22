@@ -1,11 +1,11 @@
-import Bits
+import Foundation
 
 public protocol Tag {
     func render(
         parsed: ParsedTag,
-        context: inout Data,
+        context: inout Context,
         renderer: Renderer
-    ) throws -> Data?
+    ) throws -> Context?
 }
 
 // MARK: Global

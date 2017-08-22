@@ -1,9 +1,7 @@
-import Bits
-
 public final class Var: Tag {
     public init() {}
 
-    public func render(parsed: ParsedTag, context: inout Data, renderer: Renderer) throws -> Data? {
+    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Context? {
         guard case .dictionary(var dict) = context else {
             return nil
         }
@@ -14,7 +12,10 @@ public final class Var: Tag {
             let key = parsed.parameters[0].string ?? ""
             let serializer = Serializer(ast: body, renderer: renderer, context: context)
             let rendered = try serializer.serialize()
-            dict[key] = .string(rendered.makeString())
+            guard let string = String(data: rendered, encoding: .utf8) else {
+                throw "could not convert data to string"
+            }
+            dict[key] = .string(string)
         case 2:
             let key = parsed.parameters[0].string ?? ""
             dict[key] = parsed.parameters[1]
