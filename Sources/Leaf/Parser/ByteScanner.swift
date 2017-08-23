@@ -1,4 +1,4 @@
-import Bits
+import Foundation
 
 /// Used to facilitate parsing byte arrays
 final class ByteScanner {
@@ -8,15 +8,15 @@ final class ByteScanner {
     var column: Int
 
     /// Byte location information
-    var pointer: UnsafePointer<Byte>
-    let endAddress: UnsafePointer<Byte>
-    var buffer: UnsafeBufferPointer<Byte>
-    public let bytes: Bytes
+    var pointer: UnsafePointer<UInt8>
+    let endAddress: UnsafePointer<UInt8>
+    var buffer: UnsafeBufferPointer<UInt8>
+    public let data: Data
 
     /// Create a new byte scanner
-    public init(_ bytes: Bytes) {
-        self.bytes = bytes
-        self.buffer = bytes.withUnsafeBufferPointer { $0 }
+    public init(data: Data) {
+        self.data = data
+        self.buffer = UnsafeBufferPointer(start: data.withUnsafeBytes { $0 }, count: data.count)
         self.pointer = buffer.baseAddress!
         self.endAddress = buffer.baseAddress!.advanced(by: buffer.endIndex)
         self.offset = 0
@@ -29,7 +29,7 @@ final class ByteScanner {
 
 extension ByteScanner {
     /// Peeks ahead to bytes in front of current byte
-    func peek(by amount: Int = 0) -> Byte? {
+    func peek(by amount: Int = 0) -> UInt8? {
         guard pointer.advanced(by: amount) < endAddress else {
             return nil
         }
@@ -37,7 +37,7 @@ extension ByteScanner {
     }
 
     /// Returns current byte and increments byte pointer.
-    func pop() -> Byte? {
+    func pop() -> UInt8? {
         guard pointer != endAddress else {
             return nil
         }

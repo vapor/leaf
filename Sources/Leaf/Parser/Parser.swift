@@ -1,4 +1,5 @@
-import Bits
+import Core
+import Foundation
 
 /// Parses leaf templates into a cacheable AST
 /// that can be later combined with Leaf Data to
@@ -7,8 +8,8 @@ public final class Parser {
     let scanner: ByteScanner
 
     /// Creates a new Leaf parser with the supplied bytes.
-    public init(_ data: Bytes) {
-        self.scanner = ByteScanner(data)
+    public init(data: Data) {
+        self.scanner = ByteScanner(data: data)
     }
 
     /// Parses the AST.
@@ -16,7 +17,7 @@ public final class Parser {
     public func parse() throws -> [Syntax] {
         var ast: [Syntax] = []
 
-        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
+        ast.append(Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1)))
         while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
         }
@@ -41,7 +42,7 @@ public final class Parser {
             } else {
                 let byte = try scanner.requirePop()
                 let start = scanner.makeSourceStart()
-                let bytes = try [byte] + extractRaw(untilUnescaped: signalBytes)
+                let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = scanner.makeSource(using: start)
                 syntax = Syntax(kind: .raw(bytes), source: source)
             }
@@ -130,9 +131,9 @@ public final class Parser {
             }
 
             if offset == 0 {
-                bytes = []
+                bytes = .empty
             } else {
-                bytes = Array(bytes[0..<offset])
+                bytes = Data(bytes[0..<offset])
             }
             previous = Syntax(kind: .raw(bytes), source: previous.source)
         }
@@ -143,12 +144,12 @@ public final class Parser {
         // verify tag names containg / or * are comment tag names
         if id.contains(where: { $0 == .forwardSlash || $0 == .asterisk }) {
             switch id {
-            case [.forwardSlash, .forwardSlash], [.forwardSlash, .asterisk]:
+            case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
                 break
             default:
                 throw ParserError.expectationFailed(
                     expected: "Valid tag name",
-                    got: id.makeString(),
+                    got: String(data: id, encoding: .utf8) ?? "n/a",
                     source: scanner.makeSource(using: start)
                 )
             }
@@ -156,7 +157,13 @@ public final class Parser {
 
         // PARAMS
         let params: [Syntax]
-        let name = id.makeString()
+        guard let name = String(data: id, encoding: .utf8) else {
+            throw ParserError.expectationFailed(
+                expected: "UTF8 string",
+                got: id.description,
+                source: scanner.makeSource(using: start)
+            )
+        }
 
         switch name {
         case "for":
@@ -203,8 +210,16 @@ public final class Parser {
                 )
             }
 
+            guard let data = name[0].data(using: .utf8) else {
+                throw ParserError.expectationFailed(
+                    expected: "utf8 string",
+                    got: name[0],
+                    source: scanner.makeSource(using: start)
+                )
+            }
+
             let raw = Syntax(
-                kind: .raw(name[0].makeBytes()),
+                kind: .raw(data),
                 source: key.source
             )
 
@@ -249,7 +264,7 @@ public final class Parser {
             // pop comment text, w/o trailing */
             try scanner.requirePop(n: i - 1)
 
-            let bytes = Array(scanner.bytes[s.rangeStart..<scanner.offset])
+            let bytes = scanner.data[s.rangeStart..<scanner.offset]
 
             // pop */
             try scanner.requirePop(n: 2)
@@ -327,7 +342,7 @@ public final class Parser {
         for syntax in ast {
             switch syntax.kind {
             case .raw(let bytes):
-                let scanner = ByteScanner(bytes)
+                let scanner = ByteScanner(data: Data(bytes))
                 var chunkStart = scanner.offset
                 while let byte = scanner.peek() {
                     switch byte {
@@ -337,7 +352,7 @@ public final class Parser {
 
                         // break off the previous raw chunk
                         // and remove indentation from following chunk
-                        let data = Array(bytes[chunkStart..<scanner.offset])
+                        let data = Data(bytes[chunkStart..<scanner.offset])
                         let new = Syntax(kind: .raw(data), source: syntax.source)
                         corrected.append(new)
 
@@ -358,7 +373,7 @@ public final class Parser {
 
                 // append any remaining bytes
                 if chunkStart < bytes.count {
-                    let data = Array(bytes[chunkStart..<bytes.count])
+                    let data = Data(bytes[chunkStart..<bytes.count])
                     let new = Syntax(kind: .raw(data), source: syntax.source)
                     corrected.append(new)
                 }
@@ -413,7 +428,7 @@ public final class Parser {
         try expect(.leftCurlyBracket)
 
         var ast: [Syntax] = []
-        ast.append(Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1)))
+        ast.append(Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1)))
         while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
             if scanner.peek() == .rightCurlyBracket {
@@ -437,9 +452,9 @@ public final class Parser {
             }
 
             if offset == 0 {
-                bytes = []
+                bytes = .empty
             } else {
-                bytes = Array(bytes[0..<offset])
+                bytes = Data(bytes[0..<offset])
             }
             ast[ast.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
         }
@@ -449,16 +464,16 @@ public final class Parser {
     }
 
     // extracts a raw chunk of text (until unescaped number sign)
-    private func extractRaw(untilUnescaped signalBytes: Bytes) throws -> Bytes {
+    private func extractRaw(untilUnescaped signalBytes: [Byte]) throws -> Data {
         return try extractBytes(untilUnescaped: signalBytes + [.numberSign])
     }
 
     // extracts bytes until an unescaped signal byte is found.
     // note: escaped bytes have the leading `\` removed
-    private func extractBytes(untilUnescaped signalBytes: Bytes) throws -> Bytes {
+    private func extractBytes(untilUnescaped signalBytes: [Byte]) throws -> Data {
         // needs to be an array for the time being b/c we may skip
         // bytes
-        var bytes: Bytes = []
+        var bytes: Data = Data()
 
         var onlySpacesExtracted = true
 
@@ -503,19 +518,19 @@ public final class Parser {
         let start = scanner.makeSourceStart()
 
         var path: [String] = []
-        var current: Bytes = []
+        var current: String = ""
 
         while let byte = scanner.peek(), byte.isAllowedInIdentifier {
            try scanner.requirePop()
             switch byte {
             case .period:
-                path.append(current.makeString())
-                current = []
+                path.append(current)
+                current = ""
             default:
-                current.append(byte)
+                current.append(byte.string)
             }
         }
-        path.append(current.makeString())
+        path.append(current)
         
         let kind: SyntaxKind = .identifier(path: path)
         let source = scanner.makeSource(using: start)
@@ -523,14 +538,14 @@ public final class Parser {
     }
 
     // extracts a string of characters allowed in tag names
-    private func extractTagName() throws -> Bytes {
+    private func extractTagName() throws -> Data {
         let start = scanner.offset
 
         while let byte = scanner.peek(), byte.isAllowedInTagName {
             try scanner.requirePop()
         }
 
-        return Array(scanner.bytes[start..<scanner.offset])
+        return scanner.data[start..<scanner.offset]
     }
 
     // extracts parameters until closing right parens is found
@@ -561,8 +576,14 @@ public final class Parser {
             try scanner.requirePop()
         }
 
-        let bytes = scanner.bytes[start.rangeStart..<scanner.offset]
-        let string = bytes.makeString()
+        let bytes = scanner.data[start.rangeStart..<scanner.offset]
+        guard let string = String(data: bytes, encoding: .utf8) else {
+            throw ParserError.expectationFailed(
+                expected: "UTF8 string",
+                got: bytes.description,
+                source: scanner.makeSource(using: start)
+            )
+        }
         if bytes.contains(.period) {
             guard let double = Double(string) else {
                 throw ParserError.expectationFailed(
@@ -607,7 +628,7 @@ public final class Parser {
             try expect(.quote)
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
-            let parser = Parser(bytes)
+            let parser = Parser(data: bytes)
             let ast = try parser.parse()
             kind = .constant(
                 .string(ast)
@@ -634,7 +655,7 @@ public final class Parser {
                 try scanner.requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = Syntax(kind: .raw([]), source: Source(line: 0, column: 0, range: 0..<1))
+                var syntax = Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1))
                 kind = try extractTag(indent: 0, previous: &syntax).kind
             } else {
                 let id = try extractIdentifier()
@@ -732,8 +753,8 @@ public final class Parser {
 
         guard byte == expect else {
             throw ParserError.expectationFailed(
-                expected: expect.makeString(),
-                got: byte.makeString(),
+                expected: expect.string,
+                got: byte.string,
                 source: scanner.makeSource(using: start)
             )
         }
@@ -760,7 +781,7 @@ extension ByteScanner {
         }
     }
 
-    func peekMatches(_ bytes: Bytes) -> Bool {
+    func peekMatches(_ bytes: [Byte]) -> Bool {
         var iterator = bytes.makeIterator()
         var i = 0
         while let next = iterator.next() {

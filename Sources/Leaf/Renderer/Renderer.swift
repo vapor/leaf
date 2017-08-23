@@ -1,4 +1,5 @@
-import Bits
+import Core
+import Foundation
 
 /// Renders Leaf templates using the Leaf parser and serializer.
 public final class Renderer {
@@ -20,14 +21,14 @@ public final class Renderer {
 
     /// Renders the supplied template bytes into a view
     /// using the supplied context.
-    public func render(_ template: Bytes, context: DataRepresentable) throws -> Bytes {
-        let hash = template.makeString().hashValue
+    public func render(template: Data, context: Context) throws -> Future<Data> {
+        let hash = template.hashValue
 
         let ast: [Syntax]
         if let cached = _cachedASTs[hash] {
             ast = cached
         } else {
-            let parser = Parser(template)
+            let parser = Parser(data: template)
             do {
                 ast = try parser.parse()
             } catch let error as ParserError {
@@ -37,7 +38,7 @@ public final class Renderer {
         }
 
         do {
-            let serializer = try Serializer(ast: ast, renderer: self, context: context.makeLeafData())
+            let serializer = Serializer(ast: ast, renderer: self, context: context)
             return try serializer.serialize()
         } catch let error as SerializerError {
             throw RenderError(source: error.source, reason: error.reason, error: error)
@@ -51,19 +52,62 @@ public final class Renderer {
 
 extension Renderer {
     /// Loads the leaf template from the supplied path.
-    public func render(path: String, context: DataRepresentable) throws -> Bytes {
+    public func render(path: String, context: Context) -> Future<Data> {
         let path = path.hasSuffix(".leaf") ? path : path + ".leaf"
-        let view = try fileReader.read(at: path)
-        do {
-            return try render(view, context: context)
-        } catch var error as RenderError {
-            error.path = path
-            throw error
+        let promise = Promise(Data.self)
+
+        fileReader.read(at: path).then { view in
+            do {
+                try self.render(template: view, context: context).then { data in
+                    promise.complete(data)
+                }.catch { error in
+                    promise.fail(error)
+                }
+            } catch var error as RenderError {
+                error.path = path
+                promise.fail(error)
+            } catch {
+                promise.fail(error)
+            }
+        }.catch { error in
+            promise.fail(error)
         }
+
+        return promise.future
     }
 
     /// Renders a string template and returns a string.
-    public func render(_ view: String, context: DataRepresentable) throws -> String {
-        return try render(view.makeBytes(), context: context).makeString()
+    public func render(_ view: String, context: Context) -> Future<String> {
+        let promise = Promise(String.self)
+
+        do {
+            guard let data = view.data(using: .utf8) else {
+                throw RenderError(
+                    source: Source(line: 0, column: 0, range: 0..<view.characters.count),
+                    reason: "Could not convert view String to Data."
+                )
+            }
+
+            try render(template: data, context: context).then { rendered in
+                do {
+                    guard let string = String(data: rendered, encoding: .utf8) else {
+                        throw RenderError(
+                            source: Source(line: 0, column: 0, range: 0..<data.count),
+                            reason: "Could not convert rendered template to String."
+                        )
+                    }
+
+                    promise.complete(string)
+                } catch {
+                    promise.fail(error)
+                }
+            }.catch { error in
+                promise.fail(error)
+            }
+        } catch {
+            promise.fail(error)
+        }
+
+        return promise.future
     }
 }

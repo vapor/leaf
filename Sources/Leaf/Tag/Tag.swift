@@ -1,11 +1,12 @@
-import Bits
+import Core
+import Foundation
 
 public protocol Tag {
     func render(
         parsed: ParsedTag,
-        context: inout Data,
+        context: inout Context,
         renderer: Renderer
-    ) throws -> Data?
+    ) throws -> Future<Context?>
 }
 
 // MARK: Global
@@ -20,6 +21,10 @@ public var defaultTags: [String: Tag] {
         "comment": Comment(),
         "contains": Contains(),
         "lowercase": Lowercase(),
-        "count": Count()
+        "count": Count(),
+        "raw": Raw(),
+        // import/export
+        "export": Var(),
+        "import": Embed()
     ]
 }

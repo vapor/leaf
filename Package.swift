@@ -7,12 +7,10 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/bits.git", from: "1.1.0"),
-        .package(url: "https://github.com/vapor/mapper.git", .branch("beta")),
-
+        .package(url: "https://github.com/vapor/core.git", .branch("bytes"))
     ],
     targets: [
-        .target(name: "Leaf", dependencies: ["Bits", "Mapper"]),
+        .target(name: "Leaf", dependencies: ["Core"]),
         .testTarget(name: "LeafTests", dependencies: ["Leaf"]),
     ]
 )
