@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// Parses leaf templates into a cacheable AST
@@ -27,7 +28,7 @@ public final class Parser {
     // MARK: Private
 
     // base level extraction. checks for `#` or extracts raw
-    private func extractSyntax(untilUnescaped signalBytes: [Byte] = [], indent: Int, previous: inout Syntax) throws -> Syntax? {
+    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout Syntax) throws -> Syntax? {
         guard let byte = scanner.peek() else {
             return nil
         }
@@ -41,7 +42,7 @@ public final class Parser {
             } else {
                 let byte = try scanner.requirePop()
                 let start = scanner.makeSourceStart()
-                let bytes = try byte.makeString().data(using: .utf8)! + extractRaw(untilUnescaped: signalBytes) // FIXME: force
+                let bytes = try byte.string.data(using: .utf8)! + extractRaw(untilUnescaped: signalBytes) // FIXME: force
                 let source = scanner.makeSource(using: start)
                 syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
             }
@@ -479,15 +480,15 @@ public final class Parser {
                     // if it is, it has been properly escaped.
                     // add it now, skipping the backslash and popping
                     // so the next iteration of this loop won't see it
-                    bytes.append(next.makeString())
+                    bytes.append(next.string)
                     try scanner.requirePop()
                 } else {
                     // just a normal backslash
-                    bytes.append(byte.makeString())
+                    bytes.append(byte.string)
                 }
             } else {
                 // just a normal byte
-                bytes.append(byte.makeString())
+                bytes.append(byte.string)
             }
 
             if byte != .space {
@@ -512,7 +513,7 @@ public final class Parser {
                 path.append(current)
                 current = ""
             default:
-                current.append(byte.makeString())
+                current.append(byte.string)
             }
         }
         path.append(current)
@@ -734,8 +735,8 @@ public final class Parser {
 
         guard byte == expect else {
             throw ParserError.expectationFailed(
-                expected: expect.makeString(),
-                got: byte.makeString(),
+                expected: expect.string,
+                got: byte.string,
                 source: scanner.makeSource(using: start)
             )
         }

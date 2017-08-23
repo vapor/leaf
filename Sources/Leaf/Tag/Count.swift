@@ -1,17 +1,22 @@
+import Core
+
 public final class Count: Leaf.Tag {
     init() {}
     
-    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Context? {
+    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Future<Context?> {
+        let promise = Promise(Context?.self)
         try parsed.requireParameterCount(1)
 
         switch parsed.parameters[0] {
         case .dictionary(let dict):
-            return .int(dict.values.count)
+            promise.complete(.int(dict.values.count))
         case .array(let arr):
-            return .int(arr.count)
+            promise.complete(.int(arr.count))
         default:
-            return .null
+            promise.complete(.null)
         }
+
+        return promise.future
     }
 }
 

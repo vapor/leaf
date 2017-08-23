@@ -6,9 +6,11 @@ let package = Package(
     products: [
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/vapor/core.git", .branch("bytes"))
+    ],
     targets: [
-        .target(name: "Leaf", dependencies: []),
+        .target(name: "Leaf", dependencies: ["Core"]),
         .testTarget(name: "LeafTests", dependencies: ["Leaf"]),
     ]
 )

@@ -1,37 +1,48 @@
+import Core
+
 public final class Loop: Tag {
     public init() {}
-    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Context? {
-        guard case .dictionary(var dict) = context else {
-            return nil
-        }
+    public func render(parsed: ParsedTag, context: inout Context, renderer: Renderer) throws -> Future<Context?> {
+        let promise = Promise(Context?.self)
 
-        let body = try parsed.requireBody()
-        try parsed.requireParameterCount(2)
-        let array = parsed.parameters[0].array ?? []
-        let key = parsed.parameters[1].string ?? ""
+        if case .dictionary(var dict) = context {
+            let body = try parsed.requireBody()
+            try parsed.requireParameterCount(2)
+            let array = parsed.parameters[0].array ?? []
+            let key = parsed.parameters[1].string ?? ""
 
-        var string: String = ""
+            var results: [Future<String>] = []
 
-        for (i, item) in array.enumerated() {
-            let isLast = i == array.count - 1
-            let loop = Context.dictionary([
-                "index": .int(i),
-                "isFirst": .bool(i == 0),
-                "isLast": .bool(isLast)
-            ])
-            dict["loop"] = loop
-            dict[key] = item
-            let temp = Context.dictionary(dict)
-            let serializer = Serializer(ast: body, renderer: renderer, context: temp)
-            let bytes = try serializer.serialize()
-            guard let sub = String(data: bytes, encoding: .utf8) else {
-                throw "could not convert data to string"
+            for (i, item) in array.enumerated() {
+                let isLast = i == array.count - 1
+                let loop = Context.dictionary([
+                    "index": .int(i),
+                    "isFirst": .bool(i == 0),
+                    "isLast": .bool(isLast)
+                    ])
+                dict["loop"] = loop
+                dict[key] = item
+                let temp = Context.dictionary(dict)
+                let serializer = Serializer(ast: body, renderer: renderer, context: temp)
+
+                let subpromise = Promise(String.self)
+                try serializer.serialize().then { bytes in
+                    guard let sub = String(data: bytes, encoding: .utf8) else {
+                        subpromise.complete("could not convert data to string" as Error)
+                        return
+                    }
+                    subpromise.complete { sub }
+                }
+                results.append(subpromise.future)
             }
-            string.append(sub)
+
+            results.resolved.then { strings in
+                promise.complete(.string(strings.joined()))
+            }
+        } else {
+            promise.complete(nil)
         }
 
-        return .string(string)
+        return promise.future
     }
 }
-
-

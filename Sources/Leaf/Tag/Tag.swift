@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 public protocol Tag {
@@ -5,7 +6,7 @@ public protocol Tag {
         parsed: ParsedTag,
         context: inout Context,
         renderer: Renderer
-    ) throws -> Context?
+    ) throws -> Future<Context?>
 }
 
 // MARK: Global

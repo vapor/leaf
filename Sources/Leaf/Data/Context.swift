@@ -9,8 +9,6 @@ public enum Context {
     case double(Double)
     case dictionary([String: Context])
     case array([Context])
-    public typealias Future = (@escaping (Context) -> ()) -> ()
-    case future(Future)
     public typealias Lazy = () -> (Context)
     case lazy(Lazy)
     case null
@@ -29,17 +27,6 @@ extension Context {
             return int.description
         case .string(let s):
             return s
-        case .future(let future):
-            let group = DispatchGroup()
-            var c: Context!
-            // FIXME: blocking
-            group.enter()
-            future { data in
-                c = data
-                group.leave()
-            }
-            group.wait()
-            return c.string
         case .lazy(let lazy):
             return lazy().string
         default:

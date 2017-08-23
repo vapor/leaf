@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import Leaf
 
@@ -11,11 +12,14 @@ final class TestFiles: FileReader {
     init() {}
 
 
-    func read(at path: String, completion: (Data) -> ()) {
+    func read(at path: String) -> Future<Data> {
         let data = """
             Test file name: "\(path)"
             """.data(using: .utf8)!
-        completion(data)
+
+        let promise = Promise(Data.self)
+        promise.complete(data)
+        return promise.future
     }
 }
 
