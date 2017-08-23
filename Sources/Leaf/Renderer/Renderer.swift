@@ -55,7 +55,9 @@ extension Renderer {
     public func render(path: String, context: Context) -> Future<Data> {
         let path = path.hasSuffix(".leaf") ? path : path + ".leaf"
         let promise = Promise(Data.self)
-        fileReader.read(at: path).then { view in
+        let res = fileReader.read(at: path)
+
+        res.then { view in
             do {
                 try self.render(template: view, context: context).then { data in
                     promise.complete(data)
@@ -67,6 +69,11 @@ extension Renderer {
                 promise.complete(error)
             }
         }
+
+        res.catch { error in
+            promise.complete(error)
+        }
+
         return promise.future
     }
 
@@ -79,7 +86,9 @@ extension Renderer {
                 throw "could not convert string"
             }
 
-            try render(template: data, context: context).then { rendered in
+            let res = try render(template: data, context: context)
+
+            res.then { rendered in
                 do {
                     guard let string = String(data: rendered, encoding: .utf8) else {
                         throw "could not convert data to string"
@@ -89,6 +98,10 @@ extension Renderer {
                 } catch {
                     promise.complete(error)
                 }
+            }
+
+            res.catch { error in
+                promise.complete(error)
             }
         } catch {
             promise.complete(error)

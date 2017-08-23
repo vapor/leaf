@@ -11,22 +11,23 @@ public final class Var: Tag {
             case 1:
                 let body = try parsed.requireBody()
                 let key = parsed.parameters[0].string ?? ""
+
                 let serializer = Serializer(ast: body, renderer: renderer, context: context)
-                try serializer.serialize().then { rendered in
-                    guard let string = String(data: rendered, encoding: .utf8) else {
-                        promise.complete("could not do string" as Error)
-                        return
-                    }
+                let rendered = try serializer.serialize().await()
+                if let string = String(data: rendered, encoding: .utf8) {
                     dict[key] = .string(string)
-                    promise.complete(.dictionary(dict))
+                    context = .dictionary(dict)
+                    promise.complete(nil)
+                } else {
+                    promise.complete("could not do string" as Error)
                 }
             case 2:
                 let key = parsed.parameters[0].string ?? ""
                 dict[key] = parsed.parameters[1]
-                promise.complete(.dictionary(dict))
+                context = .dictionary(dict)
+                promise.complete(nil)
             default:
                 try parsed.requireParameterCount(2)
-                promise.complete(.string(""))
             }
         } else {
             promise.complete(nil)

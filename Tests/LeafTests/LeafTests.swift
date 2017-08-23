@@ -62,7 +62,7 @@ class LeafTests: XCTestCase {
     func testRuntime() throws {
         let template = """
             #var("foo", "bar")
-            Runtime: #(foo)"
+            Runtime: #(foo)
         """
         let res = try renderer.render(template, context: Context.dictionary([:])).await()
         XCTAssert(res.contains("Runtime: bar"))

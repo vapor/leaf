@@ -24,7 +24,13 @@ public final class Serializer {
             case .raw(let data):
                 promise.complete(data)
             case .tag(let name, let parameters, let body, let chained):
-                try renderTag(name: name, parameters: parameters, body: body, chained: chained, source: syntax.source).then { context in
+                let res = try renderTag(name: name, parameters: parameters, body: body, chained: chained, source: syntax.source)
+
+                res.catch { error in
+                    promise.complete(error)
+                }
+
+                res.then { context in
                     do {
                         guard let context = context else {
                             promise.complete(.empty)
@@ -32,11 +38,13 @@ public final class Serializer {
                         }
 
                         guard let string = context.string else {
-                            throw SerializerError.unexpectedSyntax(syntax)
+                            throw SerializerError.unexpectedSyntax(syntax) // FIXME: unexpected context type
                         }
+
                         guard let data = string.data(using: .utf8) else {
                             throw "could not convert string to data"
                         }
+
                         promise.complete(data.dispatchData)
                     } catch {
                         promise.complete(error)
@@ -49,13 +57,19 @@ public final class Serializer {
         }
         
         let promise = Promise(Data.self)
-        parts.resolved.then { data in
+        let res = parts.resolved
+
+        res.then { data in
             var serialized = DispatchData.empty
             for chunk in data {
                 serialized.append(chunk)
             }
             promise.complete(Data(serialized))
         }
+        res.catch { error in
+            promise.complete(error)
+        }
+        
         return promise.future
     }
 

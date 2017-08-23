@@ -32,18 +32,24 @@ extension Array where Element: FutureType {
         var iterator = makeIterator()
         func doit(_ future: Element) {
             future.onComplete(asynchronously: nil) { element in
-                let res = try! element.assertSuccess()
-                elements.append(res)
-                if let next = iterator.next() {
-                    doit(next)
-                } else {
-                    promise.complete(elements)
+                do {
+                    let res = try element.assertSuccess()
+                    elements.append(res)
+                    if let next = iterator.next() {
+                        doit(next)
+                    } else {
+                        promise.complete(elements)
+                    }
+                } catch {
+                    promise.complete(error)
                 }
             }
         }
 
         if let first = iterator.next() {
             doit(first)
+        } else {
+            promise.complete(elements)
         }
 
         return promise.future
