@@ -68,7 +68,7 @@ class LeafTests: XCTestCase {
 
         let queue = DispatchQueue(label: "codes.vapor.leaf.test.runtime")
 
-        let res = try renderer.render(template, context: .dictionary([:]), on: queue).sync(on: queue)
+        let res = try renderer.render(template, context: .dictionary([:]), on: queue).sync()
         print(res)
         XCTAssert(res.contains("Runtime: bar"))
     }

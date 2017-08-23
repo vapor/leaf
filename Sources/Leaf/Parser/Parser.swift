@@ -42,13 +42,13 @@ public final class Parser {
             } else {
                 let byte = try scanner.requirePop()
                 let start = scanner.makeSourceStart()
-                let bytes = try byte.string.data(using: .utf8)! + extractRaw(untilUnescaped: signalBytes) // FIXME: force
+                let bytes = Data([byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = scanner.makeSource(using: start)
                 syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
             }
         } else {
             let start = scanner.makeSourceStart()
-            let bytes = try extractRaw(untilUnescaped: signalBytes)
+            let bytes = extractRaw(untilUnescaped: signalBytes)
             let source = scanner.makeSource(using: start)
             syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
         }
@@ -157,10 +157,8 @@ public final class Parser {
 
         // PARAMS
         let params: [Syntax]
-        let name = String(data: id, encoding: .utf8)! // FIXME: force
-
-        switch name {
-        case "for":
+        
+        if id == .for {
             try expect(.leftParenthesis)
             let key = try extractIdentifier()
             try expect(.space)
@@ -218,24 +216,25 @@ public final class Parser {
                 val,
                 keyConstant
             ]
-        case "//", "/*":
+        } else if id.isComment {
             params = []
-        default:
+        } else {
             params = try extractParameters()
         }
 
         // BODY
         let body: [Syntax]?
-        if name == "//" {
+        
+        if id == .lineComment {
             let s = scanner.makeSourceStart()
-            let bytes = try extractBytes(untilUnescaped: [.newLine]).dispatchData
+            let bytes = scanner.extractBytes(untilUnescaped: [.newLine]).dispatchData
             // pop the newline
             try scanner.requirePop()
             body = [Syntax(
                 kind: .raw(bytes),
                 source: scanner.makeSource(using: s)
             )]
-        } else if name == "/*" {
+        } else if id == .blockComment {
             let s = scanner.makeSourceStart()
             var i = 0
             var previous: Byte?
@@ -273,8 +272,7 @@ public final class Parser {
 
         let kind: SyntaxKind
 
-        switch name {
-        case "if":
+        if id == .if {
             let chained = try extractIfElse(indent: indent)
             kind = .tag(
                 name: "ifElse",
@@ -282,21 +280,21 @@ public final class Parser {
                 body: body,
                 chained: chained
             )
-        case "for":
+        } else if id == .for {
             kind = .tag(
                 name: "loop",
                 parameters: params,
                 body: body,
                 chained: nil
             )
-        case "//", "/*":
+        } else if id.isComment {
             kind = .tag(
                 name: "comment",
                 parameters: params,
                 body: body,
                 chained: nil
             )
-        default:
+        } else {
             var chained: Syntax?
 
             if try shouldExtractChainedTag() {
@@ -307,7 +305,7 @@ public final class Parser {
             }
 
             kind = .tag(
-                name: name,
+                name: String(bytes: id, encoding: .utf8)!, // TODO: Don't use the force
                 parameters: params,
                 body: body,
                 chained: chained
@@ -450,53 +448,8 @@ public final class Parser {
     }
 
     // extracts a raw chunk of text (until unescaped number sign)
-    private func extractRaw(untilUnescaped signalBytes: [Byte]) throws -> Data {
-        return try extractBytes(untilUnescaped: signalBytes + [.numberSign])
-    }
-
-    // extracts bytes until an unescaped signal byte is found.
-    // note: escaped bytes have the leading `\` removed
-    private func extractBytes(untilUnescaped signalBytes: [Byte]) throws -> Data {
-        // needs to be an array for the time being b/c we may skip
-        // bytes
-        var bytes: String = ""
-
-        var onlySpacesExtracted = true
-
-        // continue to peek until we fine a signal byte, then exit!
-        // the inner loop takes care that we will not hit any
-        // properly escaped signal bytes
-        while let byte = scanner.peek(), !signalBytes.contains(byte) {
-            // pop the byte we just peeked at
-            try scanner.requirePop()
-
-            // if the current byte is a backslash, then
-            // we need to check if next byte is a signal byte
-            if byte == .backSlash {
-                // check if the next byte is a signal byte
-                // note: special case, any raw leading with a left curly must
-                // be properly escaped (have the \ removed)
-                if let next = scanner.peek(), signalBytes.contains(next) || onlySpacesExtracted && next == .leftCurlyBracket {
-                    // if it is, it has been properly escaped.
-                    // add it now, skipping the backslash and popping
-                    // so the next iteration of this loop won't see it
-                    bytes.append(next.string)
-                    try scanner.requirePop()
-                } else {
-                    // just a normal backslash
-                    bytes.append(byte.string)
-                }
-            } else {
-                // just a normal byte
-                bytes.append(byte.string)
-            }
-
-            if byte != .space {
-                onlySpacesExtracted = false
-            }
-        }
-
-        return bytes.data(using: .utf8)! // FIXME: implicit
+    private func extractRaw(untilUnescaped signalBytes: [Byte]) -> Data {
+        return scanner.extractBytes(untilUnescaped: signalBytes + [.numberSign])
     }
 
     // extracts a string of characters allowed in identifier
@@ -608,7 +561,7 @@ public final class Parser {
             return nil
         case .quote:
             try expect(.quote)
-            let bytes = try extractBytes(untilUnescaped: [.quote])
+            let bytes = scanner.extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
             let parser = Parser(data: bytes)
             let ast = try parser.parse()
