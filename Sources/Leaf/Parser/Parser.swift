@@ -44,13 +44,13 @@ public final class Parser {
                 let start = scanner.makeSourceStart()
                 let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = scanner.makeSource(using: start)
-                syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
+                syntax = Syntax(kind: .raw(bytes), source: source)
             }
         } else {
             let start = scanner.makeSourceStart()
             let bytes = try extractRaw(untilUnescaped: signalBytes)
             let source = scanner.makeSource(using: start)
-            syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
+            syntax = Syntax(kind: .raw(bytes), source: source)
         }
 
         return syntax
@@ -133,7 +133,7 @@ public final class Parser {
             if offset == 0 {
                 bytes = .empty
             } else {
-                bytes = Data(bytes[0..<offset]).dispatchData
+                bytes = Data(bytes[0..<offset])
             }
             previous = Syntax(kind: .raw(bytes), source: previous.source)
         }
@@ -158,7 +158,11 @@ public final class Parser {
         // PARAMS
         let params: [Syntax]
         guard let name = String(data: id, encoding: .utf8) else {
-            throw "could not convert tag name to string"
+            throw ParserError.expectationFailed(
+                expected: "UTF8 string",
+                got: id.description,
+                source: scanner.makeSource(using: start)
+            )
         }
 
         switch name {
@@ -215,7 +219,7 @@ public final class Parser {
             }
 
             let raw = Syntax(
-                kind: .raw(data.dispatchData),
+                kind: .raw(data),
                 source: key.source
             )
 
@@ -238,7 +242,7 @@ public final class Parser {
         let body: [Syntax]?
         if name == "//" {
             let s = scanner.makeSourceStart()
-            let bytes = try extractBytes(untilUnescaped: [.newLine]).dispatchData
+            let bytes = try extractBytes(untilUnescaped: [.newLine])
             // pop the newline
             try scanner.requirePop()
             body = [Syntax(
@@ -260,7 +264,7 @@ public final class Parser {
             // pop comment text, w/o trailing */
             try scanner.requirePop(n: i - 1)
 
-            let bytes = scanner.data[s.rangeStart..<scanner.offset].dispatchData
+            let bytes = scanner.data[s.rangeStart..<scanner.offset]
 
             // pop */
             try scanner.requirePop(n: 2)
@@ -348,7 +352,7 @@ public final class Parser {
 
                         // break off the previous raw chunk
                         // and remove indentation from following chunk
-                        let data = Data(bytes[chunkStart..<scanner.offset]).dispatchData
+                        let data = Data(bytes[chunkStart..<scanner.offset])
                         let new = Syntax(kind: .raw(data), source: syntax.source)
                         corrected.append(new)
 
@@ -369,7 +373,7 @@ public final class Parser {
 
                 // append any remaining bytes
                 if chunkStart < bytes.count {
-                    let data = Data(bytes[chunkStart..<bytes.count]).dispatchData
+                    let data = Data(bytes[chunkStart..<bytes.count])
                     let new = Syntax(kind: .raw(data), source: syntax.source)
                     corrected.append(new)
                 }
@@ -450,7 +454,7 @@ public final class Parser {
             if offset == 0 {
                 bytes = .empty
             } else {
-                bytes = Data(bytes[0..<offset]).dispatchData
+                bytes = Data(bytes[0..<offset])
             }
             ast[ast.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
         }
@@ -574,7 +578,11 @@ public final class Parser {
 
         let bytes = scanner.data[start.rangeStart..<scanner.offset]
         guard let string = String(data: bytes, encoding: .utf8) else {
-            throw "could not parse string"
+            throw ParserError.expectationFailed(
+                expected: "UTF8 string",
+                got: bytes.description,
+                source: scanner.makeSource(using: start)
+            )
         }
         if bytes.contains(.period) {
             guard let double = Double(string) else {

@@ -91,7 +91,10 @@ extension Renderer {
             try render(template: data, context: context).then { rendered in
                 do {
                     guard let string = String(data: rendered, encoding: .utf8) else {
-                        throw "could not convert data to string"
+                        throw RenderError(
+                            source: Source(line: 0, column: 0, range: 0..<data.count),
+                            reason: "Could not convert rendered template to String."
+                        )
                     }
 
                     promise.complete(string)

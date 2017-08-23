@@ -10,6 +10,8 @@ extension Renderer {
     }
 }
 
+extension String: Error { }
+
 final class TestFiles: FileReader {
     init() {}
 
@@ -77,20 +79,5 @@ final class NonblockingFiles: FileReader {
 
         sources[fd] = readSource
         return promise.future;
-
-//
-//        if let cached = cache[path] {
-//            promise.complete(cached)
-//        } else {
-//            DispatchQueue.global().async {
-//                let data = FileManager.default.contents(atPath: path)
-//                self.queue.async {
-//                    promise.complete(data!)
-//                    self.cache[path] = data
-//                }
-//            }
-//        }
-//
-//        return promise.future
     }
 }

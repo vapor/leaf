@@ -21,23 +21,23 @@ public struct ParsedTag {
 
 
 extension ParsedTag {
+    public func error(reason: String) -> TagError {
+        return TagError(
+            tag: name,
+            source: source,
+            reason: reason
+        )
+    }
+
     public func requireParameterCount(_ n: Int) throws {
         guard parameters.count == n else {
-            throw TagError(
-                tag: name,
-                source: source,
-                reason: "Invalid parameter count: \(parameters.count)/\(n)."
-            )
+            throw error(reason: "Invalid parameter count: \(parameters.count)/\(n)")
         }
     }
 
     public func requireBody() throws -> [Syntax] {
         guard let body = body else {
-            throw TagError(
-                tag: name,
-                source: source,
-                reason: "Missing body."
-            )
+            throw error(reason: "Missing body")
         }
 
         return body
@@ -45,11 +45,7 @@ extension ParsedTag {
 
     public func requireNoBody() throws {
         guard body == nil else {
-            throw TagError(
-                tag: name,
-                source: source,
-                reason: "Extraneous body."
-            )
+            throw error(reason: "Extraneous body")
         }
     }
 }

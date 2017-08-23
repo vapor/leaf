@@ -15,7 +15,7 @@ public final class Var: Tag {
             case 1:
                 let body = try parsed.requireBody()
                 guard let key = parsed.parameters[0].string else {
-                    throw "unsupported key type"
+                    throw parsed.error(reason: "Unsupported key type")
                 }
 
                 let serializer = Serializer(ast: body, renderer: renderer, context: context)
@@ -28,7 +28,7 @@ public final class Var: Tag {
                 }
             case 2:
                 guard let key = parsed.parameters[0].string else {
-                    throw "unsupported key type"
+                    throw parsed.error(reason: "Unsupported key type")
                 }
                 dict[key] = parsed.parameters[1]
                 updateContext(with: .dictionary(dict))
