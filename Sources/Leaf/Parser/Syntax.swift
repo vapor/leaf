@@ -1,7 +1,7 @@
 import Foundation
 
 indirect enum SyntaxKind {
-    case raw(DispatchData)
+    case raw(Data)
     case tag(name: String, parameters: [Syntax], body: [Syntax]?, chained: Syntax?)
     case identifier(path: [String])
     case constant(Constant)
@@ -77,7 +77,7 @@ extension Syntax: CustomStringConvertible {
     public var description: String {
         switch kind {
         case .raw(let source):
-            let string = String(data: Data(source), encoding: .utf8) ?? "n/a"
+            let string = String(data: source, encoding: .utf8) ?? "n/a"
             return "Raw: `\(string)`"
         case .tag(let name, let params, let body, _):
             let params = params.map { $0.description }

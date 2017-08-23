@@ -10,11 +10,7 @@ public final class Embed: Tag {
         let promise = Promise(Context?.self)
 
         renderer.render(path: name, context: copy).then { data in
-            if let string = String(data: data, encoding: .utf8) {
-                promise.complete(.string(string))
-            } else {
-                promise.fail("could not parse string")
-            }
+            promise.complete(.data(data))
         }.catch { error in
             promise.fail(error)
         }

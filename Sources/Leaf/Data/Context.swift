@@ -1,4 +1,5 @@
 import Dispatch
+import Foundation
 
 /// Data structure for passing data
 /// into Leaf templates as a context.
@@ -7,6 +8,7 @@ public enum Context {
     case string(String)
     case int(Int)
     case double(Double)
+    case data(Data)
     case dictionary([String: Context])
     case array([Context])
     public typealias Lazy = () -> (Context)
@@ -17,6 +19,7 @@ public enum Context {
 // MARK: Polymorphic
 
 extension Context {
+    /// Attempts to convert to string or returns nil.
     public var string: String? {
         switch self {
         case .bool(let bool):
@@ -27,6 +30,8 @@ extension Context {
             return int.description
         case .string(let s):
             return s
+        case .data(let d):
+            return String(data: d, encoding: .utf8)
         case .lazy(let lazy):
             return lazy().string
         default:
@@ -34,6 +39,7 @@ extension Context {
         }
     }
 
+    /// Attempts to convert to bool or returns nil.
     public var bool: Bool? {
         switch self {
         case .int(let i):
@@ -65,6 +71,7 @@ extension Context {
         }
     }
 
+    /// Attempts to convert to double or returns nil.
     public var double: Double? {
         switch self {
         case .int(let i):
@@ -80,6 +87,7 @@ extension Context {
         }
     }
 
+    /// Returns dictionary if context contains one.
     public var dictionary: [String: Context]? {
         switch self {
         case .dictionary(let d):
@@ -89,10 +97,25 @@ extension Context {
         }
     }
 
+    /// Returns array if context contains one.
     public var array: [Context]? {
         switch self {
         case .array(let a):
             return a
+        default:
+            return nil
+        }
+    }
+
+    /// Attempts to convert context to data or returns nil.
+    public var data: Data? {
+        switch self {
+        case .data(let d):
+            return d
+        case .string(let s):
+            return s.data(using: .utf8)
+        case .lazy(let lazy):
+            return lazy().data
         default:
             return nil
         }

@@ -1,4 +1,5 @@
 import Core
+import Foundation
 
 public final class Loop: Tag {
     public init() {}
@@ -11,7 +12,7 @@ public final class Loop: Tag {
             let array = parsed.parameters[0].array ?? []
             let key = parsed.parameters[1].string ?? ""
 
-            var results: [Future<String>] = []
+            var results: [Future<Data>] = []
 
             for (i, item) in array.enumerated() {
                 let isLast = i == array.count - 1
@@ -25,22 +26,18 @@ public final class Loop: Tag {
                 let temp = Context.dictionary(dict)
                 let serializer = Serializer(ast: body, renderer: renderer, context: temp)
 
-                let subpromise = Promise(String.self)
+                let subpromise = Promise(Data.self)
                 try serializer.serialize().then { bytes in
-                    if let sub = String(data: bytes, encoding: .utf8) {
-                        subpromise.complete(sub)
-                    } else {
-                        subpromise.fail("could not convert data to string")
-                        return
-                    }
+                    subpromise.complete(bytes)
                 }.catch { error in
                     promise.fail(error)
                 }
                 results.append(subpromise.future)
             }
 
-            results.flatten().then { strings in
-                promise.complete(.string(strings.joined()))
+            results.flatten().then { datas in
+                let data = Data(datas.joined())
+                promise.complete(.data(data))
             }.catch { error in
                 promise.fail(error)
             }

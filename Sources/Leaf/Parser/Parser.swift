@@ -42,7 +42,7 @@ public final class Parser {
             } else {
                 let byte = try scanner.requirePop()
                 let start = scanner.makeSourceStart()
-                let bytes = try byte.string.data(using: .utf8)! + extractRaw(untilUnescaped: signalBytes) // FIXME: force
+                let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = scanner.makeSource(using: start)
                 syntax = Syntax(kind: .raw(bytes.dispatchData), source: source)
             }
@@ -144,12 +144,12 @@ public final class Parser {
         // verify tag names containg / or * are comment tag names
         if id.contains(where: { $0 == .forwardSlash || $0 == .asterisk }) {
             switch id {
-            case "//".data(using: .utf8)!, "/*".data(using: .utf8)!: // FIXME: force
+            case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
                 break
             default:
                 throw ParserError.expectationFailed(
                     expected: "Valid tag name",
-                    got: String(data: id, encoding: .utf8)!, // FIXME: force
+                    got: String(data: id, encoding: .utf8) ?? "n/a",
                     source: scanner.makeSource(using: start)
                 )
             }
@@ -157,7 +157,9 @@ public final class Parser {
 
         // PARAMS
         let params: [Syntax]
-        let name = String(data: id, encoding: .utf8)! // FIXME: force
+        guard let name = String(data: id, encoding: .utf8) else {
+            throw "could not convert tag name to string"
+        }
 
         switch name {
         case "for":
@@ -204,8 +206,16 @@ public final class Parser {
                 )
             }
 
+            guard let data = name[0].data(using: .utf8) else {
+                throw ParserError.expectationFailed(
+                    expected: "utf8 string",
+                    got: name[0],
+                    source: scanner.makeSource(using: start)
+                )
+            }
+
             let raw = Syntax(
-                kind: .raw(name[0].data(using: .utf8)!.dispatchData), // FIXME: implicit
+                kind: .raw(data.dispatchData),
                 source: key.source
             )
 
@@ -459,7 +469,7 @@ public final class Parser {
     private func extractBytes(untilUnescaped signalBytes: [Byte]) throws -> Data {
         // needs to be an array for the time being b/c we may skip
         // bytes
-        var bytes: String = ""
+        var bytes: Data = Data()
 
         var onlySpacesExtracted = true
 
@@ -480,15 +490,15 @@ public final class Parser {
                     // if it is, it has been properly escaped.
                     // add it now, skipping the backslash and popping
                     // so the next iteration of this loop won't see it
-                    bytes.append(next.string)
+                    bytes.append(next)
                     try scanner.requirePop()
                 } else {
                     // just a normal backslash
-                    bytes.append(byte.string)
+                    bytes.append(byte)
                 }
             } else {
                 // just a normal byte
-                bytes.append(byte.string)
+                bytes.append(byte)
             }
 
             if byte != .space {
@@ -496,7 +506,7 @@ public final class Parser {
             }
         }
 
-        return bytes.data(using: .utf8)! // FIXME: implicit
+        return bytes
     }
 
     // extracts a string of characters allowed in identifier

@@ -17,10 +17,10 @@ public final class Serializer {
 
     /// Serializes the AST into Bytes.
     func serialize() throws -> Future<Data> {
-        var parts: [Future<DispatchData>] = []
+        var parts: [Future<Data>] = []
 
         for syntax in ast {
-            let promise = Promise(DispatchData.self)
+            let promise = Promise(Data.self)
             switch syntax.kind {
             case .raw(let data):
                 promise.complete(data)
@@ -34,19 +34,15 @@ public final class Serializer {
                 ).then { context in
                     do {
                         guard let context = context else {
-                            promise.complete(.empty)
+                            promise.complete(Data())
                             return
                         }
 
-                        guard let string = context.string else {
+                        guard let data = context.data else {
                             throw SerializerError.unexpectedSyntax(syntax) // FIXME: unexpected context type
                         }
 
-                        guard let data = string.data(using: .utf8) else {
-                            throw "could not convert string to data"
-                        }
-
-                        promise.complete(data.dispatchData)
+                        promise.complete(data)
                     } catch {
                         promise.fail(error)
                     }
@@ -62,11 +58,8 @@ public final class Serializer {
         let promise = Promise(Data.self)
 
         parts.flatten().then { data in
-            var serialized = DispatchData.empty
-            for chunk in data {
-                serialized.append(chunk)
-            }
-            promise.complete(Data(serialized))
+            let serialized = Data(data.joined())
+            promise.complete(serialized)
         }.catch { error in
             promise.fail(error)
         }
@@ -167,11 +160,7 @@ public final class Serializer {
         case .string(let ast):
             let serializer = Serializer(ast: ast, renderer: renderer, context: context)
             try serializer.serialize().then { bytes in
-                if let string = String(data: bytes, encoding: .utf8) {
-                    promise.complete(.string(string))
-                } else {
-                    promise.fail("could not parse string")
-                }
+                promise.complete(.data(bytes))
             }.catch { error in
                 promise.fail(error)
             }

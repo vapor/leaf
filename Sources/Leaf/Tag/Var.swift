@@ -14,24 +14,22 @@ public final class Var: Tag {
             switch parsed.parameters.count {
             case 1:
                 let body = try parsed.requireBody()
-                let key = parsed.parameters[0].string ?? ""
+                guard let key = parsed.parameters[0].string else {
+                    throw "unsupported key type"
+                }
 
                 let serializer = Serializer(ast: body, renderer: renderer, context: context)
-
-                // FIXME: any way to make this not sync?
                 try serializer.serialize().then { rendered in
-                    if let string = String(data: rendered, encoding: .utf8) {
-                        dict[key] = .string(string)
-                        updateContext(with: .dictionary(dict))
-                        promise.complete(nil)
-                    } else {
-                        promise.fail("could not do string")
-                    }
+                    dict[key] = .data(rendered)
+                    updateContext(with: .dictionary(dict))
+                    promise.complete(nil)
                 }.catch { error in
                     promise.fail(error)
                 }
             case 2:
-                let key = parsed.parameters[0].string ?? ""
+                guard let key = parsed.parameters[0].string else {
+                    throw "unsupported key type"
+                }
                 dict[key] = parsed.parameters[1]
                 updateContext(with: .dictionary(dict))
                 promise.complete(nil)
