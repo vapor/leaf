@@ -7,7 +7,8 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/core.git", .branch("bytes"))
+        // Core extensions, type-aliases, and functions that facilitate common tasks.
+        .package(url: "https://github.com/vapor/core.git", .branch("beta"))
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["Core"]),
