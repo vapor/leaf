@@ -26,19 +26,23 @@ public final class Loop: Tag {
                 let serializer = Serializer(ast: body, renderer: renderer, context: temp)
 
                 let subpromise = Promise(String.self)
-                try serializer.serialize(on: parsed.queue).then(on: parsed.queue) { bytes in
+                try serializer.serialize().then { bytes in
                     if let sub = String(data: bytes, encoding: .utf8) {
                         subpromise.complete(sub)
                     } else {
                         subpromise.fail("could not convert data to string")
                         return
                     }
+                }.catch { error in
+                    promise.fail(error)
                 }
                 results.append(subpromise.future)
             }
 
-            results.flatten(on: parsed.queue).then(on: parsed.queue) { strings in
+            results.flatten().then { strings in
                 promise.complete(.string(strings.joined()))
+            }.catch { error in
+                promise.fail(error)
             }
         } else {
             promise.complete(nil)

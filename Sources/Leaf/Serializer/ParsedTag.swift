@@ -5,20 +5,17 @@ public struct ParsedTag {
     public let parameters: [Context]
     public let body: [Syntax]?
     public let source: Source
-    public let queue: DispatchQueue
 
     init(
         name: String,
         parameters: [Context],
         body: [Syntax]?,
-        source: Source,
-        on queue: DispatchQueue
+        source: Source
     ) {
         self.name = name
         self.parameters = parameters
         self.body = body
         self.source = source
-        self.queue = queue
     }
 }
 

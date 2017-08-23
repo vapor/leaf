@@ -15,9 +15,7 @@ public final class Var: Tag {
                 let serializer = Serializer(ast: body, renderer: renderer, context: context)
 
                 // FIXME: any way to make this not sync?
-                let rendered = try serializer.serialize(
-                    on: parsed.queue
-                ).sync()
+                let rendered = try serializer.serialize().sync()
                 if let string = String(data: rendered, encoding: .utf8) {
                     dict[key] = .string(string)
                     context = .dictionary(dict)

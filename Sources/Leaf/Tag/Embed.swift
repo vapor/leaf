@@ -9,12 +9,14 @@ public final class Embed: Tag {
 
         let promise = Promise(Context?.self)
 
-        renderer.render(path: name, context: copy, on: parsed.queue).then(on: parsed.queue) { data in
+        renderer.render(path: name, context: copy).then { data in
             if let string = String(data: data, encoding: .utf8) {
                 promise.complete(.string(string))
             } else {
                 promise.fail("could not parse string")
             }
+        }.catch { error in
+            promise.fail(error)
         }
 
         return promise.future
