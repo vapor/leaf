@@ -304,6 +304,46 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: context).sync(), expected)
     }
 
+    func testAsyncExport() throws {
+        let preloaded = PreloadedFiles()
+
+        preloaded.files["template.leaf"] = """
+        Content: #raw(content)
+        """.data(using: .utf8)!
+
+        preloaded.files["nested.leaf"] = """
+        Nested!
+        """.data(using: .utf8)!
+
+        let template = """
+        #export("content") {<p>#import("nested")</p>}
+        #import("template")
+        """
+
+        let expected = """
+        Content: <p>Nested!</p>
+        """
+
+        let renderer = Renderer(fileReader: preloaded)
+        try XCTAssertEqual(renderer.render(template, context: .dictionary([:])).sync(), expected)
+    }
+
+    func testRealFile() throws {
+        let dispatch = NonblockingFiles(on: .global())
+
+        let template = """
+        #import("/Users/tanner/Desktop/hello.leaf")
+        """
+
+        let expected = """
+        Hello
+        """
+        
+        let renderer = Renderer(fileReader: dispatch)
+        let rendered = try renderer.render(template, context: .dictionary([:])).sync()
+        XCTAssertEqual(rendered, expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -325,5 +365,6 @@ class LeafTests: XCTestCase {
         ("testEscapeExtraneousBody", testEscapeExtraneousBody),
         ("testEscapeTag", testEscapeTag),
         ("testIndentationCorrection", testIndentationCorrection),
+        ("testAsyncExport", testAsyncExport),
     ]
 }

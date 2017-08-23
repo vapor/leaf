@@ -21,6 +21,10 @@ public var defaultTags: [String: Tag] {
         "comment": Comment(),
         "contains": Contains(),
         "lowercase": Lowercase(),
-        "count": Count()
+        "count": Count(),
+        "raw": Raw(),
+        // import/export
+        "export": Var(),
+        "import": Embed()
     ]
 }
