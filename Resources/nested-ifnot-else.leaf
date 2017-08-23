@@ -1,0 +1,11 @@
+#ifnot(a) {
+    Got a.
+} ##ifnot(b) {
+    Got b.
+} ##ifnot(c) {
+    Got c.
+} ##ifnot(d) {
+    Got d.
+} ##else() {
+    Got e.
+}

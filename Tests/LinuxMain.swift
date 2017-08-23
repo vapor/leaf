@@ -8,6 +8,7 @@ XCTMain([
      testCase(EqualTests.allTests),
      testCase(FileLoadTests.allTests),
      testCase(IfTests.allTests),
+     testCase(IfNotTests.allTests),
      testCase(IndexTests.allTests),
      testCase(HTMLEscapeTests.allTests),
      testCase(LinkTests.allTests),

@@ -13,13 +13,14 @@ internal let SUFFIX = ".leaf"
 public var defaultTags: [String: Tag] = [
     "": Variable(),
     "if": If(),
+    "ifnot": IfNot(),
     "else": Else(),
     "loop": Loop(),
     "uppercased": Uppercased(),
     "embed": Embed(),
     "index": Index(),
     "equal": Equal(),
-    
+
     // Layouts
     "extend": Extend(),
     "import": Import(),
