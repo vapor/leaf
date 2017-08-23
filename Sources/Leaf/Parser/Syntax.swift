@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 
 indirect enum SyntaxKind {
     case raw(DispatchData)

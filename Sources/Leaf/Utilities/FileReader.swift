@@ -1,4 +1,5 @@
 import Core
+import Dispatch
 import Foundation
 
 public protocol FileReader {
