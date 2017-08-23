@@ -97,4 +97,22 @@ class IfTests: XCTestCase {
             XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
         }
     }
+
+    func testIfEmptyArray() throws {
+        let template = try stem.spawnLeaf(at: "if-empty-array-test")
+        do {
+            let context = try Node(node: ["array": ["First"]])
+            let loadable = Context(context)
+            let rendered = try stem.render(template, with: loadable).makeString()
+            let expectation = "not empty"
+            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+        }
+        do {
+            let context = try Node(node: ["array": []])
+            let loadable = Context(context)
+            let rendered = try stem.render(template, with: loadable).makeString()
+            let expectation = ""
+            XCTAssert(rendered == expectation, "have: \(rendered), want: \(expectation)")
+        }
+    }
 }
