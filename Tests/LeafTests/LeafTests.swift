@@ -10,18 +10,18 @@ class LeafTests: XCTestCase {
 
     func testRaw() throws {
         let template = "Hello!"
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "Hello!")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "Hello!")
     }
 
     func testPrint() throws {
         let template = "Hello, #(name)!"
         let data = Context.dictionary(["name": .string("Tanner")])
-        try XCTAssertEqual(renderer.render(template, context: data).await(), "Hello, Tanner!")
+        try XCTAssertEqual(renderer.render(template, context: data, on: .global()).sync(), "Hello, Tanner!")
     }
 
     func testConstant() throws {
         let template = "<h1>#(42)</h1>"
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "<h1>42</h1>")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "<h1>42</h1>")
     }
 
     func testInterpolated() throws {
@@ -29,7 +29,7 @@ class LeafTests: XCTestCase {
         <p>#("foo: #(foo)")</p>
         """
         let data = Context.dictionary(["foo": .string("bar")])
-        try XCTAssertEqual(renderer.render(template, context: data).await(), "<p>foo: bar</p>")
+        try XCTAssertEqual(renderer.render(template, context: data, on: .global()).sync(), "<p>foo: bar</p>")
     }
 
     func testNested() throws {
@@ -37,7 +37,7 @@ class LeafTests: XCTestCase {
         <p>#(embed(foo))</p>
         """
         let data = Context.dictionary(["foo": .string("bar")])
-        try XCTAssertEqual(renderer.render(template, context: data).await(), "<p>Test file name: &quot;bar.leaf&quot;</p>")
+        try XCTAssertEqual(renderer.render(template, context: data, on: .global()).sync(), "<p>Test file name: &quot;bar.leaf&quot;</p>")
     }
 
     func testExpression() throws {
@@ -45,8 +45,8 @@ class LeafTests: XCTestCase {
 
         let young = Context.dictionary(["age": .int(21)])
         let old = Context.dictionary(["age": .int(150)])
-        try XCTAssertEqual(renderer.render(template, context: young).await(), "false")
-        try XCTAssertEqual(renderer.render(template, context: old).await(), "true")
+        try XCTAssertEqual(renderer.render(template, context: young, on: .global()).sync(), "false")
+        try XCTAssertEqual(renderer.render(template, context: old, on: .global()).sync(), "true")
     }
 
     func testBody() throws {
@@ -55,16 +55,21 @@ class LeafTests: XCTestCase {
         """
         let noShow = Context.dictionary(["show": .bool(false)])
         let yesShow = Context.dictionary(["show": .bool(true)])
-        try XCTAssertEqual(renderer.render(template, context: noShow).await(), "")
-        try XCTAssertEqual(renderer.render(template, context: yesShow).await(), "hi")
+        try XCTAssertEqual(renderer.render(template, context: noShow, on: .global()).sync(), "")
+        try XCTAssertEqual(renderer.render(template, context: yesShow, on: .global()).sync(), "hi")
     }
 
     func testRuntime() throws {
+        // FIXME: need to run var/exports first and in order
         let template = """
             #var("foo", "bar")
             Runtime: #(foo)
         """
-        let res = try renderer.render(template, context: Context.dictionary([:])).await()
+
+        let queue = DispatchQueue(label: "codes.vapor.leaf.test.runtime")
+
+        let res = try renderer.render(template, context: .dictionary([:]), on: queue).sync(on: queue)
+        print(res)
         XCTAssert(res.contains("Runtime: bar"))
     }
 
@@ -72,13 +77,13 @@ class LeafTests: XCTestCase {
         let template = """
             #embed("hello")
         """
-        try XCTAssert(renderer.render(template, context: Context.null).await().contains("hello.leaf"))
+        try XCTAssert(renderer.render(template, context: .null, on: .global()).sync().contains("hello.leaf"))
     }
 
     func testError() throws {
         do {
             let template = "#if() { }"
-            _ = try renderer.render(template, context: Context.null).await()
+            _ = try renderer.render(template, context: .null, on: .global()).sync()
         } catch {
             print("\(error)")
         }
@@ -89,18 +94,18 @@ class LeafTests: XCTestCase {
             ##bad()
             Good
             """
-            _ = try renderer.render(template, context: Context.null).await()
+            _ = try renderer.render(template, context: .null, on: .global()).sync()
         } catch {
             print("\(error)")
         }
 
-        renderer.render(path: "##()", context: Context.null).then { data in
+        renderer.render(path: "##()", context: .null, on: .global()).then(on: .global()) { data in
             print(data)
             // FIXME: check for error
         }
 
         do {
-            _ = try renderer.render("#if(1 == /)", context: Context.null).await()
+            _ = try renderer.render("#if(1 == /)", context: .null, on: .global()).sync()
         } catch {
             print("\(error)")
         }
@@ -114,7 +119,7 @@ class LeafTests: XCTestCase {
 
         } ##ifElse(true) {It works!}
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "It works!")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "It works!")
     }
 
     func testForSugar() throws {
@@ -143,14 +148,14 @@ class LeafTests: XCTestCase {
             </ul>
         </p>
         """
-        try XCTAssertEqual(renderer.render(template, context: context).await(), expect)
+        try XCTAssertEqual(renderer.render(template, context: context, on: .global()).sync(), expect)
     }
 
     func testIfSugar() throws {
         let template = """
         #if(false) {Bad} else if (true) {Good} else {Bad}
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "Good")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "Good")
     }
 
     func testCommentSugar() throws {
@@ -167,15 +172,15 @@ class LeafTests: XCTestCase {
         */
         bar
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "foobar")
-        try XCTAssertEqual(renderer.render(multilineTemplate, context: Context.null).await(), "foo\nbar")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "foobar")
+        try XCTAssertEqual(renderer.render(multilineTemplate, context: .null, on: .global()).sync(), "foo\nbar")
     }
 
     func testHashtag() throws {
         let template = """
         #("hi") #thisIsNotATag...
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "hi #thisIsNotATag...")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "hi #thisIsNotATag...")
     }
 
     func testNot() throws {
@@ -183,7 +188,7 @@ class LeafTests: XCTestCase {
         #if(!false) {Good} #if(!true) {Bad}
         """
 
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "Good")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "Good")
     }
 
     func testFuture() throws {
@@ -201,7 +206,7 @@ class LeafTests: XCTestCase {
             })
         ])
 
-        try XCTAssertEqual(renderer.render(template, context: context).await(), "")
+        try XCTAssertEqual(renderer.render(template, context: context, on: .global()).sync(), "")
         XCTAssertEqual(didAccess, false)
     }
 
@@ -209,7 +214,7 @@ class LeafTests: XCTestCase {
         let template = """
         #if(true) {#if(true) {Hello\\}}}
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), "Hello}")
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), "Hello}")
     }
 
     func testDotSyntax() throws {
@@ -223,7 +228,7 @@ class LeafTests: XCTestCase {
                 "name": .string("Tanner")
             ])
         ])
-        try XCTAssertEqual(renderer.render(template, context: context).await(), "Hello, Tanner!")
+        try XCTAssertEqual(renderer.render(template, context: context, on: .global()).sync(), "Hello, Tanner!")
     }
 
     func testEqual() throws {
@@ -237,7 +242,7 @@ class LeafTests: XCTestCase {
                 "name": .string("Tanner")
             ])
         ])
-        try XCTAssertEqual(renderer.render(template, context: context).await(), "User 42!")
+        try XCTAssertEqual(renderer.render(template, context: context, on: .global()).sync(), "User 42!")
     }
 
     func testEscapeExtraneousBody() throws {
@@ -251,7 +256,7 @@ class LeafTests: XCTestCase {
 
         }
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), expected)
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), expected)
     }
 
 
@@ -262,7 +267,7 @@ class LeafTests: XCTestCase {
         let expected = """
         foo #("bar")
         """
-        try XCTAssertEqual(renderer.render(template, context: Context.null).await(), expected)
+        try XCTAssertEqual(renderer.render(template, context: .null, on: .global()).sync(), expected)
     }
 
     func testIndentationCorrection() throws {
@@ -296,7 +301,7 @@ class LeafTests: XCTestCase {
             "items": .array([.string("foo"), .string("bar"), .string("baz")])
         ])
 
-        try XCTAssertEqual(renderer.render(template, context: context).await(), expected)
+        try XCTAssertEqual(renderer.render(template, context: context, on: .global()).sync(), expected)
     }
 
     static var allTests = [

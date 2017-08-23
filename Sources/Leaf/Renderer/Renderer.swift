@@ -21,7 +21,7 @@ public final class Renderer {
 
     /// Renders the supplied template bytes into a view
     /// using the supplied context.
-    public func render(template: Data, context: Context) throws -> Future<Data> {
+    public func render(template: Data, context: Context, on queue: DispatchQueue) throws -> Future<Data> {
         let hash = template.hashValue
 
         let ast: [Syntax]
@@ -39,7 +39,7 @@ public final class Renderer {
 
         do {
             let serializer = Serializer(ast: ast, renderer: self, context: context)
-            return try serializer.serialize()
+            return try serializer.serialize(on: queue)
         } catch let error as SerializerError {
             throw RenderError(source: error.source, reason: error.reason, error: error)
         } catch let error as TagError {
@@ -52,33 +52,32 @@ public final class Renderer {
 
 extension Renderer {
     /// Loads the leaf template from the supplied path.
-    public func render(path: String, context: Context) -> Future<Data> {
+    public func render(path: String, context: Context, on queue: DispatchQueue) -> Future<Data> {
         let path = path.hasSuffix(".leaf") ? path : path + ".leaf"
         let promise = Promise(Data.self)
-        let res = fileReader.read(at: path)
 
-        res.then { view in
+        fileReader.read(at: path).then(on: queue) { view in
             do {
-                try self.render(template: view, context: context).then { data in
+                try self.render(template: view, context: context, on: queue).then(on: queue) { data in
                     promise.complete(data)
+                }.catch(on: queue) { error in
+                    promise.fail(error)
                 }
             } catch var error as RenderError {
                 error.path = path
-                promise.complete(error)
+                promise.fail(error)
             } catch {
-                promise.complete(error)
+                promise.fail(error)
             }
-        }
-
-        res.catch { error in
-            promise.complete(error)
+        }.catch(on: queue) { error in
+            promise.fail(error)
         }
 
         return promise.future
     }
 
     /// Renders a string template and returns a string.
-    public func render(_ view: String, context: Context) -> Future<String> {
+    public func render(_ view: String, context: Context, on queue: DispatchQueue) -> Future<String> {
         let promise = Promise(String.self)
 
         do {
@@ -86,25 +85,21 @@ extension Renderer {
                 throw "could not convert string"
             }
 
-            let res = try render(template: data, context: context)
-
-            res.then { rendered in
+            try render(template: data, context: context, on: queue).then(on: queue) { rendered in
                 do {
                     guard let string = String(data: rendered, encoding: .utf8) else {
                         throw "could not convert data to string"
                     }
 
-                    promise.complete { string }
+                    promise.complete(string)
                 } catch {
-                    promise.complete(error)
+                    promise.fail(error)
                 }
-            }
-
-            res.catch { error in
-                promise.complete(error)
+            }.catch(on: queue) { error in
+                promise.fail(error)
             }
         } catch {
-            promise.complete(error)
+            promise.fail(error)
         }
 
         return promise.future

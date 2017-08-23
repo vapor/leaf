@@ -13,13 +13,17 @@ public final class Var: Tag {
                 let key = parsed.parameters[0].string ?? ""
 
                 let serializer = Serializer(ast: body, renderer: renderer, context: context)
-                let rendered = try serializer.serialize().await()
+
+                // FIXME: any way to make this not sync?
+                let rendered = try serializer.serialize(
+                    on: parsed.queue
+                ).sync()
                 if let string = String(data: rendered, encoding: .utf8) {
                     dict[key] = .string(string)
                     context = .dictionary(dict)
                     promise.complete(nil)
                 } else {
-                    promise.complete("could not do string" as Error)
+                    promise.fail("could not do string")
                 }
             case 2:
                 let key = parsed.parameters[0].string ?? ""

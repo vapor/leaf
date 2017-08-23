@@ -11,12 +11,12 @@ public final class IfElse: Tag {
         let promise = Promise(Context?.self)
         if expr.bool != false {
             let serializer = Serializer(ast: body, renderer: renderer, context: context)
-            try serializer.serialize().then { bytes in
-                guard let string = String(data: bytes, encoding: .utf8) else {
-                    promise.complete("could not convert data to string" as Error)
-                    return
+            try serializer.serialize(on: parsed.queue).then(on: parsed.queue) { bytes in
+                if let string = String(data: bytes, encoding: .utf8) {
+                    promise.complete(.string(string))
+                } else {
+                    promise.fail("could not convert data to string")
                 }
-                promise.complete(.string(string))
             }
         } else {
             promise.complete(nil)
