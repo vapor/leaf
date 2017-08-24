@@ -6,11 +6,9 @@ import libc
 
 extension Renderer {
     static func makeTestRenderer() -> Renderer {
-        return Renderer(fileReader: TestFiles())
+        return Renderer(tags: defaultTags, fileReader: TestFiles())
     }
 }
-
-extension String: Error { }
 
 final class TestFiles: FileReader {
     init() {}
@@ -79,5 +77,21 @@ final class NonblockingFiles: FileReader {
 
         sources[fd] = readSource
         return promise.future;
+    }
+}
+
+import Service
+
+final class BasicContainer: Container {
+    var config: Config
+    var environment: Environment
+    var services: Services
+    var extend: Extend
+
+    init(services: Services) {
+        self.config = Config()
+        self.environment = .development
+        self.services = services
+        self.extend = Extend()
     }
 }

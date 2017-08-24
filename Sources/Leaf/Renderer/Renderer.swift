@@ -11,8 +11,8 @@ public final class Renderer {
     public let fileReader: FileReader
 
     /// Create a new Leaf renderer.
-    public init(tags: [String: Tag]? = nil, fileReader: FileReader) {
-        self.tags = tags ?? defaultTags
+    public init(tags: [String: Tag], fileReader: FileReader) {
+        self.tags = tags
         self.fileReader = fileReader
     }
 
@@ -44,6 +44,18 @@ public final class Renderer {
             throw RenderError(source: error.source, reason: error.reason, error: error)
         } catch let error as TagError {
             throw RenderError(source: error.source, reason: error.reason, error: error)
+        }
+    }
+}
+
+// MARK: View
+
+extension Renderer: ViewRenderer {
+    /// See ViewRenderer.make
+    public func make(_ path: String, context: Encodable) throws -> Future<View> {
+        // FIXME: Leaf Context encoder
+        return render(path: path, context: .null).map { data in
+            return View(data: data)
         }
     }
 }
