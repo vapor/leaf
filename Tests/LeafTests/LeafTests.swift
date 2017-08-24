@@ -1,5 +1,6 @@
+import Leaf
+import Service
 import XCTest
-@testable import Leaf
 
 class LeafTests: XCTestCase {
     var renderer: Renderer!
@@ -324,7 +325,7 @@ class LeafTests: XCTestCase {
         Content: <p>Nested!</p>
         """
 
-        let renderer = Renderer(fileReader: preloaded)
+        let renderer = Renderer(tags: defaultTags, fileReader: preloaded)
         try XCTAssertEqual(renderer.render(template, context: .dictionary([:])).sync(), expected)
     }
 
@@ -339,9 +340,29 @@ class LeafTests: XCTestCase {
         Hello
         """
         
-        let renderer = Renderer(fileReader: dispatch)
+        let renderer = Renderer(tags: defaultTags, fileReader: dispatch)
         let rendered = try renderer.render(template, context: .dictionary([:])).sync()
         XCTAssertEqual(rendered, expected)
+    }
+
+    func testService() throws {
+        var services = Services()
+        try services.register(Leaf.Provider())
+
+        services.register { container in
+            return LeafConfig(tags: defaultTags, fileReader: TestFiles())
+        }
+
+        let container = BasicContainer(services: services)
+
+        let view = try container.make(ViewRenderer.self, for: XCTest.self)
+        let rendered = try view.make("foo", context: "hello").sync()
+
+        let expected = """
+        Test file name: "foo.leaf"
+        """
+
+        XCTAssertEqual(String(data: rendered.data, encoding: .utf8), expected)
     }
 
     static var allTests = [
@@ -366,5 +387,6 @@ class LeafTests: XCTestCase {
         ("testEscapeTag", testEscapeTag),
         ("testIndentationCorrection", testIndentationCorrection),
         ("testAsyncExport", testAsyncExport),
+        ("testService", testService),
     ]
 }
