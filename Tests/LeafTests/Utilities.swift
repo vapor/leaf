@@ -1,83 +1,77 @@
-import Core
+import Async
+import Bits
+import COperatingSystem
 import Dispatch
 import Foundation
 import Leaf
-import libc
 
-extension Renderer {
-    static func makeTestRenderer() -> Renderer {
-        return Renderer(fileReader: TestFiles())
+extension LeafRenderer {
+    static func makeTestRenderer(worker: Worker) -> LeafRenderer {
+        let config = LeafConfig { _ in
+            return TestFiles()
+        }
+        return LeafRenderer(config: config, on: worker)
     }
 }
 
-extension String: Error { }
+final class TestFiles: FileReader, FileCache {
+    func fileExists(at path: String) -> Bool {
+        return false
+    }
 
-final class TestFiles: FileReader {
+    func directoryExists(at path: String) -> Bool {
+        return false
+    }
+
     init() {}
 
+    func getCachedFile(at path: String) -> Data? {
+        return nil
+    }
 
-    func read(at path: String) -> Future<Data> {
+    func setCachedFile(file: Data?, at path: String) {
+        // nothing
+    }
+
+    func read<S>(at path: String, into stream: S, chunkSize: Int) where S : Async.InputStream, S.Input == ByteBuffer {
         let data = """
-            Test file name: "\(path)"
-            """.data(using: .utf8)!
-
-        let promise = Promise(Data.self)
-        promise.complete(data)
-        return promise.future
+        Test file name: "\(path)"
+        """.data(using: .utf8)!
+        data.withByteBuffer(stream.next)
+        stream.close()
     }
 }
 
-final class PreloadedFiles: FileReader {
+final class PreloadedFiles: FileReader, FileCache {
     var files: [String: Data]
     init() {
         files = [:]
     }
 
-    func read(at path: String) -> Future<Data> {
-        let promise = Promise(Data.self)
+    func getCachedFile(at path: String) -> Data? {
+        return nil
+    }
 
+    func setCachedFile(file: Data?, at path: String) {
+        // nothing
+    }
+
+    func read<S>(at path: String, into stream: S, chunkSize: Int) where S : Async.InputStream, S.Input == ByteBuffer {
         if let data = files[path] {
-            promise.complete(data)
+            data.withByteBuffer(stream.next)
         } else {
-            promise.fail("Could not find file")
+            stream.error("Could not find file")
         }
+        stream.close()
+    }
 
-        return promise.future
+    func directoryExists(at path: String) -> Bool {
+        return false
+    }
+
+    func fileExists(at path: String) -> Bool {
+        return false
     }
 }
 
-final class NonblockingFiles: FileReader {
-    let queue: DispatchQueue
-    var cache: [String: Data]
-
-    var sources: [Int32: DispatchSourceRead]
-
-    init(on queue: DispatchQueue) {
-        self.queue = queue
-        self.cache = [:]
-        self.sources = [:]
-    }
-
-    func read(at path: String) -> Future<Data> {
-        let promise = Promise(Data.self)
-
-        let fd = libc.open(path.withCString { $0 }, O_RDONLY | O_NONBLOCK)
-        let readSource = DispatchSource.makeReadSource(
-            fileDescriptor: fd,
-            queue: queue
-        )
-
-        readSource.setEventHandler {
-            var chars: [UInt8] = [UInt8](repeating: 0, count: 512)
-            let bytesRead = libc.read(fd, &chars, chars.count)
-            let view = Array(chars[0..<bytesRead])
-            let data = Data(bytes: view)
-            promise.complete(data)
-            self.sources[fd] = nil
-        }
-        readSource.resume()
-
-        sources[fd] = readSource
-        return promise.future;
-    }
-}
+extension String: Error {}

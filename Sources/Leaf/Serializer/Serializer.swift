@@ -1,22 +1,24 @@
-import Core
+import Async
 import Dispatch
 import Foundation
 
 /// Serializes parsed Leaf ASTs into view bytes.
 public final class Serializer {
     let ast: [Syntax]
-    var context: Context
-    let renderer: Renderer
+    var context: LeafContext
+    let renderer: LeafRenderer
+    let eventLoop: EventLoop
 
     /// Creates a new Serializer.
-    public init(ast: [Syntax], renderer: Renderer,  context: Context) {
+    public init(ast: [Syntax], renderer: LeafRenderer,  context: LeafContext, on worker: Worker) {
         self.ast = ast
         self.context = context
         self.renderer = renderer
+        self.eventLoop = worker.eventLoop
     }
 
     /// Serializes the AST into Bytes.
-    func serialize() throws -> Future<Data> {
+    func serialize() -> Future<Data> {
         var parts: [Future<Data>] = []
 
         for syntax in ast {
@@ -25,46 +27,36 @@ public final class Serializer {
             case .raw(let data):
                 promise.complete(data)
             case .tag(let name, let parameters, let body, let chained):
-                try renderTag(
+                renderTag(
                     name: name,
                     parameters: parameters,
                     body: body,
                     chained: chained,
                     source: syntax.source
-                ).then { context in
-                    do {
-                        guard let context = context else {
-                            promise.complete(Data())
-                            return
-                        }
-
-                        guard let data = context.data else {
-                            throw SerializerError.unexpectedSyntax(syntax) // FIXME: unexpected context type
-                        }
-
-                        promise.complete(data)
-                    } catch {
-                        promise.fail(error)
+                ).do { context in
+                    guard let context = context else {
+                        promise.complete(Data())
+                        return
                     }
+
+                    guard let data = context.data else {
+                        promise.fail(SerializerError.unexpectedTagData(name: name, source: syntax.source))
+                        return
+                    }
+
+                    promise.complete(data)
                 }.catch { error in
                     promise.fail(error)
                 }
             default:
-                throw SerializerError.unexpectedSyntax(syntax)
+                promise.fail(SerializerError.unexpectedSyntax(syntax))
             }
             parts.append(promise.future)
         }
         
-        let promise = Promise(Data.self)
-
-        parts.flatten().then { data in
-            let serialized = Data(data.joined())
-            promise.complete(serialized)
-        }.catch { error in
-            promise.fail(error)
+        return parts.map(to: Data.self) { data in
+            return Data(data.joined())
         }
-        
-        return promise.future
     }
 
     // MARK: private
@@ -76,80 +68,61 @@ public final class Serializer {
         body: [Syntax]?,
         chained: Syntax?,
         source: Source
-    ) throws -> Future<Context?> {
-        guard let tag = renderer.tags[name] else {
-            throw SerializerError.unknownTag(name: name, source: source)
-        }
-
-        var inputFutures: [Future<Context>] = []
-
-        for parameter in parameters {
-            let promise = Promise(Context.self)
-            try resolveSyntax(parameter).then { input in
-                promise.complete(input ?? .null)
-            }.catch { error in
-                promise.fail(error)
+    ) -> Future<LeafData?> {
+        return Future<LeafData?> {
+            guard let tag = self.renderer.tags[name] else {
+                throw SerializerError.unknownTag(name: name, source: source)
             }
-            inputFutures.append(promise.future)
-        }
 
-        let promise = Promise(Context?.self)
+            let inputFutures: [Future<LeafData>] = parameters.map { parameter in
+                let inputPromise = Promise(LeafData.self)
+                self.resolveSyntax(parameter).do { input in
+                    inputPromise.complete(input ?? .null)
+                }.catch { error in
+                    inputPromise.fail(error)
+                }
+                return inputPromise.future
+            }
 
-        inputFutures.flatten().then { inputs in
-            do {
+            return inputFutures.flatMap(to: LeafData?.self) { inputs in
                 let parsed = ParsedTag(
                     name: name,
                     parameters: inputs,
                     body: body,
-                    source: source
+                    source: source,
+                    on: self.eventLoop
                 )
-                try tag.render(
+                return try tag.render(
                     parsed: parsed,
-                    context: &self.context,
+                    context: self.context,
                     renderer: self.renderer
-                ).then { data in
-                    do {
-                        if let data = data {
-                            promise.complete(data)
-                        } else if let chained = chained {
-                            switch chained.kind {
-                            case .tag(let name, let params, let body, let c):
-                                try self.renderTag(
-                                    name: name,
-                                    parameters: params,
-                                    body: body,
-                                    chained: c,
-                                    source: chained.source
-                                ).then { data in
-                                    promise.complete(data)
-                                }.catch { error in
-                                    promise.fail(error)
-                                }
-                            default:
-                                throw SerializerError.unexpectedSyntax(chained)
-                            }
-                        } else {
-                            promise.complete(nil)
+                ).flatMap(to: LeafData?.self) { data in
+                    if let data = data {
+                        return Future(data)
+                    } else if let chained = chained {
+                        switch chained.kind {
+                        case .tag(let name, let params, let body, let c):
+                            return self.renderTag(
+                                name: name,
+                                parameters: params,
+                                body: body,
+                                chained: c,
+                                source: chained.source
+                            )
+                        default:
+                            throw SerializerError.unexpectedSyntax(chained)
                         }
-                    } catch {
-                        promise.fail(error)
+                    } else {
+                        return Future(nil)
                     }
-                }.catch { error in
-                    promise.fail(error)
                 }
-            } catch {
-                promise.fail(error)
             }
-        }.catch { error in
-            promise.fail(error)
         }
-
-        return promise.future
     }
 
     // resolves a constant to data
-    private func resolveConstant(_ const: Constant) throws -> Future<Context> {
-        let promise = Promise(Context.self)
+    private func resolveConstant(_ const: Constant) -> Future<LeafData> {
+        let promise = Promise(LeafData.self)
         switch const {
         case .bool(let bool):
             promise.complete(.bool(bool))
@@ -158,8 +131,13 @@ public final class Serializer {
         case .int(let int):
             promise.complete(.int(int))
         case .string(let ast):
-            let serializer = Serializer(ast: ast, renderer: renderer, context: context)
-            try serializer.serialize().then { bytes in
+            let serializer = Serializer(
+                ast: ast,
+                renderer: renderer,
+                context: context,
+                on: eventLoop
+            )
+            serializer.serialize().do { bytes in
                 promise.complete(.data(bytes))
             }.catch { error in
                 promise.fail(error)
@@ -169,26 +147,22 @@ public final class Serializer {
     }
 
     // resolves an expression to data
-    private func resolveExpression(_ op: Operator, left: Syntax, right: Syntax) throws -> Future<Context> {
-        let l = try resolveSyntax(left)
-        let r = try resolveSyntax(right)
+    private func resolveExpression(_ op: Operator, left: Syntax, right: Syntax) -> Future<LeafData> {
+        let l = resolveSyntax(left)
+        let r = resolveSyntax(right)
 
-        let promise = Promise(Context.self)
+        let promise = Promise(LeafData.self)
 
         switch op {
         case .equal:
-            l.then { l in
-                r.then { r in
-                    promise.complete(.bool(l == r))
-                }.catch { error in
-                    promise.fail(error)
+            return l.flatMap(to: LeafData.self) { l in
+                return r.map(to: LeafData.self) { r in
+                    return .bool(l == r)
                 }
-            }.catch { error in
-                promise.fail(error)
             }
         case .notEqual:
-            l.then { l in
-                r.then { r in
+            l.do { l in
+                r.do { r in
                     promise.complete(.bool(l != r))
                 }.catch { error in
                     promise.fail(error)
@@ -197,8 +171,8 @@ public final class Serializer {
                 promise.fail(error)
             }
         case .and:
-            l.then { l in
-                r.then { r in
+            l.do { l in
+                r.do { r in
                     promise.complete(.bool(l?.bool != false && r?.bool != false))
                 }.catch { error in
                     promise.fail(error)
@@ -207,8 +181,8 @@ public final class Serializer {
                 promise.fail(error)
             }
         case .or:
-            r.then { r in
-                l.then { l in
+            r.do { r in
+                l.do { l in
                     promise.complete(.bool(l?.bool != false || r?.bool != false))
                 }.catch { error in
                     promise.fail(error)
@@ -217,8 +191,8 @@ public final class Serializer {
                 promise.fail(error)
             }
         default:
-            l.then { l in
-                r.then { r in
+            l.do { l in
+                r.do { r in
                     if let leftDouble = l?.double, let rightDouble = r?.double {
                         switch op {
                         case .add:
@@ -251,34 +225,30 @@ public final class Serializer {
     }
 
     // resolves syntax to data (or fails)
-    private func resolveSyntax(_ syntax: Syntax) throws -> Future<Context?> {
+    private func resolveSyntax(_ syntax: Syntax) -> Future<LeafData?> {
+        let promise = Promise(LeafData?.self)
+
         switch syntax.kind {
         case .constant(let constant):
-            let promise = Promise(Context?.self)
-            try resolveConstant(constant).then { data in
+            resolveConstant(constant).do { data in
                 promise.complete(data)
             }.catch { error in
                 promise.fail(error)
             }
-            return promise.future
         case .expression(let op, let left, let right):
-            let promise = Promise(Context?.self)
-            try resolveExpression(op, left: left, right: right).then { data in
+            resolveExpression(op, left: left, right: right).do { data in
                 promise.complete(data)
             }.catch { error in
                 promise.fail(error)
             }
-            return promise.future
         case .identifier(let id):
-            let promise = Promise(Context?.self)
-            if let data = try contextFetch(path: id) {
-                promise.complete(data)
-            } else {
-                promise.complete(.null)
+            contextFetch(path: id).do { value in
+                promise.complete(value ?? .null)
+            }.catch { error in
+                promise.fail(error)
             }
-            return promise.future
         case .tag(let name, let parameters, let body, let chained):
-            return try renderTag(
+            return renderTag(
                 name: name,
                 parameters: parameters,
                 body: body,
@@ -288,55 +258,72 @@ public final class Serializer {
         case .not(let syntax):
             switch syntax.kind {
             case .identifier(let id):
-                let promise = Promise(Context?.self)
-                if let data = try contextFetch(path: id) {
-                    if data.bool == true {
-                        promise.complete(.bool(false))
-                    } else {
-                        promise.complete(.bool(true))
-                    }
-                } else {
-                    promise.complete(.bool(true))
+                let promise = Promise(LeafData?.self)
+                contextFetch(path: id).do { data in
+                    promise.complete(.bool(data?.bool == true))
+                }.catch { error in
+                    promise.fail(error)
                 }
-                return promise.future
             case .constant(let c):
-                let ret: Bool
-
                 switch c {
                 case .bool(let bool):
-                    ret = !bool
+                    promise.complete(.bool(!bool))
                 case .double(let double):
-                    ret = double != 1
+                    promise.complete(.bool( double != 1))
                 case .int(let int):
-                    ret = int != 1
+                    promise.complete(.bool(int != 1))
                 case .string(_):
-                    throw SerializerError.unexpectedSyntax(syntax)
+                    promise.fail(SerializerError.unexpectedSyntax(syntax))
                 }
-
-                let promise = Promise(Context?.self)
-                promise.complete(.bool(ret))
-                return promise.future
             default:
-                throw SerializerError.unexpectedSyntax(syntax)
+                promise.fail(SerializerError.unexpectedSyntax(syntax))
             }
         default:
-            throw SerializerError.unexpectedSyntax(syntax)
+            promise.fail(SerializerError.unexpectedSyntax(syntax))
         }
+
+        return promise.future
     }
 
     // fetches data from the context
-    private func contextFetch(path: [String]) throws -> Context? {
-        var current = context
+    private func contextFetch(path: [String]) -> Future<LeafData?> {
+        var promise = Promise(LeafData?.self)
 
-        for part in path {
-            guard let sub = current.dictionary?[part] else {
-                return nil
+        var current = context.data
+        var iterator = path.makeIterator()
+
+        func handle(_ path: String) {
+            switch current {
+            case .dictionary(let dict):
+                if let value = dict[path] {
+                    current = value
+                    if let next = iterator.next() {
+                        handle(next)
+                    } else {
+                        promise.complete(current)
+                    }
+                } else {
+                    promise.complete(nil)
+                }
+            case .future(let fut):
+                fut.do { value in
+                    current = value
+                    handle(path)
+                }.catch { error in
+                    promise.fail(error)
+                }
+            default:
+                promise.complete(nil)
             }
-
-            current = sub
         }
 
-        return current
+        if let first = iterator.next() {
+            handle(first)
+        } else {
+            promise.complete(current)
+        }
+
+        return promise.future
     }
 }
 

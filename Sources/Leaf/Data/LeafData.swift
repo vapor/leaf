@@ -1,24 +1,37 @@
+import Async
 import Dispatch
 import Foundation
 
+/// A reference wrapper around leaf data.
+public final class LeafContext {
+    /// The wrapped data
+    public var data: LeafData
+
+    /// Create a new LeafContext
+    public init(data: LeafData) {
+        self.data = data
+    }
+}
+
 /// Data structure for passing data
 /// into Leaf templates as a context.
-public enum Context {
+public enum LeafData {
     case bool(Bool)
     case string(String)
     case int(Int)
     case double(Double)
     case data(Data)
-    case dictionary([String: Context])
-    case array([Context])
-    public typealias Lazy = () -> (Context)
+    case dictionary([String: LeafData])
+    case array([LeafData])
+    case future(Future<LeafData>)
+    public typealias Lazy = () -> (LeafData)
     case lazy(Lazy)
     case null
 }
 
 // MARK: Polymorphic
 
-extension Context {
+extension LeafData {
     /// Attempts to convert to string or returns nil.
     public var string: String? {
         switch self {
@@ -87,8 +100,22 @@ extension Context {
         }
     }
 
+    /// Attempts to convert to int or returns nil.
+    public var int: Int? {
+        switch self {
+        case .int(let i):
+            return i
+        case .string(let s):
+            return Int(s)
+        case .lazy(let lazy):
+            return lazy().int
+        default:
+            return nil
+        }
+    }
+
     /// Returns dictionary if context contains one.
-    public var dictionary: [String: Context]? {
+    public var dictionary: [String: LeafData]? {
         switch self {
         case .dictionary(let d):
             return d
@@ -98,7 +125,7 @@ extension Context {
     }
 
     /// Returns array if context contains one.
-    public var array: [Context]? {
+    public var array: [LeafData]? {
         switch self {
         case .array(let a):
             return a
@@ -116,16 +143,26 @@ extension Context {
             return s.data(using: .utf8)
         case .lazy(let lazy):
             return lazy().data
+        case .int(let i):
+            return i.description.data(using: .utf8)
         default:
             return nil
+        }
+    }
+
+    /// Returns true if the data is null.
+    public var isNull: Bool {
+        switch self {
+        case .null: return true
+        default: return false
         }
     }
 }
 
 // MARK: Equatable
 
-extension Context: Equatable {
-    public static func ==(lhs: Context, rhs: Context) -> Bool {
+extension LeafData: Equatable {
+    public static func ==(lhs: LeafData, rhs: LeafData) -> Bool {
         switch (lhs, rhs) {
         case (.array(let a), .array(let b)):
             return a == b
