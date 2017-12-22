@@ -6,57 +6,118 @@ public final class Loop: LeafTag {
     public func render(parsed: ParsedTag, context: LeafContext, renderer: LeafRenderer) throws -> Future<LeafData?> {
         let promise = Promise(LeafData?.self)
 
+        let body = try parsed.requireBody()
+        try parsed.requireParameterCount(2)
+        let key = parsed.parameters[1].string ?? ""
+        
         if case .dictionary(var dict) = context.data {
-            let body = try parsed.requireBody()
-            try parsed.requireParameterCount(2)
-            let array = parsed.parameters[0].array ?? []
-            let key = parsed.parameters[1].string ?? ""
-
             var results: [Future<Data>] = []
-
+            
             // store the previous values of loop and key
             // so we can restore them once the loop is finished
             let prevLoop = dict["loop"]
             let prevKey = dict[key]
-
-            for (i, item) in array.enumerated() {
-                let isLast = i == array.count - 1
+            
+            func render(_ render: Render) {
                 let loop = LeafData.dictionary([
-                    "index": .int(i),
-                    "isFirst": .bool(i == 0),
-                    "isLast": .bool(isLast)
-                    ])
+                    "index": .int(render.index),
+                    "isFirst": .bool(render.isFirst),
+                    "isLast": .bool(render.isLast)
+                ])
+                
                 dict["loop"] = loop
-                dict[key] = item
+                dict[key] = render.data
                 context.data = .dictionary(dict)
+                
                 let serializer = Serializer(
                     ast: body,
                     renderer: renderer,
                     context: context,
                     on: parsed.eventLoop
                 )
-                let subpromise = Promise(Data.self)
+                
                 serializer.serialize().do { bytes in
-                    subpromise.complete(bytes)
+                    render.promise.complete(bytes)
+                }.catch { error in
+                    render.promise.fail(error)
+                }
+            }
+            
+            func applyResults() {
+                results.flatten().do { datas in
+                    let data = Data(datas.joined())
+                    dict["loop"] = prevLoop
+                    dict[key] = prevKey
+                    context.data = .dictionary(dict)
+                    promise.complete(.data(data))
                 }.catch { error in
                     promise.fail(error)
                 }
-                results.append(subpromise.future)
             }
+            
+            let parameter = parsed.parameters[0]
 
-            results.flatten().do { datas in
-                let data = Data(datas.joined())
-                dict["loop"] = prevLoop
-                dict[key] = prevKey
-                context.data = .dictionary(dict)
-                promise.complete(.data(data))
-            }.catch { error in
-                promise.fail(error)
+            if let array = parameter.array {
+                for (i, item) in array.enumerated() {
+                    let context = Render(index: i, data: item)
+                    render(context)
+                    
+                    results.append(context.promise.future)
+                }
+                
+                applyResults()
+            } else if case .stream(let stream) = parameter {
+                var nextRender: Render?
+                
+                var index = 0
+                
+                stream.drain { _ in }
+                .output { data in
+                    defer { index += 1 }
+                    
+                    if let nextRender = nextRender {
+                        render(nextRender)
+                    }
+                    
+                    let context = Render(index: index, data: data)
+                    results.append(context.promise.future)
+                    nextRender = context
+                    
+                    stream.upstream?.request()
+                }.catch { error in
+                    promise.fail(error)
+                    stream.close()
+                }.finally {
+                    if var nextRender = nextRender {
+                        nextRender.isLast = true
+                        render(nextRender)
+                    }
+                    
+                    applyResults()
+                }
+                
+                stream.request()
             }
         } else {
             promise.complete(nil)
         }
 
         return promise.future
+    }
+}
+
+fileprivate struct Render {
+    var index: Int
+    var data: LeafData
+    var isLast = false
+    let promise = Promise<Data>()
+    
+    var isFirst: Bool {
+        return index == 0
+    }
+    
+    init(index: Int, data: LeafData) {
+        self.index = index
+        self.data = data
     }
 }

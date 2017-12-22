@@ -112,7 +112,6 @@ extension LeafRenderer {
         } else {
             fullPath = viewsDir + path
         }
-        print(fullPath)
 
         let promise = Promise(Data.self)
 

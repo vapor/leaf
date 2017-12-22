@@ -7,7 +7,7 @@ public final class LeafEncoder {
     public init() {}
 
     /// Encode an encodable item to leaf data.
-    public func encode<E: Encodable>(_ encodable: E) throws -> LeafData {
+    public func encode(_ encodable: Encodable) throws -> LeafData {
         let encoder = _LeafEncoder()
         try encodable.encode(to: encoder)
         return encoder.partialData.context
@@ -56,6 +56,11 @@ internal final class _LeafEncoder: Encoder {
     }
 }
 
+extension _LeafEncoder: StreamEncoder {
+    func encodeStream<O : OutputStream & ConnectionContext>(_ stream: O) throws where O.Output == Encodable {
+        self.partialData.set(to: .stream(LeafDataStream(stream)), at: codingPath)
+    }
+}
 
 extension _LeafEncoder: FutureEncoder {
     func encodeFuture<E>(_ future: Future<E>) throws {
