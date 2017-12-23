@@ -71,7 +71,9 @@ public final class Loop: LeafTag {
                 
                 var index = 0
                 
-                stream.drain { _ in }
+                stream.map(to: LeafData.self) { encodable in
+                    return try LeafEncoder().encode(encodable)
+                }.drain { _ in }
                 .output { data in
                     defer { index += 1 }
                     
