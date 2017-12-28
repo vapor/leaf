@@ -71,8 +71,11 @@ public final class Loop: LeafTag {
                 
                 var index = 0
                 
-                stream.drain { _ in }
-                .output { data in
+                var upstream: ConnectionContext?
+                
+                stream.drain { _upstream in
+                    upstream = _upstream
+                }.output { data in
                     defer { index += 1 }
                     
                     if let nextRender = nextRender {
@@ -83,10 +86,10 @@ public final class Loop: LeafTag {
                     results.append(context.promise.future)
                     nextRender = context
                     
-                    stream.upstream?.request()
+                    upstream?.request()
                 }.catch { error in
                     promise.fail(error)
-                    stream.close()
+                    upstream?.cancel()
                 }.finally {
                     if var nextRender = nextRender {
                         nextRender.isLast = true
@@ -96,7 +99,7 @@ public final class Loop: LeafTag {
                     applyResults()
                 }
                 
-                stream.request()
+                upstream?.request()
             }
         } else {
             promise.complete(nil)

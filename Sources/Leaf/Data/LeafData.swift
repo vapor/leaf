@@ -13,31 +13,6 @@ public final class LeafContext {
     }
 }
 
-public final class LeafDataStream: TransformingStream, ConnectionContext {
-    public typealias Input = Encodable
-    public typealias Output = LeafData
-    
-    public var upstream: ConnectionContext?
-    public var downstream: AnyInputStream<LeafData>?
-    
-    public func transform(_ input: Encodable) throws -> Future<LeafData> {
-        return try Future(LeafEncoder().encode(input))
-    }
-    
-    public func connection(_ event: ConnectionEvent) {
-        switch event {
-        case .cancel:
-            upstream?.cancel()
-        case .request(let amount):
-            upstream?.request(count: amount)
-        }
-    }
-    
-    public init<O: Async.OutputStream & ConnectionContext>(_ stream: O) where O.Output == Encodable {
-        stream.output(to: self)
-    }
-}
-
 /// Data structure for passing data
 /// into Leaf templates as a context.
 public enum LeafData {
@@ -49,7 +24,7 @@ public enum LeafData {
     case dictionary([String: LeafData])
     case array([LeafData])
     case future(Future<LeafData>)
-    case stream(LeafDataStream)
+    case stream(AnyOutputStream<LeafData>)
     public typealias Lazy = () -> (LeafData)
     case lazy(Lazy)
     case null
