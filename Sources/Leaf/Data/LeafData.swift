@@ -28,6 +28,26 @@ public enum LeafData {
     public typealias Lazy = () -> (LeafData)
     case lazy(Lazy)
     case null
+    
+    public static func codableStream<O : Async.OutputStream>(_ stream: O) -> LeafData where O.Output == Encodable {
+        return .stream(
+            AnyOutputStream(
+                stream.map(to: LeafData.self) { encodable in
+                    return try LeafEncoder().encode(encodable)
+                }
+            )
+        )
+    }
+    
+    public static func codableStream<O : Async.OutputStream>(_ stream: O) -> LeafData where O.Output: Encodable {
+        return .stream(
+            AnyOutputStream(
+                stream.map(to: LeafData.self) { encodable in
+                    return try LeafEncoder().encode(encodable)
+                }
+            )
+        )
+    }
 }
 
 // MARK: Polymorphic

@@ -351,7 +351,7 @@ class LeafTests: XCTestCase {
         let emitter = EmitterStream<Int>()
         
         let context: LeafContext = LeafContext(data: .dictionary([
-            "integers": .stream(LeafDataStream(emitter.encode()))
+            "integers": .codableStream(emitter)
         ]))
         
         let render = renderer.render(template, context: context)
