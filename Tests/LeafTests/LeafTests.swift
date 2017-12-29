@@ -391,6 +391,20 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.render(template, context: context).blockingAwait(), expected)
     }
 
+    func testDateFormat() throws {
+        let template = """
+        Date: #date(foo, "yyyy-MM-dd")
+        """
+
+        let expected = """
+        Date: 2001-01-16
+        """
+
+        let context = LeafData.dictionary(["foo": .double(1_337_000)]).context
+        try XCTAssertEqual(renderer.render(template, context: context).blockingAwait(), expected)
+
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
