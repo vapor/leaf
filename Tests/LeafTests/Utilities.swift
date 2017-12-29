@@ -14,16 +14,16 @@ extension LeafRenderer {
     }
 }
 
-final class PreloadedStream<Data>: Async.OutputStream, ConnectionContext {
-    typealias Output = Data
+final class PreloadedStream: Async.OutputStream, ConnectionContext {
+    typealias Output = UnsafeBufferPointer<UInt8>
     let data: Data
-    var downstream: AnyInputStream<Data>?
+    var downstream: AnyInputStream<UnsafeBufferPointer<UInt8>>?
 
     init(data: Data) {
         self.data = data
     }
 
-    func output<S>(to inputStream: S) where S: Async.InputStream, Data == S.Input {
+    func output<S>(to inputStream: S) where S: Async.InputStream, UnsafeBufferPointer<UInt8> == S.Input {
         downstream = AnyInputStream(inputStream)
         inputStream.connect(to: self)
     }
@@ -35,7 +35,7 @@ final class PreloadedStream<Data>: Async.OutputStream, ConnectionContext {
         case .request:
             if let downstream = self.downstream {
                 self.downstream = nil
-                downstream.next(data)
+                downstream.next(data.withByteBuffer { $0 })
                 downstream.close()
             }
         }
@@ -49,7 +49,7 @@ final class TestFiles: FileReader, FileCache {
         """.data(using: .utf8)!
 
 
-        let preloaded = PreloadedStream(data: data.withByteBuffer { $0 })
+        let preloaded = PreloadedStream(data: data)
         return AnyOutputStream(preloaded)
     }
 
@@ -89,7 +89,7 @@ final class PreloadedFiles: FileReader, FileCache {
     }
 
     func read(at path: String, chunkSize: Int) -> AnyOutputStream<UnsafeBufferPointer<UInt8>> {
-        let preloaded = PreloadedStream(data: self.files[path]!.withByteBuffer { $0 })
+        let preloaded = PreloadedStream(data: self.files[path]!)
         return AnyOutputStream(preloaded)
     }
 
