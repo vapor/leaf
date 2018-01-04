@@ -25,5 +25,6 @@ public var defaultTags: [String: LeafTag] {
         "set": Var(),
         "get": Raw(),
         "embed": Embed(),
+        "date": DateFormat()
     ]
 }
