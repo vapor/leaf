@@ -71,11 +71,18 @@ public final class Loop: LeafTag {
                 
                 var index = 0
                 
+<<<<<<< HEAD
                 var upstream: ConnectionContext?
                 
                 stream.drain { _upstream in
                     upstream = _upstream
                 }.output { data in
+=======
+                stream.map(to: LeafData.self) { encodable in
+                    return try LeafEncoder().encode(encodable)
+                }.drain { _ in }
+                .output { data in
+>>>>>>> c74e1917551b9ffba8d09220bf08b7fd43a398b7
                     defer { index += 1 }
                     
                     if let nextRender = nextRender {
