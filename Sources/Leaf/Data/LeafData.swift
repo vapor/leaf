@@ -24,11 +24,7 @@ public enum LeafData {
     case dictionary([String: LeafData])
     case array([LeafData])
     case future(Future<LeafData>)
-<<<<<<< HEAD
     case stream(AnyOutputStream<LeafData>)
-=======
-    case stream(EncodableStream)
->>>>>>> c74e1917551b9ffba8d09220bf08b7fd43a398b7
     public typealias Lazy = () -> (LeafData)
     case lazy(Lazy)
     case null

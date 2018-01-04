@@ -57,13 +57,8 @@ internal final class _LeafEncoder: Encoder {
 }
 
 extension _LeafEncoder: StreamEncoder {
-<<<<<<< HEAD
     func encodeStream<O : OutputStream>(_ stream: O) throws where O.Output == Encodable {
         self.partialData.set(to: .codableStream(stream), at: codingPath)
-=======
-    func encodeStream<O : OutputStream & ConnectionContext>(_ stream: O) throws where O.Output == Encodable {
-        self.partialData.set(to: .stream(stream.encode()), at: codingPath)
->>>>>>> c74e1917551b9ffba8d09220bf08b7fd43a398b7
     }
 }
 
