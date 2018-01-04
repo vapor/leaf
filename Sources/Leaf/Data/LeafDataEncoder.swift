@@ -57,8 +57,12 @@ internal final class _LeafEncoder: Encoder {
 }
 
 extension _LeafEncoder: StreamEncoder {
-    func encodeStream<O : OutputStream>(_ stream: O) throws where O.Output == Encodable {
-        self.partialData.set(to: .codableStream(stream), at: codingPath)
+    func encodeStream<O>(_ stream: O) throws where O : OutputStream, O.Output == Encodable {
+        let stream = stream.map(to: LeafData.self) { encodable in
+            return try LeafEncoder().encode(encodable)
+        }
+        
+        self.partialData.set(to: .stream(AnyOutputStream(stream)), at: codingPath)
     }
 }
 
