@@ -1,4 +1,5 @@
 import Async
+import Bits
 import Dispatch
 import Foundation
 
@@ -21,16 +22,21 @@ public final class LeafRenderer {
     /// The event loop this leaf renderer will use
     /// to read files and cache ASTs on.
     let eventLoop: EventLoop
+    
+    /// If `true`, caches leaf templates
+    let cache: Bool
 
     /// Create a new Leaf renderer.
     public init(
         config: LeafConfig,
-        on worker: Worker
+        on worker: Worker,
+        caching: Bool = true
     ) {
         self.tags = config.tags
         self._files = [:]
         self.fileFactory = config.fileFactory
         self.eventLoop = worker.eventLoop
+        self.cache = caching
         self.viewsDir = config.viewsDir.finished(with: "/")
     }
 
@@ -58,7 +64,10 @@ public final class LeafRenderer {
                 promise.fail(error)
                 return promise.future
             }
-            _cachedASTs[hash] = ast
+            
+            if cache {
+                _cachedASTs[hash] = ast
+            }
         }
 
 
@@ -122,9 +131,17 @@ extension LeafRenderer {
             file = fileFactory(eventLoop)
             _files[eventLoop.label.hashValue] = file
         }
+        
+        let leafFile: AnyOutputStream<ByteBuffer>
 
         /// FIXME: better chunk size?
-        file.cachedRead(at: fullPath, chunkSize: 2048).do { view in
+        if cache {
+            leafFile = file.read(at: fullPath, chunkSize: 2048)
+        } else {
+            leafFile = file.cachedRead(at: fullPath, chunkSize: 2048)
+        }
+        
+        leafFile.do { view in
             self.render(template: view, context: context).do { data in
                 promise.complete(data)
             }.catch { error in
