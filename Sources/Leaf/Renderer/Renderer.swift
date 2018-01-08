@@ -132,7 +132,7 @@ extension LeafRenderer {
             _files[eventLoop.label.hashValue] = file
         }
         
-        let leafFile: AnyOutputStream<ByteBuffer>
+        let leafFile: Future<Data>
 
         /// FIXME: better chunk size?
         if cache {
