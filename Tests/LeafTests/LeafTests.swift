@@ -338,7 +338,7 @@ class LeafTests: XCTestCase {
 
     func testService() throws {
         var services = Services()
-        try services.use(LeafProvider())
+        services.use(LeafProvider())
 
         services.register { container in
             return LeafConfig(tags: defaultTags, viewsDir: "/") { queue in
