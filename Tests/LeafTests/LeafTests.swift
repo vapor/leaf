@@ -1,3 +1,4 @@
+import Foundation
 import Async
 import Dispatch
 import Leaf
@@ -334,6 +335,40 @@ class LeafTests: XCTestCase {
         }
         let renderer = LeafRenderer(config: config, on: queue)
         try XCTAssertEqual(renderer.render(template, context: .null).blockingAwait(), expected)
+    }
+    
+    func testReactiveStreams() throws {
+        let template = """
+        #for(int in integers) {
+            #(int),
+        }
+        """
+        
+        let expected = """
+        1,2,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,1,
+        """
+        
+        let emitter = EmitterStream<Int>()
+        
+        let context: LeafContext = LeafContext(data: .dictionary([
+            "integers": .codableStream(emitter)
+        ]))
+        
+        let render = renderer.render(template, context: context)
+        
+        for i in 1..<10 {
+            emitter.emit(i)
+        }
+        
+        for i in (1..<10).reversed() {
+            emitter.emit(i)
+        }
+        
+        emitter.close()
+        
+        let rendered = try render.blockingAwait().replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "\n", with: "")
+        
+        XCTAssertEqual(rendered, expected)
     }
 
     func testService() throws {
