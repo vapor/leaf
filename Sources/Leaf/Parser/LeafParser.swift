@@ -1,23 +1,24 @@
 import Bits
 import Foundation
+import TemplateKit
 
 /// Parses leaf templates into a cacheable AST
 /// that can be later combined with Leaf Data to
 /// serialized a View.
-public final class Parser {
-    let scanner: ByteScanner
+public final class LeafParser {
+    let scanner: TemplateByteScanner
 
     /// Creates a new Leaf parser with the supplied bytes.
     public init(data: Data) {
-        self.scanner = ByteScanner(data: data)
+        self.scanner = TemplateByteScanner(data: data)
     }
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse() throws -> [Syntax] {
-        var ast: [Syntax] = []
+    public func parse() throws -> [TemplateSyntax] {
+        var ast: [TemplateSyntax] = []
 
-        ast.append(Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1)))
+        ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
         while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
         }
@@ -28,12 +29,12 @@ public final class Parser {
     // MARK: Private
 
     // base level extraction. checks for `#` or extracts raw
-    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout Syntax) throws -> Syntax? {
+    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax? {
         guard let byte = scanner.peek() else {
             return nil
         }
 
-        let syntax: Syntax
+        let syntax: TemplateSyntax
 
         if byte == .numberSign {
             if try shouldExtractTag() {
@@ -44,13 +45,13 @@ public final class Parser {
                 let start = scanner.makeSourceStart()
                 let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = scanner.makeSource(using: start)
-                syntax = Syntax(kind: .raw(bytes), source: source)
+                syntax = TemplateSyntax(type: .raw(bytes), source: source)
             }
         } else {
             let start = scanner.makeSourceStart()
             let bytes = try extractRaw(untilUnescaped: signalBytes)
             let source = scanner.makeSource(using: start)
-            syntax = Syntax(kind: .raw(bytes), source: source)
+            syntax = TemplateSyntax(type: .raw(bytes), source: source)
         }
 
         return syntax
@@ -112,10 +113,10 @@ public final class Parser {
     }
 
     // extracts a tag, recursively extracting chained tags and tag parameters and bodies.
-    private func extractTag(indent: Int, previous: inout Syntax) throws -> Syntax {
+    private func extractTag(indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax {
         let start = scanner.makeSourceStart()
 
-        trim: if case .raw(var bytes) = previous.kind {
+        trim: if case .raw(var bytes) = previous.type {
             var offset = 0
 
             skipwhitespace: for i in (0..<bytes.count).reversed() {
@@ -135,7 +136,7 @@ public final class Parser {
             } else {
                 bytes = Data(bytes[0..<offset])
             }
-            previous = Syntax(kind: .raw(bytes), source: previous.source)
+            previous = TemplateSyntax(type: .raw(bytes), source: previous.source)
         }
 
         // NAME
@@ -147,7 +148,7 @@ public final class Parser {
             case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
                 break
             default:
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "Valid tag name",
                     got: String(data: id, encoding: .utf8) ?? "n/a",
                     source: scanner.makeSource(using: start)
@@ -156,9 +157,9 @@ public final class Parser {
         }
 
         // PARAMS
-        let params: [Syntax]
+        let params: [TemplateSyntax]
         guard let name = String(data: id, encoding: .utf8) else {
-            throw ParserError.expectationFailed(
+            throw LeafParserError.expectationFailed(
                 expected: "UTF8 string",
                 got: id.description,
                 source: scanner.makeSource(using: start)
@@ -174,18 +175,18 @@ public final class Parser {
             try expect(.n)
             try expect(.space)
             guard let val = try extractParameter() else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "right parameter",
                     got: "nil",
                     source: scanner.makeSource(using: start)
                 )
             }
 
-            switch val.kind {
+            switch val.type {
             case .identifier, .tag:
                 break
             default:
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "identifier or tag",
                     got: "\(val)",
                     source: scanner.makeSource(using: start)
@@ -194,8 +195,8 @@ public final class Parser {
 
             try expect(.rightParenthesis)
 
-            guard case .identifier(let name) = key.kind else {
-                throw ParserError.expectationFailed(
+            guard case .identifier(let name) = key.type else {
+                throw LeafParserError.expectationFailed(
                     expected: "key name",
                     got: "\(key)",
                     source: scanner.makeSource(using: start)
@@ -203,7 +204,7 @@ public final class Parser {
             }
 
             guard name.count == 1 else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "single key",
                     got: "\(name)",
                     source: scanner.makeSource(using: start)
@@ -211,20 +212,20 @@ public final class Parser {
             }
 
             guard let data = name[0].data(using: .utf8) else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "utf8 string",
                     got: name[0],
                     source: scanner.makeSource(using: start)
                 )
             }
 
-            let raw = Syntax(
-                kind: .raw(data),
+            let raw = TemplateSyntax(
+                type: .raw(data),
                 source: key.source
             )
 
-            let keyConstant = Syntax(
-                kind: .constant(.string([raw])),
+            let keyConstant = TemplateSyntax(
+                type: .constant(.string([raw])),
                 source: key.source
             )
 
@@ -239,14 +240,14 @@ public final class Parser {
         }
 
         // BODY
-        let body: [Syntax]?
+        let body: [TemplateSyntax]?
         if name == "//" {
             let s = scanner.makeSourceStart()
             let bytes = try extractBytes(untilUnescaped: [.newLine])
             // pop the newline
             try scanner.requirePop()
-            body = [Syntax(
-                kind: .raw(bytes),
+            body = [TemplateSyntax(
+                type: .raw(bytes),
                 source: scanner.makeSource(using: s)
             )]
         } else if name == "/*" {
@@ -269,8 +270,8 @@ public final class Parser {
             // pop */
             try scanner.requirePop(n: 2)
 
-            body = [Syntax(
-                kind: .raw(bytes),
+            body = [TemplateSyntax(
+                type: .raw(bytes),
                 source: scanner.makeSource(using: s)
             )]
         } else {
@@ -285,7 +286,7 @@ public final class Parser {
 
         // KIND
 
-        let kind: SyntaxKind
+        let kind: TemplateSyntaxType
 
         switch name {
         case "if":
@@ -311,7 +312,7 @@ public final class Parser {
                 chained: nil
             )
         default:
-            var chained: Syntax?
+            var chained: TemplateSyntax?
 
             if try shouldExtractChainedTag() {
                 try extractSpaces()
@@ -329,20 +330,20 @@ public final class Parser {
         }
 
         let source = scanner.makeSource(using: start)
-        return Syntax(kind: kind, source: source)
+        return TemplateSyntax(type: kind, source: source)
     }
 
     // corrects body indentation by splitting on newlines
     // and stitching toogether w/ supplied indent level
-    func correctIndentation(_ ast: [Syntax], to indent: Int) throws -> [Syntax] {
-        var corrected: [Syntax] = []
+    func correctIndentation(_ ast: [TemplateSyntax], to indent: Int) throws -> [TemplateSyntax] {
+        var corrected: [TemplateSyntax] = []
 
         let indent = indent + 4
         
         for syntax in ast {
-            switch syntax.kind {
+            switch syntax.type {
             case .raw(let bytes):
-                let scanner = ByteScanner(data: Data(bytes))
+                let scanner = TemplateByteScanner(data: Data(bytes))
                 var chunkStart = scanner.offset
                 while let byte = scanner.peek() {
                     switch byte {
@@ -353,7 +354,7 @@ public final class Parser {
                         // break off the previous raw chunk
                         // and remove indentation from following chunk
                         let data = Data(bytes[chunkStart..<scanner.offset])
-                        let new = Syntax(kind: .raw(data), source: syntax.source)
+                        let new = TemplateSyntax(type: .raw(data), source: syntax.source)
                         corrected.append(new)
 
                         var spacesSkipped = 0
@@ -374,7 +375,7 @@ public final class Parser {
                 // append any remaining bytes
                 if chunkStart < bytes.count {
                     let data = Data(bytes[chunkStart..<bytes.count])
-                    let new = Syntax(kind: .raw(data), source: syntax.source)
+                    let new = TemplateSyntax(type: .raw(data), source: syntax.source)
                     corrected.append(new)
                 }
             default:
@@ -386,7 +387,7 @@ public final class Parser {
     }
 
     // extracts if/else syntax sugar
-    private func extractIfElse(indent: Int) throws -> Syntax? {
+    private func extractIfElse(indent: Int) throws -> TemplateSyntax? {
         try extractSpaces()
         let start = scanner.makeSourceStart()
 
@@ -394,22 +395,22 @@ public final class Parser {
             try scanner.requirePop(n: 4)
             try extractSpaces()
 
-            let params: [Syntax]
+            let params: [TemplateSyntax]
             if scanner.peekMatches([.i, .f]) {
                 try scanner.requirePop(n: 2)
                 try extractSpaces()
                 params = try extractParameters()
             } else {
-                let syntax = Syntax(
-                    kind: .constant(.bool(true)),
-                    source: Source(line: scanner.line, column: scanner.column, range: scanner.offset..<scanner.offset + 1
+                let syntax = TemplateSyntax(
+                    type: .constant(.bool(true)),
+                    source: TemplateSource(line: scanner.line, column: scanner.column, range: scanner.offset..<scanner.offset + 1
                 ))
                 params = [syntax]
             }
             try extractSpaces()
             let elseBody = try extractBody(indent: indent)
 
-            let kind: SyntaxKind = .tag(
+            let kind: TemplateSyntaxType = .tag(
                 name: "ifElse",
                 parameters: params,
                 body: elseBody,
@@ -417,18 +418,18 @@ public final class Parser {
             )
 
             let source = scanner.makeSource(using: start)
-            return Syntax(kind: kind, source: source)
+            return TemplateSyntax(type: kind, source: source)
         }
 
         return nil
     }
 
     // extracts a tag body { to }
-    private func extractBody(indent: Int) throws -> [Syntax] {
+    private func extractBody(indent: Int) throws -> [TemplateSyntax] {
         try expect(.leftCurlyBracket)
 
-        var ast: [Syntax] = []
-        ast.append(Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1)))
+        var ast: [TemplateSyntax] = []
+        ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
         while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
             if scanner.peek() == .rightCurlyBracket {
@@ -436,7 +437,7 @@ public final class Parser {
             }
         }
 
-        trim: if let last = ast.last, case .raw(var bytes) = last.kind {
+        trim: if let last = ast.last, case .raw(var bytes) = last.type {
             var offset = 0
 
             skipwhitespace: for i in (0..<bytes.count).reversed() {
@@ -456,7 +457,7 @@ public final class Parser {
             } else {
                 bytes = Data(bytes[0..<offset])
             }
-            ast[ast.count - 1] = Syntax(kind: .raw(bytes), source: last.source)
+            ast[ast.count - 1] = TemplateSyntax(type: .raw(bytes), source: last.source)
         }
 
         try expect(.rightCurlyBracket)
@@ -514,7 +515,7 @@ public final class Parser {
     }
 
     // extracts a string of characters allowed in identifier
-    private func extractIdentifier() throws -> Syntax {
+    private func extractIdentifier() throws -> TemplateSyntax {
         let start = scanner.makeSourceStart()
 
         var path: [String] = []
@@ -532,9 +533,9 @@ public final class Parser {
         }
         path.append(current)
         
-        let kind: SyntaxKind = .identifier(path: path)
+        let kind: TemplateSyntaxType = .identifier(path: path)
         let source = scanner.makeSource(using: start)
-        return Syntax(kind: kind, source: source)
+        return TemplateSyntax(type: kind, source: source)
     }
 
     // extracts a string of characters allowed in tag names
@@ -549,10 +550,10 @@ public final class Parser {
     }
 
     // extracts parameters until closing right parens is found
-    private func extractParameters() throws -> [Syntax] {
+    private func extractParameters() throws -> [TemplateSyntax] {
         try expect(.leftParenthesis)
 
-        var params: [Syntax] = []
+        var params: [TemplateSyntax] = []
         repeat {
             if params.count > 0 {
                 try expect(.comma)
@@ -569,7 +570,7 @@ public final class Parser {
     }
 
     // extracts a raw number
-    private func extractNumber() throws -> Constant {
+    private func extractNumber() throws -> TemplateConstant {
         let start = scanner.makeSourceStart()
 
         while let byte = scanner.peek(), byte.isDigit || byte == .period || byte == .hyphen {
@@ -578,7 +579,7 @@ public final class Parser {
 
         let bytes = scanner.data[start.rangeStart..<scanner.offset]
         guard let string = String(data: bytes, encoding: .utf8) else {
-            throw ParserError.expectationFailed(
+            throw LeafParserError.expectationFailed(
                 expected: "UTF8 string",
                 got: bytes.description,
                 source: scanner.makeSource(using: start)
@@ -586,7 +587,7 @@ public final class Parser {
         }
         if bytes.contains(.period) {
             guard let double = Double(string) else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "double",
                     got: string,
                     source: scanner.makeSource(using: start)
@@ -595,7 +596,7 @@ public final class Parser {
             return .double(double)
         } else {
             guard let int = Int(string) else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "integer",
                     got: string,
                     source: scanner.makeSource(using: start)
@@ -607,19 +608,19 @@ public final class Parser {
     }
 
     // extracts a single tag parameter. this is recursive.
-    private func extractParameter() throws -> Syntax? {
+    private func extractParameter() throws -> TemplateSyntax? {
         try extractSpaces()
         let start = scanner.makeSourceStart()
 
         guard let byte = scanner.peek() else {
-            throw ParserError.expectationFailed(
+            throw LeafParserError.expectationFailed(
                 expected: "bytes",
                 got: "EOF",
                 source: scanner.makeSource(using: start)
             )
         }
 
-        let kind: SyntaxKind
+        let kind: TemplateSyntaxType
 
         switch byte {
         case .rightParenthesis:
@@ -628,7 +629,7 @@ public final class Parser {
             try expect(.quote)
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
-            let parser = Parser(data: bytes)
+            let parser = LeafParser(data: bytes)
             let ast = try parser.parse()
             kind = .constant(
                 .string(ast)
@@ -636,13 +637,13 @@ public final class Parser {
         case .exclamation:
             try expect(.exclamation)
             guard let param = try extractParameter() else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "parameter",
                     got: "nil",
                     source: scanner.makeSource(using: start)
                 )
             }
-            kind = .not(param)
+            kind = .expression(.prefix(operator: .not, right: param))
         default:
             if byte.isDigit || byte == .hyphen {
                 // constant number
@@ -655,19 +656,19 @@ public final class Parser {
                 try scanner.requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = Syntax(kind: .raw(.empty), source: Source(line: 0, column: 0, range: 0..<1))
-                kind = try extractTag(indent: 0, previous: &syntax).kind
+                var syntax = TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1))
+                kind = try extractTag(indent: 0, previous: &syntax).type
             } else {
                 let id = try extractIdentifier()
-                kind = id.kind
+                kind = id.type
             }
         }
 
-        let syntax = Syntax(kind: kind, source: scanner.makeSource(using: start))
+        let syntax = TemplateSyntax(type: kind, source: scanner.makeSource(using: start))
 
         try extractSpaces()
 
-        let op: Operator?
+        let op: ExpressionInfixOperator?
 
         if let byte = scanner.peek() {
             switch byte {
@@ -715,7 +716,7 @@ public final class Parser {
             }
 
             guard let right = try extractParameter() else {
-                throw ParserError.expectationFailed(
+                throw LeafParserError.expectationFailed(
                     expected: "right parameter",
                     got: "nil",
                     source: scanner.makeSource(using: start)
@@ -723,13 +724,13 @@ public final class Parser {
             }
 
             // FIXME: allow for () grouping and proper PEMDAS
-            let exp: SyntaxKind = .expression(
-                type: op,
+            let exp: TemplateSyntaxType = .expression(.infix(
+                operator: op,
                 left: syntax,
                 right: right
-            )
+            ))
             let source = scanner.makeSource(using: start)
-            return Syntax(kind: exp, source: source)
+            return TemplateSyntax(type: exp, source: source)
         } else {
             return syntax
         }
@@ -748,11 +749,11 @@ public final class Parser {
         let start = scanner.makeSourceStart()
 
         guard let byte = scanner.peek() else {
-            throw ParserError.unexpectedEOF(source: scanner.makeSource(using: start))
+            throw LeafParserError.unexpectedEOF(source: scanner.makeSource(using: start))
         }
 
         guard byte == expect else {
-            throw ParserError.expectationFailed(
+            throw LeafParserError.expectationFailed(
                 expected: expect.string,
                 got: byte.string,
                 source: scanner.makeSource(using: start)
@@ -765,12 +766,12 @@ public final class Parser {
 
 // mark: file private scanner conveniences
 
-extension ByteScanner {
+extension TemplateByteScanner {
     @discardableResult
     func requirePop() throws -> Byte {
         let start = makeSourceStart()
         guard let byte = pop() else {
-            throw ParserError.unexpectedEOF(source: makeSource(using: start))
+            throw LeafParserError.unexpectedEOF(source: makeSource(using: start))
         }
         return byte
     }

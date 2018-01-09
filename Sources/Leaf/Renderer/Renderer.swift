@@ -41,7 +41,7 @@ public final class LeafRenderer {
     }
 
     // ASTs only need to be parsed once
-    private var _cachedASTs: [Int: [Syntax]] = [:]
+    private var _cachedASTs: [Int: [TemplateSyntax]] = [:]
 
     /// Renders the supplied template bytes into a view
     /// using the supplied context.
@@ -50,14 +50,14 @@ public final class LeafRenderer {
 
         let promise = Promise(Data.self)
 
-        let ast: [Syntax]
+        let ast: [TemplateSyntax]
         if let cached = _cachedASTs[hash] {
             ast = cached
         } else {
-            let parser = Parser(data: template)
+            let parser = LeafParser(data: template)
             do {
                 ast = try parser.parse()
-            } catch let error as ParserError {
+            } catch let error as LeafParserError {
                 promise.fail(RenderError(source: error.source, reason: error.reason, error: error))
                 return promise.future
             } catch {
@@ -71,7 +71,7 @@ public final class LeafRenderer {
         }
 
 
-        let serializer = Serializer(
+        let serializer = LeafSerializer(
             ast: ast,
             renderer: self,
             context: context,
@@ -80,7 +80,7 @@ public final class LeafRenderer {
         serializer.serialize().do { data in
             promise.complete(data)
         }.catch { err in
-            if let serr = err as? SerializerError {
+            if let serr = err as? LeafSerializerError {
                 promise.fail(RenderError(source: serr.source, reason: serr.reason, error: serr))
             } else if let terr = err as? TagError {
                 promise.fail(RenderError(source: terr.source, reason: terr.reason, error: terr))
@@ -166,7 +166,7 @@ extension LeafRenderer {
         do {
             guard let data = view.data(using: .utf8) else {
                 throw RenderError(
-                    source: Source(line: 0, column: 0, range: 0..<view.count),
+                    source: TemplateSource(line: 0, column: 0, range: 0..<view.count),
                     reason: "Could not convert view String to Data."
                 )
             }
@@ -175,7 +175,7 @@ extension LeafRenderer {
                 do {
                     guard let string = String(data: rendered, encoding: .utf8) else {
                         throw RenderError(
-                            source: Source(line: 0, column: 0, range: 0..<data.count),
+                            source: TemplateSource(line: 0, column: 0, range: 0..<data.count),
                             reason: "Could not convert rendered template to String."
                         )
                     }

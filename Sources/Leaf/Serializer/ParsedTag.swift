@@ -10,10 +10,10 @@ public struct ParsedTag {
     public let parameters: [LeafData]
 
     /// Optional tag body
-    public let body: [Syntax]?
+    public let body: [TemplateSyntax]?
 
-    /// Source code location of this parsed tag
-    public let source: Source
+    /// TemplateSource code location of this parsed tag
+    public let source: TemplateSource
 
     /// Queue to complete futures on.
     public let eventLoop: Worker
@@ -22,8 +22,8 @@ public struct ParsedTag {
     init(
         name: String,
         parameters: [LeafData],
-        body: [Syntax]?,
-        source: Source,
+        body: [TemplateSyntax]?,
+        source: TemplateSource,
         on worker: Worker
     ) {
         self.name = name
@@ -51,7 +51,7 @@ extension ParsedTag {
         }
     }
 
-    public func requireBody() throws -> [Syntax] {
+    public func requireBody() throws -> [TemplateSyntax] {
         guard let body = body else {
             throw error(reason: "Missing body")
         }

@@ -14,7 +14,7 @@ public final class Var: LeafTag {
                 throw parsed.error(reason: "Unsupported key type")
             }
 
-            let serializer = Serializer(
+            let serializer = LeafSerializer(
                 ast: body,
                 renderer: renderer,
                 context: context,

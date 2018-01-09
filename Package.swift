@@ -20,6 +20,6 @@ let package = Package(
     targets: [
         .target(name: "Leaf", dependencies: ["Async", "Bits", "CodableKit", "COperatingSystem", "Service", "TemplateKit"]),
         .testTarget(name: "LeafTests", dependencies: ["Leaf"]),
-        .target(name: "TemplateKit", dependencies: ["Async"]),
+        .target(name: "TemplateKit", dependencies: ["Async", "Bits"]),
     ]
 )

@@ -1,10 +1,10 @@
 public struct RenderError: Error {
-    let source: Source
+    let source: TemplateSource
     let reason: String
     let error: Error?
     var path: String?
 
-    init(source: Source, reason: String, error: Error? = nil, path: String? = nil) {
+    init(source: TemplateSource, reason: String, error: Error? = nil, path: String? = nil) {
         self.source = source
         self.reason = reason
         self.error = error

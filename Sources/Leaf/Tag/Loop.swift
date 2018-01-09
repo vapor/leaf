@@ -29,7 +29,7 @@ public final class Loop: LeafTag {
                 dict[key] = render.data
                 context.data = .dictionary(dict)
                 
-                let serializer = Serializer(
+                let serializer = LeafSerializer(
                     ast: body,
                     renderer: renderer,
                     context: context,
