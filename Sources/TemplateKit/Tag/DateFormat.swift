@@ -1,9 +1,9 @@
 import Async
 import Foundation
 
-public final class DateFormat: Leaf.LeafTag {
+public final class DateFormat: TemplateTag {
     public init() {}
-    public func render(parsed: ParsedTag, context: LeafContext, renderer: LeafRenderer) throws -> Future<LeafData?> {
+    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
         try parsed.requireParameterCount(2)
 
         let formatter = DateFormatter()

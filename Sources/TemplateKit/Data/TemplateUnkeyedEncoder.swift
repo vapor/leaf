@@ -1,16 +1,16 @@
 import CodableKit
 
-internal final class LeafUnkeyedEncoder: UnkeyedEncodingContainer {
+internal final class TemplateDataUnkeyedEncoder: UnkeyedEncodingContainer {
     var count: Int
     var codingPath: [CodingKey]
-    var partialData: PartialLeafData
+    var partialData: PartialTemplateData
 
     var index: CodingKey {
         defer { count += 1 }
         return BasicKey(count)
     }
 
-    init(codingPath: [CodingKey], partialData: PartialLeafData) {
+    init(codingPath: [CodingKey], partialData: PartialTemplateData) {
         self.codingPath = codingPath
         self.partialData = partialData
         self.count = 0
@@ -23,16 +23,16 @@ internal final class LeafUnkeyedEncoder: UnkeyedEncodingContainer {
     func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey>
         where NestedKey: CodingKey
     {
-        let container = LeafKeyedEncoder<NestedKey>(codingPath: codingPath + [index], partialData: partialData)
+        let container = TemplateDataKeyedEncoder<NestedKey>(codingPath: codingPath + [index], partialData: partialData)
         return KeyedEncodingContainer(container)
     }
 
     func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
-        return LeafUnkeyedEncoder(codingPath: codingPath + [index], partialData: partialData)
+        return TemplateDataUnkeyedEncoder(codingPath: codingPath + [index], partialData: partialData)
     }
 
     func superEncoder() -> Encoder {
-        return _LeafEncoder(partialData: partialData, codingPath: codingPath + [index])
+        return _TemplateDataEncoder(partialData: partialData, codingPath: codingPath + [index])
     }
 
     func encode(_ value: Bool) throws {
@@ -52,7 +52,7 @@ internal final class LeafUnkeyedEncoder: UnkeyedEncodingContainer {
     }
 
     func encode<T>(_ value: T) throws where T: Encodable {
-        let encoder = _LeafEncoder(partialData: partialData, codingPath: codingPath + [index])
+        let encoder = _TemplateDataEncoder(partialData: partialData, codingPath: codingPath + [index])
         try value.encode(to: encoder)
     }
 }

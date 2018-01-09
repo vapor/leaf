@@ -2,12 +2,12 @@ import Async
 import Dispatch
 
 /// Represents a tag that has been parsed.
-public struct ParsedTag {
+public struct TagSyntax {
     /// Name used for this tag.
     public let name: String
 
     /// Resolved parameters to this tag.
-    public let parameters: [LeafData]
+    public let parameters: [TemplateData]
 
     /// Optional tag body
     public let body: [TemplateSyntax]?
@@ -21,7 +21,7 @@ public struct ParsedTag {
     /// Creates a new parsed tag struct.
     init(
         name: String,
-        parameters: [LeafData],
+        parameters: [TemplateData],
         body: [TemplateSyntax]?,
         source: TemplateSource,
         on worker: Worker
@@ -35,10 +35,10 @@ public struct ParsedTag {
 }
 
 
-extension ParsedTag {
+extension TagSyntax {
     /// Create a general tag error.
-    public func error(reason: String) -> TagError {
-        return TagError(
+    public func error(reason: String) -> TemplateTagError {
+        return .init(
             tag: name,
             source: source,
             reason: reason
@@ -65,3 +65,11 @@ extension ParsedTag {
         }
     }
 }
+
+public struct TemplateTagError: Error {
+    public let tag: String
+    public let source: TemplateSource
+    public let reason: String
+}
+
+

@@ -1,10 +1,10 @@
 import Async
 import Foundation
 
-public final class Loop: LeafTag {
+public final class Loop: TemplateTag {
     public init() {}
-    public func render(parsed: ParsedTag, context: LeafContext, renderer: LeafRenderer) throws -> Future<LeafData?> {
-        let promise = Promise(LeafData?.self)
+    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+        let promise = Promise(TemplateData.self)
 
         let body = try parsed.requireBody()
         try parsed.requireParameterCount(2)
@@ -19,7 +19,7 @@ public final class Loop: LeafTag {
             let prevKey = dict[key]
             
             func render(_ render: Render) {
-                let loop = LeafData.dictionary([
+                let loop = TemplateData.dictionary([
                     "index": .int(render.index),
                     "isFirst": .bool(render.isFirst),
                     "isLast": .bool(render.isLast)
@@ -102,7 +102,7 @@ public final class Loop: LeafTag {
                 upstream?.request()
             }
         } else {
-            promise.complete(nil)
+            promise.complete(.null)
         }
 
         return promise.future
@@ -111,7 +111,7 @@ public final class Loop: LeafTag {
 
 fileprivate struct Render {
     var index: Int
-    var data: LeafData
+    var data: TemplateData
     var isLast = false
     let promise = Promise<Data>()
     
@@ -119,7 +119,7 @@ fileprivate struct Render {
         return index == 0
     }
     
-    init(index: Int, data: LeafData) {
+    init(index: Int, data: TemplateData) {
         self.index = index
         self.data = data
     }

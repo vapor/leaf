@@ -1,12 +1,12 @@
-internal final class LeafKeyedEncoder<K>: KeyedEncodingContainerProtocol
+internal final class TemplateDataKeyedEncoder<K>: KeyedEncodingContainerProtocol
     where K: CodingKey
 {
     typealias Key = K
 
     var codingPath: [CodingKey]
-    var partialData: PartialLeafData
+    var partialData: PartialTemplateData
 
-    init(codingPath: [CodingKey], partialData: PartialLeafData) {
+    init(codingPath: [CodingKey], partialData: PartialTemplateData) {
         self.codingPath = codingPath
         self.partialData = partialData
     }
@@ -22,19 +22,19 @@ internal final class LeafKeyedEncoder<K>: KeyedEncodingContainerProtocol
 
     func nestedContainer<NestedKey>(
         keyedBy keyType: NestedKey.Type, forKey key: K
-    ) -> KeyedEncodingContainer<NestedKey>
+        ) -> KeyedEncodingContainer<NestedKey>
         where NestedKey : CodingKey
     {
-        let container = LeafKeyedEncoder<NestedKey>(codingPath: codingPath + [key], partialData: partialData)
+        let container = TemplateDataKeyedEncoder<NestedKey>(codingPath: codingPath + [key], partialData: partialData)
         return KeyedEncodingContainer(container)
     }
 
     func nestedUnkeyedContainer(forKey key: K) -> UnkeyedEncodingContainer {
-        return LeafUnkeyedEncoder(codingPath: codingPath + [key], partialData: partialData)
+        return TemplateDataUnkeyedEncoder(codingPath: codingPath + [key], partialData: partialData)
     }
 
     func superEncoder(forKey key: K) -> Encoder {
-        return _LeafEncoder(partialData: partialData, codingPath: codingPath + [key])
+        return _TemplateDataEncoder(partialData: partialData, codingPath: codingPath + [key])
     }
 
     func encode(_ value: Bool, forKey key: K) throws {
@@ -56,9 +56,10 @@ internal final class LeafKeyedEncoder<K>: KeyedEncodingContainerProtocol
     func encode<T>(_ value: T, forKey key: K) throws
         where T: Encodable
     {
-        let encoder = _LeafEncoder(partialData: partialData, codingPath: codingPath + [key])
+        let encoder = _TemplateDataEncoder(partialData: partialData, codingPath: codingPath + [key])
         try value.encode(to: encoder)
     }
 }
+
 
 

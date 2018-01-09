@@ -2,57 +2,35 @@ import Async
 import Dispatch
 import Foundation
 
-/// A reference wrapper around leaf data.
-public final class LeafContext {
-    /// The wrapped data
-    public var data: LeafData
-
-    /// Create a new LeafContext
-    public init(data: LeafData) {
-        self.data = data
-    }
-}
-
 /// Data structure for passing data
 /// into Leaf templates as a context.
-public enum LeafData {
+public enum TemplateData {
     case bool(Bool)
     case string(String)
     case int(Int)
     case double(Double)
     case data(Data)
-    case dictionary([String: LeafData])
-    case array([LeafData])
-    case future(Future<LeafData>)
-    case stream(AnyOutputStream<LeafData>)
-    public typealias Lazy = () -> (LeafData)
+    case dictionary([String: TemplateData])
+    case array([TemplateData])
+    case future(Future<TemplateData>)
+    case stream(AnyOutputStream<TemplateData>)
+    public typealias Lazy = () -> (TemplateData)
     case lazy(Lazy)
     case null
-    
-    public static func codableStream<O : Async.OutputStream>(_ stream: O) -> LeafData where O.Output == Encodable {
-        return .stream(
-            AnyOutputStream(
-                stream.map(to: LeafData.self) { encodable in
-                    return try LeafEncoder().encode(encodable)
-                }
-            )
-        )
-    }
-    
-    public static func codableStream<O : Async.OutputStream>(_ stream: O) -> LeafData where O.Output: Encodable {
-        return .stream(
-            AnyOutputStream(
-                stream.map(to: LeafData.self) { encodable in
-                    return try LeafEncoder().encode(encodable)
-                }
-            )
-        )
+
+    public static func convert<O>(stream: O) -> TemplateData
+        where O: Async.OutputStream, O.Output: Encodable
+    {
+        let dataStream = stream.map(to: TemplateData.self) { encodable in
+            return try TemplateDataEncoder().encode(encodable)
+        }
+        return .stream(AnyOutputStream(dataStream))
     }
 }
 
 // MARK: Polymorphic
 
-extension LeafData {
+extension TemplateData {
     /// Attempts to convert to string or returns nil.
     public var string: String? {
         switch self {
@@ -136,7 +114,7 @@ extension LeafData {
     }
 
     /// Returns dictionary if context contains one.
-    public var dictionary: [String: LeafData]? {
+    public var dictionary: [String: TemplateData]? {
         switch self {
         case .dictionary(let d):
             return d
@@ -146,7 +124,7 @@ extension LeafData {
     }
 
     /// Returns array if context contains one.
-    public var array: [LeafData]? {
+    public var array: [TemplateData]? {
         switch self {
         case .array(let a):
             return a
@@ -182,16 +160,19 @@ extension LeafData {
 
 // MARK: Equatable
 
-extension LeafData: Equatable {
-    public static func ==(lhs: LeafData, rhs: LeafData) -> Bool {
+extension TemplateData: Equatable {
+    public static func ==(lhs: TemplateData, rhs: TemplateData) -> Bool {
         switch (lhs, rhs) {
-        case (.array(let a), .array(let b)):
-            return a == b
-        case (.dictionary(let a), .dictionary(let b)):
-            return a == b
-        default:
-            return lhs.string == rhs.string
+        case (.array(let a), .array(let b)): return a == b
+        case (.dictionary(let a), .dictionary(let b)): return a == b
+        case (.bool(let a), .bool(let b)): return a == b
+        case (.string(let a), .string(let b)): return a == b
+        case (.int(let a), .int(let b)): return a == b
+        case (.double(let a), .double(let b)): return a == b
+        case (.data(let a), .data(let b)): return a == b
+        case (.double(let a), .double(let b)): return a == b
+        case (.null, .null): return true
+        default: return false
         }
     }
 }
-

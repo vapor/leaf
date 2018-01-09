@@ -1,10 +1,10 @@
 import Async
 
-public final class Var: LeafTag {
+public final class Var: TemplateTag {
     public init() {}
 
-    public func render(parsed: ParsedTag, context: LeafContext, renderer: LeafRenderer) throws -> Future<LeafData?> {
-        let promise = Promise(LeafData?.self)
+    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+        let promise = Promise(TemplateData.self)
 
         var dict = context.data.dictionary ?? [:]
         switch parsed.parameters.count {
@@ -23,7 +23,7 @@ public final class Var: LeafTag {
             serializer.serialize().do { rendered in
                 dict[key] = .data(rendered)
                 context.data = .dictionary(dict)
-                promise.complete(nil)
+                promise.complete(.null)
             }.catch { error in
                 promise.fail(error)
             }
@@ -33,7 +33,7 @@ public final class Var: LeafTag {
             }
             dict[key] = parsed.parameters[1]
             context.data = .dictionary(dict)
-            promise.complete(nil)
+            promise.complete(.null)
         default:
             try parsed.requireParameterCount(2)
         }

@@ -1,10 +1,10 @@
 import Async
 
-public final class Count: Leaf.LeafTag {
+public final class Count: TemplateTag {
     init() {}
     
-    public func render(parsed: ParsedTag, context: LeafContext, renderer: LeafRenderer) throws -> Future<LeafData?> {
-        let promise = Promise(LeafData?.self)
+    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+        let promise = Promise(TemplateData.self)
         try parsed.requireParameterCount(1)
         
         switch parsed.parameters[0] {

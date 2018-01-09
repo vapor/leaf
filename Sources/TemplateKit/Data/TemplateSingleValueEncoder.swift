@@ -1,8 +1,8 @@
-internal final class LeafSingleValueEncoder: SingleValueEncodingContainer {
+internal final class TemplateDataSingleValueEncoder: SingleValueEncodingContainer {
     var codingPath: [CodingKey]
-    var partialData: PartialLeafData
+    var partialData: PartialTemplateData
 
-    init(codingPath: [CodingKey], partialData: PartialLeafData) {
+    init(codingPath: [CodingKey], partialData: PartialTemplateData) {
         self.codingPath = codingPath
         self.partialData = partialData
     }
@@ -28,7 +28,7 @@ internal final class LeafSingleValueEncoder: SingleValueEncodingContainer {
     }
 
     func encode<T>(_ value: T) throws where T: Encodable {
-        let encoder = _LeafEncoder(partialData: partialData, codingPath: codingPath)
+        let encoder = _TemplateDataEncoder(partialData: partialData, codingPath: codingPath)
         try value.encode(to: encoder)
     }
 }

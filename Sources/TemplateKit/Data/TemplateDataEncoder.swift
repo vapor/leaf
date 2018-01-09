@@ -2,29 +2,29 @@ import Async
 import CodableKit
 
 /// Converts encodable objects to LeafData.
-public final class LeafEncoder {
+public final class TemplateDataEncoder {
     /// Create a new LeafEncoder.
     public init() {}
 
     /// Encode an encodable item to leaf data.
-    public func encode(_ encodable: Encodable) throws -> LeafData {
-        let encoder = _LeafEncoder()
+    public func encode(_ encodable: Encodable) throws -> TemplateData {
+        let encoder = _TemplateDataEncoder()
         try encodable.encode(to: encoder)
-        return encoder.partialData.context
+        return encoder.partialData.data
     }
 }
 
 /// Internal leaf data encoder.
-internal final class _LeafEncoder: Encoder {
+internal final class _TemplateDataEncoder: Encoder {
     var codingPath: [CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
 
-    var partialData: PartialLeafData
-    var context: LeafData {
-        return partialData.context
+    var partialData: PartialTemplateData
+    var context: TemplateData {
+        return partialData.data
     }
 
-    init(partialData: PartialLeafData = .init(), codingPath: [CodingKey] = []) {
+    init(partialData: PartialTemplateData = .init(), codingPath: [CodingKey] = []) {
         self.partialData = partialData
         self.codingPath = codingPath
         self.userInfo = [:]
@@ -32,7 +32,7 @@ internal final class _LeafEncoder: Encoder {
 
     /// See Encoder.container
     func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> {
-        let keyed = LeafKeyedEncoder<Key>(
+        let keyed = TemplateDataKeyedEncoder<Key>(
             codingPath: codingPath,
             partialData: partialData
         )
@@ -41,7 +41,7 @@ internal final class _LeafEncoder: Encoder {
 
     /// See Encoder.unkeyedContainer
     func unkeyedContainer() -> UnkeyedEncodingContainer {
-        return LeafUnkeyedEncoder(
+        return TemplateDataUnkeyedEncoder(
             codingPath: codingPath,
             partialData: partialData
         )
@@ -49,38 +49,43 @@ internal final class _LeafEncoder: Encoder {
 
     /// See Encoder.singleValueContainer
     func singleValueContainer() -> SingleValueEncodingContainer {
-        return LeafSingleValueEncoder(
+        return TemplateDataSingleValueEncoder(
             codingPath: codingPath,
             partialData: partialData
         )
     }
 }
 
-extension _LeafEncoder: StreamEncoder {
+/// MARK: Stream
+
+extension _TemplateDataEncoder: StreamEncoder {
     func encodeStream<O>(_ stream: O) throws where O : OutputStream, O.Output == Encodable {
-        let stream = stream.map(to: LeafData.self) { encodable in
-            return try LeafEncoder().encode(encodable)
+        let stream = stream.map(to: TemplateData.self) { encodable in
+            return try TemplateDataEncoder().encode(encodable)
         }
-        
+
         self.partialData.set(to: .stream(AnyOutputStream(stream)), at: codingPath)
     }
 }
 
-extension _LeafEncoder: FutureEncoder {
+/// MARK: Future
+
+extension _TemplateDataEncoder: FutureEncoder {
     func encodeFuture<E>(_ future: Future<E>) throws {
-        let future = future.map(to: LeafData.self) { any in
+        let future = future.map(to: TemplateData.self) { any in
             guard let encodable = any as? Encodable else {
-                throw LeafError(identifier: "not-encodable", reason: "The future found in data provided to Leaf's for rendering was not Encodable")
+                fatalError("The expectation (\(E.self)) provided to template encoder for rendering was not Encodable")
             }
 
-            let encoder = _LeafEncoder(
+            let encoder = _TemplateDataEncoder(
                 partialData: self.partialData,
                 codingPath: self.codingPath
             )
             try encodable.encode(to: encoder)
             return encoder.context
         }
-        
+
         self.partialData.set(to: .future(future), at: codingPath)
     }
 }
+
