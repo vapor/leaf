@@ -2,9 +2,10 @@ import Async
 import Bits
 import Dispatch
 import Foundation
+import Service
 
 /// Renders Leaf templates using the Leaf parser and serializer.
-public final class LeafRenderer {
+public final class LeafRenderer: Service {
     /// The tags available to this renderer.
     public let tags: [String: LeafTag]
 

@@ -4,7 +4,7 @@ import Foundation
 import Service
 
 /// Used to configure Leaf renderer.
-public struct LeafConfig {
+public struct LeafConfig: Service {
     let tags: [String: LeafTag]
     let viewsDir: String
     let fileFactory: LeafRenderer.FileFactory
