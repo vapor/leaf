@@ -31,7 +31,7 @@ public final class LeafRenderer: TemplateRenderer, Service {
         config: LeafConfig,
         on worker: Worker
     ) {
-        self.tags = config.tags
+        self.tags = config.tags.storage
         astCache = config.shouldCache ? .init() : nil
         self.eventLoop = worker.eventLoop
         self.relativeDirectory = config.viewsDir.finished(with: "/")

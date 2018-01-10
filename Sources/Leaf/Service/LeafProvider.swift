@@ -22,11 +22,15 @@ public final class LeafProvider: Provider {
 
         services.register { container -> LeafConfig in
             let dir = try container.make(DirectoryConfig.self, for: LeafRenderer.self)
-            return LeafConfig(
-                tags: defaultTags,
+            return try LeafConfig(
+                tags: container.make(for: LeafConfig.self),
                 viewsDir: dir.workDir + "Resources/Views",
                 shouldCache: container.environment != .development
             )
+        }
+
+        services.register { container -> LeafTagConfig in
+            return LeafTagConfig.default()
         }
     }
 
