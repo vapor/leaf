@@ -690,7 +690,10 @@ extension TemplateByteScanner {
                 try requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = TemplateSyntax(type: .raw(TemplateRaw(data: .empty)), source: makeSource(using: makeSourceStart()))
+                var syntax = TemplateSyntax(
+                    type: .raw(TemplateRaw(data: .empty)),
+                    source: makeSource(using: makeSourceStart())
+                )
                 kind = try extractTag(indent: 0, previous: &syntax).type
             } else {
                 let id = try extractIdentifier()
