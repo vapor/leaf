@@ -340,6 +340,28 @@ class LeafTests: XCTestCase {
         let expected = "Hello, Tanner!"
         let context = TemplateData.dictionary(["name": .string("Tanner")])
         try XCTAssertEqual(renderer.testRender(template, context), expected)
+    }
+
+    func testEmptyForLoop() throws {
+        let template = """
+        #for(category in categories) {
+            <a class=“dropdown-item” href=“#”>#(category.name)</a>
+        }
+        """
+        let expected = """
+        """
+
+        struct Category: Encodable {
+            var name: String
+        }
+
+        struct Context: Encodable {
+            var categories: [Category]
+        }
+
+        let context = Context(categories: [])
+        let data = try TemplateDataEncoder().encode(context)
+        try XCTAssertEqual(renderer.testRender(template, data), expected)
 
     }
 
@@ -367,6 +389,7 @@ class LeafTests: XCTestCase {
         ("testNestedSet", testNestedSet),
         ("testDateFormat", testDateFormat),
         ("testStringIf", testStringIf),
+        ("testEmptyForLoop", testEmptyForLoop),
     ]
 }
 
