@@ -2,7 +2,6 @@ import Bits
 
 /// Leaf specific byte helpers
 extension Byte {
-
     var isAllowedInIdentifier: Bool {
         return isAlphanumeric || self == .hyphen || self == .underscore || self == .colon || self == .period
     }

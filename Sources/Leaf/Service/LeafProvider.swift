@@ -2,23 +2,7 @@ import Async
 import Dispatch
 import Foundation
 import Service
-
-/// Used to configure Leaf renderer.
-public struct LeafConfig: Service {
-    let tags: [String: LeafTag]
-    let viewsDir: String
-    let fileFactory: LeafRenderer.FileFactory
-
-    public init(
-        tags: [String: LeafTag] = defaultTags,
-        viewsDir: String = "/",
-        fileFactory: @escaping LeafRenderer.FileFactory = File.init
-    ) {
-        self.tags = tags
-        self.viewsDir = viewsDir
-        self.fileFactory = fileFactory
-    }
-}
+import TemplateKit
 
 public final class LeafProvider: Provider {
     /// See Service.Provider.repositoryName
@@ -28,18 +12,25 @@ public final class LeafProvider: Provider {
 
     /// See Service.Provider.Register
     public func register(_ services: inout Services) throws {
-        services.register(ViewRenderer.self) { container -> LeafRenderer in
+        services.register(TemplateRenderer.self) { container -> LeafRenderer in
             let config = try container.make(LeafConfig.self, for: LeafRenderer.self)
             return LeafRenderer(
                 config: config,
-                on: container,
-                caching: container.environment != .development
+                on: container
             )
         }
 
         services.register { container -> LeafConfig in
             let dir = try container.make(DirectoryConfig.self, for: LeafRenderer.self)
-            return LeafConfig(viewsDir: dir.workDir + "Resources/Views")
+            return try LeafConfig(
+                tags: container.make(for: LeafConfig.self),
+                viewsDir: dir.workDir + "Resources/Views",
+                shouldCache: container.environment != .development
+            )
+        }
+
+        services.register { container -> LeafTagConfig in
+            return LeafTagConfig.default()
         }
     }
 
