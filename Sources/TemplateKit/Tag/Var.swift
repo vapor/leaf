@@ -1,43 +1,34 @@
 import Async
 
+/// Sets data to the tag context.
 public final class Var: TagRenderer {
     public init() {}
 
-    public func render(parsed: TagContext, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
-        let promise = Promise(TemplateData.self)
-
-        var dict = context.data.dictionary ?? [:]
-        switch parsed.parameters.count {
+    /// See TagRenderer.render
+    public func render(tag: TagContext) throws -> Future<TemplateData> {
+        var dict = tag.context.data.dictionary ?? [:]
+        switch tag.parameters.count {
         case 1:
-            let body = try parsed.requireBody()
-            guard let key = parsed.parameters[0].string else {
-                throw parsed.error(reason: "Unsupported key type")
+            let body = try tag.requireBody()
+            guard let key = tag.parameters[0].string else {
+                throw tag.error(reason: "Unsupported key type")
             }
 
-            let serializer = LeafSerializer(
-                ast: body,
-                renderer: renderer,
-                context: context,
-                on: parsed.eventLoop
-            )
-            serializer.serialize().do { rendered in
-                dict[key] = .data(rendered)
-                context.data = .dictionary(dict)
-                promise.complete(.null)
-            }.catch { error in
-                promise.fail(error)
+            return tag.serializer.serialize(ast: body).map(to: TemplateData.self) { view in
+                dict[key] = .data(view.data)
+                tag.context.data = .dictionary(dict)
+                return .null
             }
         case 2:
-            guard let key = parsed.parameters[0].string else {
-                throw parsed.error(reason: "Unsupported key type")
+            guard let key = tag.parameters[0].string else {
+                throw tag.error(reason: "Unsupported key type")
             }
-            dict[key] = parsed.parameters[1]
-            context.data = .dictionary(dict)
-            promise.complete(.null)
+            dict[key] = tag.parameters[1]
+            tag.context.data = .dictionary(dict)
+            return Future(.null)
         default:
-            try parsed.requireParameterCount(2)
+            try tag.requireParameterCount(2)
+            return Future(.null)
         }
-
-        return promise.future
     }
 }

@@ -10,36 +10,20 @@ public struct TemplateSyntax {
     }
 }
 
-public struct TemplateTag {
-    public var name: String
-    public var parameters: [TemplateSyntax]
-    public var body: [TemplateSyntax]?
-
-    public init(name: String, parameters: [TemplateSyntax], body: [TemplateSyntax]?) {
-        self.name = name
-        self.parameters = parameters
-        self.body = body
-    }
+public struct TemplateEmbed {
+    var path: String
 }
 
-public struct TemplateIdentifier {
-    public var path: [CodingKey]
-    public init(path: [CodingKey]) {
-        self.path = path
-    }
-}
-
-public struct TemlateRaw {
-    public var data: Data
-
-    public init(data: Data) {
-        self.data = data
-    }
+public struct TemplateConditional {
+    var ifTag: TemplateTag
+    var elseTag: TemplateTag?
 }
 
 public indirect enum TemplateSyntaxType {
-    case raw(TemlateRaw)
+    case raw(TemplateRaw)
     case tag(TemplateTag)
+    case embed(TemplateEmbed)
+    case conditional(TemplateConditional)
     case identifier(TemplateIdentifier)
     case constant(TemplateConstant)
     case expression(TemplateExpression)
@@ -51,17 +35,13 @@ extension TemplateSyntax: CustomStringConvertible {
         switch type {
         case .raw(let source):
             let string = String(data: source.data, encoding: .utf8) ?? "n/a"
-            return "Raw: `\(string)`"
-        case .tag(let tag):
-            let params = tag.parameters.map { $0.description }
-            let hasBody = tag.body != nil ? true : false
-            return "Tag: \(tag.name)(\(params.joined(separator: ", "))) Body: \(hasBody)"
-        case .identifier(let name):
-            return "`\(name.path)`"
-        case .expression(let expr):
-            return "Expr: (\(expr))"
-        case .constant(let const):
-            return "c:\(const)"
+            return "Raw: \(string)"
+        case .tag(let tag): return "Tag: \(tag)"
+        case .identifier(let name): return "Identifier: \(name.path)"
+        case .expression(let expr): return "Expression: (\(expr))"
+        case .constant(let const): return "Contstant: \(const)"
+        case .embed(let embed): return "Embed: \(embed.path)"
+        case .conditional(let cond): return "Conditional: \(cond.ifTag) : \(cond.elseTag?.description ?? "n/a")"
         }
     }
 }
@@ -74,6 +54,8 @@ extension TemplateSyntaxType  {
         case .identifier: return "identifier"
         case .raw: return "raw"
         case .tag: return "tag"
+        case .embed: return "embed"
+        case .conditional: return "conditional"
         }
     }
 }

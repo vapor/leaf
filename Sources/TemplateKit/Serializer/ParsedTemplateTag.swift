@@ -21,6 +21,9 @@ public struct TagContext {
     /// The template data context
     public let context: TemplateContext
 
+    /// The serializer that created this context
+    public let serializer: TemplateSerializer
+
     /// Creates a new parsed tag struct.
     init(
         name: String,
@@ -28,6 +31,7 @@ public struct TagContext {
         body: [TemplateSyntax]?,
         source: TemplateSource,
         context: TemplateContext,
+        serializer: TemplateSerializer,
         on worker: Worker
     ) {
         self.name = name
@@ -35,6 +39,7 @@ public struct TagContext {
         self.body = body
         self.source = source
         self.context = context
+        self.serializer = serializer
         self.eventLoop = worker.eventLoop
     }
 }

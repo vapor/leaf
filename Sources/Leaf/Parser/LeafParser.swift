@@ -5,7 +5,7 @@ import TemplateKit
 /// Parses leaf templates into a cacheable AST
 /// that can be later combined with Leaf Data to
 /// serialized a View.
-public final class LeafParser {
+public final class LeafParser: TemplateParser {
     let scanner: TemplateByteScanner
 
     /// Creates a new Leaf parser with the supplied bytes.
