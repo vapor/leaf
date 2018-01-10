@@ -4,23 +4,6 @@ import Foundation
 import Service
 import TemplateKit
 
-/// Used to configure Leaf renderer.
-public struct LeafConfig: Service {
-    let tags: [String: TagRenderer]
-    let viewsDir: String
-    let shouldCache: Bool
-
-    public init(
-        tags: [String: TagRenderer],
-        viewsDir: String,
-        shouldCache: Bool
-    ) {
-        self.tags = tags
-        self.viewsDir = viewsDir
-        self.shouldCache = shouldCache
-    }
-}
-
 public final class LeafProvider: Provider {
     /// See Service.Provider.repositoryName
     public static let repositoryName = "leaf"
