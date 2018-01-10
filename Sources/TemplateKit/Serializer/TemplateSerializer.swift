@@ -149,26 +149,63 @@ public final class TemplateSerializer {
                 throw TemplateError.serialize(reason: "Could not convert iterator key to string.", source: source)
             }
 
-            guard let data = data.array else {
-                throw TemplateError.serialize(reason: "Could not convert iterator data to array.", source: source)
-            }
-
-            return data.enumerated().map { (i, item) -> Future<View> in
+            func renderIteration(item: TemplateData, index: Int) -> Future<View> {
                 var copy = self.context.data.dictionary ?? [:]
                 copy[key] = item
-                copy["index"] = .int(i)
+                copy["index"] = .int(index)
                 let serializer = TemplateSerializer(
                     renderer: self.renderer,
                     context: .init(data: .dictionary(copy)),
                     on: self.eventLoop
                 )
                 return serializer.serialize(ast: iterator.body)
-            }.map(to: TemplateData.self) { views in
-                var data = Data()
-                for view in views {
-                    data += view.data
+            }
+
+            func merge(views: [Future<View>]) -> Future<TemplateData> {
+                return views.map(to: TemplateData.self) { views in
+                    var data = Data()
+                    for view in views {
+                        data += view.data
+                    }
+                    return .data(data)
                 }
-                return .data(data)
+            }
+
+            switch data {
+            case .stream(let stream):
+                let promise = Promise(TemplateData.self)
+
+                /// handle streaming bodies
+                var upstream: ConnectionContext?
+
+                var views: [Future<View>] = []
+                var index = 0
+
+                stream.drain { u in
+                    upstream = u
+                }.output { item in
+                    let view = renderIteration(item: item, index: index)
+                    index += 1
+                    views.append(view)
+                    upstream?.request()
+                }.catch { error in
+                    promise.fail(error)
+                }.finally {
+                    merge(views: views).chain(to: promise)
+                }
+
+                upstream?.request()
+                return promise.future
+            default:
+                guard let data = data.array else {
+                    throw TemplateError.serialize(reason: "Could not convert iterator data to array.", source: source)
+                }
+
+                let views = data.enumerated().map { (i, item) -> Future<View> in
+                    renderIteration(item: item, index: i)
+                }
+
+                return merge(views: views)
             }
         }
     }

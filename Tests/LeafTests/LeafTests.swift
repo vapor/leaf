@@ -326,11 +326,7 @@ class LeafTests: XCTestCase {
 //    }
 
     func testReactiveStreams() throws {
-        let template = """
-        #for(int in integers) {
-            #(int),
-        }
-        """
+        let template = "#for(int in integers) {#(int),}"
         
         let expected = """
         1,2,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,1,
@@ -341,7 +337,7 @@ class LeafTests: XCTestCase {
         let data = TemplateData.dictionary([
             "integers": TemplateData.convert(stream: emitter)
         ])
-        let render = try renderer.testRender(template, data)
+        let render = renderer.render(template: template.data(using: .utf8)!, data)
         
         for i in 1..<10 {
             emitter.emit(i)
@@ -353,10 +349,8 @@ class LeafTests: XCTestCase {
         
         emitter.close()
         
-        let rendered = render
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: "\n", with: "")
-
+        let rendered = try render.map(to: String.self) { String(data: $0.data, encoding: .utf8)! }
+            .blockingAwait()
         XCTAssertEqual(rendered, expected)
     }
 
