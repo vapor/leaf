@@ -85,39 +85,6 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(template), "Hello, world!\n")
     }
 
-//    func testError() throws {
-//        do {
-//            let template = "#if() { }"
-//            _ = try renderer.testRender(template, .null)
-//        } catch {
-//            print("\(error)")
-//        }
-//
-//        do {
-//            let template = """
-//            Fine
-//            ##bad()
-//            Good
-//            """
-//            _ = try renderer.testRender(template, .null)
-//        } catch {
-//            print("\(error)")
-//        }
-//
-//        renderer.testRender("##()", .string"").do { data in
-//            print(data)
-//            // FIXME: check for error
-//        }.catch { error in
-//            print("\(error)")
-//        }
-//
-//        do {
-//            _ = try renderer.testRender("#if(1 == /)", .null)
-//        } catch {
-//            print("\(error)")
-//        }
-//    }
-
     func testForSugar() throws {
         let template = """
         <p>
@@ -298,33 +265,6 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(template, context), expected)
     }
 
-//    func testAsyncExport() throws {
-//        let preloaded = PreloadedFiles()
-//
-//        preloaded.files["/template.leaf"] = """
-//        Content: #get(content)
-//        """.data(using: .utf8)!
-//
-//        preloaded.files["/nested.leaf"] = """
-//        Nested!
-//        """.data(using: .utf8)!
-//
-//        let template = """
-//        #set("content") {<p>#embed("nested")</p>}
-//        #embed("template")
-//        """
-//
-//        let expected = """
-//        Content: <p>Nested!</p>
-//        """
-//
-//        let config = LeafConfig { _ in
-//            return preloaded
-//        }
-//        let renderer = LeafRenderer(config: config, on: queue)
-//        try XCTAssertEqual(renderer.testRender(template, .null).blockingAwait(), expected)
-//    }
-
     func testReactiveStreams() throws {
         let template = "#for(int in integers) {#(int),}"
         
@@ -353,30 +293,6 @@ class LeafTests: XCTestCase {
             .blockingAwait()
         XCTAssertEqual(rendered, expected)
     }
-
-//    func testService() throws {
-//        var services = Services()
-//        try services.register(LeafProvider())
-//
-//        services.register { container in
-//            return LeafConfig(tags: defaultTags, viewsDir: "/") { queue in
-//                TestFiles()
-//            }
-//        }
-//
-//        let container = BasicContainer(config: Config(), environment: .development, services: services, on: queue)
-//        let view = try container.make(TemplateRenderer.self, for: XCTest.self)
-//
-//        struct TestContext: Encodable {
-//            var name = "test"
-//        }
-//        let rendered = view.testRender("foo", TestContext())
-//        let expected = """
-//        Test file name: "/foo.leaf"
-//        """
-//
-//        XCTAssertEqual(String(data: rendered.data, encoding: .utf8), expected)
-//    }
 
     func testCount() throws {
         let template = """
@@ -439,8 +355,6 @@ class LeafTests: XCTestCase {
         ("testEscapeExtraneousBody", testEscapeExtraneousBody),
         ("testEscapeTag", testEscapeTag),
         ("testIndentationCorrection", testIndentationCorrection),
-//        ("testAsyncExport", testAsyncExport),
-//        ("testService", testService),
         ("testCount", testCount),
         ("testNestedSet", testNestedSet),
     ]
