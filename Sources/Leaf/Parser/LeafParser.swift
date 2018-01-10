@@ -12,9 +12,7 @@ public final class LeafParser: TemplateParser {
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse(template: Data, file: String) throws -> [TemplateSyntax] {
-        let scanner = TemplateByteScanner(data: template, file: file)
-
+    public func parse(scanner: TemplateByteScanner) throws -> [TemplateSyntax] {
         /// create empty base syntax element, to simplify logic
         let base = TemplateSyntax(
             type: .raw(TemplateRaw(data: .empty)),
@@ -604,7 +602,7 @@ extension TemplateByteScanner {
             try expect(.quote)
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
-            let ast = try LeafParser().parse(template: bytes, file: file)
+            let ast = try LeafParser().parse(scanner: TemplateByteScanner(data: bytes, file: file))
             kind = .constant(
                 .string(ast)
             )
