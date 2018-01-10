@@ -1,4 +1,4 @@
-/// A reference type wrapper around LeafData for passing
+/// A reference type wrapper around TemplateData for passing
 /// between multiple encoders.
 internal final class PartialTemplateData {
     /// The in-progress leaf data.

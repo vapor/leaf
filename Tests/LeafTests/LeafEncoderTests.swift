@@ -4,20 +4,20 @@ import Leaf
 import Service
 import XCTest
 
-class LeafEncoderTests: XCTestCase {
+class TemplateDataEncoderTests: XCTestCase {
     func testString() {
         let data = "hello"
-        try XCTAssertEqual(LeafEncoder().encode(data), .string(data))
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .string(data))
     }
 
     func testDouble() {
         let data: Double = 3.14
-        try XCTAssertEqual(LeafEncoder().encode(data), .double(data))
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .double(data))
     }
 
     func testDictionary() {
         let data: [String: String] = ["string": "hello", "foo": "3.14"]
-        try XCTAssertEqual(LeafEncoder().encode(data), .dictionary([
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .dictionary([
             "string": .string("hello"),
             "foo": .string("3.14")
         ]))
@@ -28,7 +28,7 @@ class LeafEncoderTests: XCTestCase {
             "a": ["string": "hello", "foo": "3.14"],
             "b": ["greeting": "hey", "foo": "3.15"]
         ]
-        try XCTAssertEqual(LeafEncoder().encode(data), .dictionary([
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .dictionary([
         "a": .dictionary([
             "string": .string("hello"),
             "foo": .string("3.14")
@@ -42,21 +42,21 @@ class LeafEncoderTests: XCTestCase {
 
     func testArray() {
         let data: [String] = ["string", "hello", "foo", "3.14"]
-        try XCTAssertEqual(LeafEncoder().encode(data), .array([
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .array([
             .string("string"), .string("hello"), .string("foo"), .string("3.14")
         ]))
     }
 
     func testNestedArray() {
         let data: [[String]] = [["string"], ["hello", "foo"], ["3.14"]]
-        try XCTAssertEqual(LeafEncoder().encode(data), .array([
+        try XCTAssertEqual(TemplateDataEncoder().encode(data), .array([
             .array([.string("string")]), .array([.string("hello"), .string("foo")]), .array([.string("3.14")])
         ]))
     }
 
     func testEncodable() {
         struct Hello: Encodable { var hello = "hello" }
-        try XCTAssertEqual(LeafEncoder().encode(Hello()), .dictionary([
+        try XCTAssertEqual(TemplateDataEncoder().encode(Hello()), .dictionary([
             "hello": .string("hello"),
         ]))
     }
@@ -71,7 +71,7 @@ class LeafEncoderTests: XCTestCase {
             var fib: [Int] = [0, 1, 1, 2, 3, 5, 8, 13]
         }
 
-        try XCTAssertEqual(LeafEncoder().encode(Test()), .dictionary([
+        try XCTAssertEqual(TemplateDataEncoder().encode(Test()), .dictionary([
             "string": .string("hello"),
             "double": .double(3.14),
             "int": .int(42),
@@ -95,7 +95,7 @@ class LeafEncoderTests: XCTestCase {
         }
 
         let sub = Test()
-        try XCTAssertEqual(LeafEncoder().encode(Test(sub: sub)), .dictionary([
+        try XCTAssertEqual(TemplateDataEncoder().encode(Test(sub: sub)), .dictionary([
             "string": .string("hello"),
             "double": .double(3.14),
             "int": .int(42),

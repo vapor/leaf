@@ -1,7 +1,7 @@
 import Async
 import CodableKit
 
-/// Converts encodable objects to LeafData.
+/// Converts encodable objects to TemplateData.
 public final class TemplateDataEncoder {
     /// Create a new LeafEncoder.
     public init() {}

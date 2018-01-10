@@ -7,9 +7,7 @@ import Leaf
 
 extension LeafRenderer {
     static func makeTestRenderer(worker: Worker) -> LeafRenderer {
-        let config = LeafConfig { _ in
-            return TestFiles()
-        }
+        let config = LeafConfig(tags: defaultTags, viewsDir: "/", shouldCache: false)
         return LeafRenderer(config: config, on: worker)
     }
 }

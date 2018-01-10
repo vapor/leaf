@@ -1,4 +1,5 @@
 import Bits
+import CodableKit
 import Foundation
 import TemplateKit
 
@@ -6,31 +7,34 @@ import TemplateKit
 /// that can be later combined with Leaf Data to
 /// serialized a View.
 public final class LeafParser: TemplateParser {
-    let scanner: TemplateByteScanner
-
-    /// Creates a new Leaf parser with the supplied bytes.
-    public init(data: Data) {
-        self.scanner = TemplateByteScanner(data: data)
-    }
+    /// Creates a new Leaf parser
+    public init() { }
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse() throws -> [TemplateSyntax] {
-        var ast: [TemplateSyntax] = []
+    public func parse(template: Data) throws -> [TemplateSyntax] {
+        let scanner = TemplateByteScanner(data: template)
 
-        ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
-        while let syntax = try extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
+        /// create empty base syntax element, to simplify logic
+        let base = TemplateSyntax(
+            type: .raw(TemplateRaw(data: .empty)),
+            source: TemplateSource(line: 0, column: 0, range: 0..<1)
+        )
+        var ast: [TemplateSyntax] = [base]
+
+        /// start parsing syntax
+        while let syntax = try scanner.extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
         }
 
         return ast
     }
+}
 
-    // MARK: Private
-
-    // base level extraction. checks for `#` or extracts raw
-    private func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax? {
-        guard let byte = scanner.peek() else {
+extension TemplateByteScanner {
+    /// Base level extraction. Checks for `#` or extracts raw.
+    fileprivate func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax? {
+        guard let byte = peek() else {
             return nil
         }
 
@@ -41,29 +45,35 @@ public final class LeafParser: TemplateParser {
                 try expect(.numberSign)
                 syntax = try extractTag(indent: indent, previous: &previous)
             } else {
-                let byte = try scanner.requirePop()
-                let start = scanner.makeSourceStart()
+                let byte = try requirePop()
+                let start = makeSourceStart()
                 let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
-                let source = scanner.makeSource(using: start)
-                syntax = TemplateSyntax(type: .raw(bytes), source: source)
+                let source = makeSource(using: start)
+                syntax = TemplateSyntax(
+                    type: .raw(TemplateRaw(data: bytes)),
+                    source: source
+                )
             }
         } else {
-            let start = scanner.makeSourceStart()
+            let start = makeSourceStart()
             let bytes = try extractRaw(untilUnescaped: signalBytes)
-            let source = scanner.makeSource(using: start)
-            syntax = TemplateSyntax(type: .raw(bytes), source: source)
+            let source = makeSource(using: start)
+            syntax = TemplateSyntax(
+                type: .raw(TemplateRaw(data: bytes)),
+                source: source
+            )
         }
 
         return syntax
     }
 
-    // checks ahead to see if a tag should be parsed.
-    // avoids parsing if like `#foo`.
-    // must be in format `#tag()`
+    /// Checks ahead to see if a tag should be parsed.
+    ///
+    /// Avoids parsing if like `#foo`. Must be in format `#tag()`
     private func shouldExtractTag() throws -> Bool {
         var i = 1
         var previous: Byte?
-        while let byte = scanner.peek(by: i) {
+        while let byte = peek(by: i) {
             if byte == .forwardSlash || byte == .asterisk {
                 if previous == .forwardSlash {
                     return true
@@ -79,11 +89,11 @@ public final class LeafParser: TemplateParser {
         return false
     }
 
-    // checks ahead to see if a body should be parsed.
-    // fixme: should fix `\{`
+    /// Checks ahead to see if a body should be parsed.
+    /// fixme: should fix `\{`
     private func shouldExtractBody() throws -> Bool {
         var i = 0
-        while let byte = scanner.peek(by: i) {
+        while let byte = peek(by: i) {
             if byte == .leftCurlyBracket {
                 return true
             }
@@ -95,11 +105,11 @@ public final class LeafParser: TemplateParser {
         return false
     }
 
-    // checks ahead to see if a chained tag `##if` should be parsed.
+    /// Checks ahead to see if a chained tag `##if` should be parsed.
     private func shouldExtractChainedTag() throws -> Bool {
         var i = 1
         var previous: Byte?
-        while let byte = scanner.peek(by: i) {
+        while let byte = peek(by: i) {
             if byte == .numberSign && previous == .numberSign {
                 return true
             }
@@ -112,16 +122,16 @@ public final class LeafParser: TemplateParser {
         return false
     }
 
-    // extracts a tag, recursively extracting chained tags and tag parameters and bodies.
+    /// Extracts a tag, recursively extracting chained tags and tag parameters and bodies.
     private func extractTag(indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax {
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
-        trim: if case .raw(var bytes) = previous.type {
+        trim: if case .raw(var raw) = previous.type {
             var offset = 0
 
-            skipwhitespace: for i in (0..<bytes.count).reversed() {
+            skipwhitespace: for i in (0..<raw.data.count).reversed() {
                 offset = i
-                switch bytes[i] {
+                switch raw.data[i] {
                 case .space:
                     break
                 case .newLine:
@@ -132,17 +142,18 @@ public final class LeafParser: TemplateParser {
             }
 
             if offset == 0 {
-                bytes = .empty
+                raw.data = .empty
             } else {
-                bytes = Data(bytes[0..<offset])
+                raw.data = Data(raw.data[0..<offset])
             }
-            previous = TemplateSyntax(type: .raw(bytes), source: previous.source)
+
+            previous = TemplateSyntax(type: .raw(raw), source: previous.source)
         }
 
-        // NAME
+        /// Extract the tag name.
         let id = try extractTagName()
         
-        // verify tag names containg / or * are comment tag names
+        // Verify tag names containg / or * are comment tag names.
         if id.contains(where: { $0 == .forwardSlash || $0 == .asterisk }) {
             switch id {
             case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
@@ -151,18 +162,18 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "Valid tag name",
                     got: String(data: id, encoding: .utf8) ?? "n/a",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
         }
 
-        // PARAMS
+        // Extract the tag params.
         let params: [TemplateSyntax]
         guard let name = String(data: id, encoding: .utf8) else {
             throw LeafParserError.expectationFailed(
                 expected: "UTF8 string",
                 got: id.description,
-                source: scanner.makeSource(using: start)
+                source: makeSource(using: start)
             )
         }
 
@@ -178,7 +189,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "right parameter",
                     got: "nil",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
 
@@ -189,7 +200,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "identifier or tag",
                     got: "\(val)",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
 
@@ -199,28 +210,28 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "key name",
                     got: "\(key)",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
 
-            guard name.count == 1 else {
+            guard name.path.count == 1 else {
                 throw LeafParserError.expectationFailed(
                     expected: "single key",
                     got: "\(name)",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
 
-            guard let data = name[0].data(using: .utf8) else {
+            guard let data = name.path[0].stringValue.data(using: .utf8) else {
                 throw LeafParserError.expectationFailed(
                     expected: "utf8 string",
-                    got: name[0],
-                    source: scanner.makeSource(using: start)
+                    got: name.path[0].stringValue,
+                    source: makeSource(using: start)
                 )
             }
 
             let raw = TemplateSyntax(
-                type: .raw(data),
+                type: .raw(TemplateRaw(data: data)),
                 source: key.source
             )
 
@@ -239,22 +250,22 @@ public final class LeafParser: TemplateParser {
             params = try extractParameters()
         }
 
-        // BODY
+        // Extract tag body.
         let body: [TemplateSyntax]?
         if name == "//" {
-            let s = scanner.makeSourceStart()
+            let s = makeSourceStart()
             let bytes = try extractBytes(untilUnescaped: [.newLine])
             // pop the newline
-            try scanner.requirePop()
+            try requirePop()
             body = [TemplateSyntax(
-                type: .raw(bytes),
-                source: scanner.makeSource(using: s)
+                type: .raw(TemplateRaw(data: bytes)),
+                source: makeSource(using: s)
             )]
         } else if name == "/*" {
-            let s = scanner.makeSourceStart()
+            let s = makeSourceStart()
             var i = 0
             var previous: Byte?
-            while let byte = scanner.peek(by: i) {
+            while let byte = peek(by: i) {
                 if byte == .forwardSlash && previous == .asterisk {
                     break
                 }
@@ -263,16 +274,16 @@ public final class LeafParser: TemplateParser {
             }
 
             // pop comment text, w/o trailing */
-            try scanner.requirePop(n: i - 1)
+            try requirePop(n: i - 1)
 
-            let bytes = scanner.data[s.rangeStart..<scanner.offset]
+            let bytes = data[s.rangeStart..<offset]
 
             // pop */
-            try scanner.requirePop(n: 2)
+            try requirePop(n: 2)
 
             body = [TemplateSyntax(
-                type: .raw(bytes),
-                source: scanner.makeSource(using: s)
+                type: .raw(TemplateRaw(data: bytes)),
+                source: makeSource(using: s)
             )]
         } else {
             if try shouldExtractBody() {
@@ -284,53 +295,31 @@ public final class LeafParser: TemplateParser {
             }
         }
 
-        // KIND
+        // Convert to syntax type
 
-        let kind: TemplateSyntaxType
+        let type: TemplateSyntaxType
 
         switch name {
         case "if":
-            let chained = try extractIfElse(indent: indent)
-            kind = .tag(
-                name: "ifElse",
-                parameters: params,
-                body: body,
-                chained: chained
-            )
+            fatalError()
+            // let chained = try extractIfElse(indent: indent)
         case "for":
-            kind = .tag(
-                name: "loop",
-                parameters: params,
-                body: body,
-                chained: nil
-            )
+            fatalError()
+            // params should be correct, set cond
         case "//", "/*":
-            kind = .tag(
-                name: "comment",
-                parameters: params,
-                body: body,
-                chained: nil
-            )
+            // omit comments
+            type = .raw(TemplateRaw(data: .empty))
         default:
-            var chained: TemplateSyntax?
-
-            if try shouldExtractChainedTag() {
-                try extractSpaces()
-                try expect(.numberSign)
-                try expect(.numberSign)
-                chained = try extractTag(indent: indent, previous: &previous)
-            }
-
-            kind = .tag(
+            let tag = TemplateTag(
                 name: name,
                 parameters: params,
-                body: body,
-                chained: chained
+                body: body
             )
+            type = .tag(tag)
         }
 
-        let source = scanner.makeSource(using: start)
-        return TemplateSyntax(type: kind, source: source)
+        let source = makeSource(using: start)
+        return TemplateSyntax(type: type, source: source)
     }
 
     // corrects body indentation by splitting on newlines
@@ -342,8 +331,8 @@ public final class LeafParser: TemplateParser {
         
         for syntax in ast {
             switch syntax.type {
-            case .raw(let bytes):
-                let scanner = TemplateByteScanner(data: Data(bytes))
+            case .raw(let raw):
+                let scanner = TemplateByteScanner(data: raw.data)
                 var chunkStart = scanner.offset
                 while let byte = scanner.peek() {
                     switch byte {
@@ -353,8 +342,11 @@ public final class LeafParser: TemplateParser {
 
                         // break off the previous raw chunk
                         // and remove indentation from following chunk
-                        let data = Data(bytes[chunkStart..<scanner.offset])
-                        let new = TemplateSyntax(type: .raw(data), source: syntax.source)
+                        let data = Data(raw.data[chunkStart..<scanner.offset])
+                        let new = TemplateSyntax(
+                            type: .raw(TemplateRaw(data: data)),
+                            source: syntax.source
+                        )
                         corrected.append(new)
 
                         var spacesSkipped = 0
@@ -373,9 +365,12 @@ public final class LeafParser: TemplateParser {
                 }
 
                 // append any remaining bytes
-                if chunkStart < bytes.count {
-                    let data = Data(bytes[chunkStart..<bytes.count])
-                    let new = TemplateSyntax(type: .raw(data), source: syntax.source)
+                if chunkStart < raw.data.count {
+                    let data = Data(raw.data[chunkStart..<raw.data.count])
+                    let new = TemplateSyntax(
+                        type: .raw(TemplateRaw(data: data)),
+                        source: syntax.source
+                    )
                     corrected.append(new)
                 }
             default:
@@ -389,36 +384,37 @@ public final class LeafParser: TemplateParser {
     // extracts if/else syntax sugar
     private func extractIfElse(indent: Int) throws -> TemplateSyntax? {
         try extractSpaces()
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
-        if scanner.peekMatches([.e, .l, .s, .e]) {
-            try scanner.requirePop(n: 4)
+        if peekMatches([.e, .l, .s, .e]) {
+            try requirePop(n: 4)
             try extractSpaces()
 
             let params: [TemplateSyntax]
-            if scanner.peekMatches([.i, .f]) {
-                try scanner.requirePop(n: 2)
+            if peekMatches([.i, .f]) {
+                try requirePop(n: 2)
                 try extractSpaces()
                 params = try extractParameters()
             } else {
                 let syntax = TemplateSyntax(
                     type: .constant(.bool(true)),
-                    source: TemplateSource(line: scanner.line, column: scanner.column, range: scanner.offset..<scanner.offset + 1
+                    source: TemplateSource(line: line, column: column, range: offset..<offset + 1
                 ))
                 params = [syntax]
             }
             try extractSpaces()
             let elseBody = try extractBody(indent: indent)
 
-            let kind: TemplateSyntaxType = .tag(
-                name: "ifElse",
-                parameters: params,
-                body: elseBody,
-                chained: try extractIfElse(indent: indent)
-            )
-
-            let source = scanner.makeSource(using: start)
-            return TemplateSyntax(type: kind, source: source)
+            fatalError()
+//            let kind: TemplateSyntaxType = .tag(
+//                name: "ifElse",
+//                parameters: params,
+//                body: elseBody,
+//                chained: try extractIfElse(indent: indent)
+//            )
+//
+//            let source = makeSource(using: start)
+//            return TemplateSyntax(type: kind, source: source)
         }
 
         return nil
@@ -428,21 +424,27 @@ public final class LeafParser: TemplateParser {
     private func extractBody(indent: Int) throws -> [TemplateSyntax] {
         try expect(.leftCurlyBracket)
 
-        var ast: [TemplateSyntax] = []
-        ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
+        /// create empty base syntax element, to simplify logic
+        let base = TemplateSyntax(
+            type: .raw(TemplateRaw(data: .empty)),
+            source: TemplateSource(line: 0, column: 0, range: 0..<1) // fixme: actual source
+        )
+        var ast: [TemplateSyntax] = [base]
+
+        // ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
         while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
-            if scanner.peek() == .rightCurlyBracket {
+            if peek() == .rightCurlyBracket {
                 break
             }
         }
 
-        trim: if let last = ast.last, case .raw(var bytes) = last.type {
+        trim: if let last = ast.last, case .raw(var raw) = last.type {
             var offset = 0
 
-            skipwhitespace: for i in (0..<bytes.count).reversed() {
+            skipwhitespace: for i in (0..<raw.data.count).reversed() {
                 offset = i
-                switch bytes[i] {
+                switch raw.data[i] {
                 case .space:
                     break
                 case .newLine:
@@ -453,11 +455,11 @@ public final class LeafParser: TemplateParser {
             }
 
             if offset == 0 {
-                bytes = .empty
+                raw.data = .empty
             } else {
-                bytes = Data(bytes[0..<offset])
+                raw.data = Data(raw.data[0..<offset])
             }
-            ast[ast.count - 1] = TemplateSyntax(type: .raw(bytes), source: last.source)
+            ast[ast.count - 1] = TemplateSyntax(type: .raw(raw), source: last.source)
         }
 
         try expect(.rightCurlyBracket)
@@ -481,9 +483,9 @@ public final class LeafParser: TemplateParser {
         // continue to peek until we fine a signal byte, then exit!
         // the inner loop takes care that we will not hit any
         // properly escaped signal bytes
-        while let byte = scanner.peek(), !signalBytes.contains(byte) {
+        while let byte = peek(), !signalBytes.contains(byte) {
             // pop the byte we just peeked at
-            try scanner.requirePop()
+            try requirePop()
 
             // if the current byte is a backslash, then
             // we need to check if next byte is a signal byte
@@ -491,12 +493,12 @@ public final class LeafParser: TemplateParser {
                 // check if the next byte is a signal byte
                 // note: special case, any raw leading with a left curly must
                 // be properly escaped (have the \ removed)
-                if let next = scanner.peek(), signalBytes.contains(next) || onlySpacesExtracted && next == .leftCurlyBracket {
+                if let next = peek(), signalBytes.contains(next) || onlySpacesExtracted && next == .leftCurlyBracket {
                     // if it is, it has been properly escaped.
                     // add it now, skipping the backslash and popping
                     // so the next iteration of this loop won't see it
                     bytes.append(next)
-                    try scanner.requirePop()
+                    try requirePop()
                 } else {
                     // just a normal backslash
                     bytes.append(byte)
@@ -516,13 +518,13 @@ public final class LeafParser: TemplateParser {
 
     // extracts a string of characters allowed in identifier
     private func extractIdentifier() throws -> TemplateSyntax {
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
         var path: [String] = []
         var current: String = ""
 
-        while let byte = scanner.peek(), byte.isAllowedInIdentifier {
-           try scanner.requirePop()
+        while let byte = peek(), byte.isAllowedInIdentifier {
+           try requirePop()
             switch byte {
             case .period:
                 path.append(current)
@@ -532,21 +534,23 @@ public final class LeafParser: TemplateParser {
             }
         }
         path.append(current)
-        
-        let kind: TemplateSyntaxType = .identifier(path: path)
-        let source = scanner.makeSource(using: start)
-        return TemplateSyntax(type: kind, source: source)
+
+        let id = TemplateIdentifier(path: path.map(BasicKey.init))
+        return TemplateSyntax(
+            type: .identifier(id),
+            source: makeSource(using: start)
+        )
     }
 
     // extracts a string of characters allowed in tag names
     private func extractTagName() throws -> Data {
-        let start = scanner.offset
+        let start = offset
 
-        while let byte = scanner.peek(), byte.isAllowedInTagName {
-            try scanner.requirePop()
+        while let byte = peek(), byte.isAllowedInTagName {
+            try requirePop()
         }
 
-        return scanner.data[start..<scanner.offset]
+        return data[start..<offset]
     }
 
     // extracts parameters until closing right parens is found
@@ -562,7 +566,7 @@ public final class LeafParser: TemplateParser {
             if let param = try extractParameter() {
                 params.append(param)
             }
-        } while scanner.peek() == .comma
+        } while peek() == .comma
 
         try expect(.rightParenthesis)
 
@@ -571,18 +575,18 @@ public final class LeafParser: TemplateParser {
 
     // extracts a raw number
     private func extractNumber() throws -> TemplateConstant {
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
-        while let byte = scanner.peek(), byte.isDigit || byte == .period || byte == .hyphen {
-            try scanner.requirePop()
+        while let byte = peek(), byte.isDigit || byte == .period || byte == .hyphen {
+            try requirePop()
         }
 
-        let bytes = scanner.data[start.rangeStart..<scanner.offset]
+        let bytes = data[start.rangeStart..<offset]
         guard let string = String(data: bytes, encoding: .utf8) else {
             throw LeafParserError.expectationFailed(
                 expected: "UTF8 string",
                 got: bytes.description,
-                source: scanner.makeSource(using: start)
+                source: makeSource(using: start)
             )
         }
         if bytes.contains(.period) {
@@ -590,7 +594,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "double",
                     got: string,
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
             return .double(double)
@@ -599,7 +603,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "integer",
                     got: string,
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
             return .int(int)
@@ -610,13 +614,13 @@ public final class LeafParser: TemplateParser {
     // extracts a single tag parameter. this is recursive.
     private func extractParameter() throws -> TemplateSyntax? {
         try extractSpaces()
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
-        guard let byte = scanner.peek() else {
+        guard let byte = peek() else {
             throw LeafParserError.expectationFailed(
                 expected: "bytes",
                 got: "EOF",
-                source: scanner.makeSource(using: start)
+                source: makeSource(using: start)
             )
         }
 
@@ -629,8 +633,7 @@ public final class LeafParser: TemplateParser {
             try expect(.quote)
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
-            let parser = LeafParser(data: bytes)
-            let ast = try parser.parse()
+            let ast = try LeafParser().parse(template: bytes)
             kind = .constant(
                 .string(ast)
             )
@@ -640,7 +643,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "parameter",
                     got: "nil",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
             kind = .expression(.prefix(operator: .not, right: param))
@@ -649,14 +652,14 @@ public final class LeafParser: TemplateParser {
                 // constant number
                 let num = try extractNumber()
                 kind = .constant(num)
-            } else if scanner.peekMatches([.t, .r, .u, .e]) {
-                try scanner.requirePop(n: 4)
+            } else if peekMatches([.t, .r, .u, .e]) {
+                try requirePop(n: 4)
                 kind = .constant(.bool(true))
-            } else if scanner.peekMatches([.f, .a, .l, .s, .e]) {
-                try scanner.requirePop(n: 5)
+            } else if peekMatches([.f, .a, .l, .s, .e]) {
+                try requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1))
+                var syntax = TemplateSyntax(type: .raw(TemplateRaw(data: .empty)), source: TemplateSource(line: 0, column: 0, range: 0..<1))
                 kind = try extractTag(indent: 0, previous: &syntax).type
             } else {
                 let id = try extractIdentifier()
@@ -664,13 +667,13 @@ public final class LeafParser: TemplateParser {
             }
         }
 
-        let syntax = TemplateSyntax(type: kind, source: scanner.makeSource(using: start))
+        let syntax = TemplateSyntax(type: kind, source: makeSource(using: start))
 
         try extractSpaces()
 
         let op: ExpressionInfixOperator?
 
-        if let byte = scanner.peek() {
+        if let byte = peek() {
             switch byte {
             case .lessThan:
                 op = .lessThan
@@ -700,7 +703,7 @@ public final class LeafParser: TemplateParser {
         }
 
         if let op = op {
-            try scanner.requirePop()
+            try requirePop()
 
             // two byte operators must
             // expect their second byte
@@ -719,7 +722,7 @@ public final class LeafParser: TemplateParser {
                 throw LeafParserError.expectationFailed(
                     expected: "right parameter",
                     got: "nil",
-                    source: scanner.makeSource(using: start)
+                    source: makeSource(using: start)
                 )
             }
 
@@ -729,7 +732,7 @@ public final class LeafParser: TemplateParser {
                 left: syntax,
                 right: right
             ))
-            let source = scanner.makeSource(using: start)
+            let source = makeSource(using: start)
             return TemplateSyntax(type: exp, source: source)
         } else {
             return syntax
@@ -739,62 +742,29 @@ public final class LeafParser: TemplateParser {
 
     // extracts all spaces. used for extracting: `#tag()__{`
     private func extractSpaces() throws {
-        while let byte = scanner.peek(), byte == .space {
-            try scanner.requirePop()
+        while let byte = peek(), byte == .space {
+            try requirePop()
         }
     }
 
     // expects the supplied byte is current byte or throws an error
     private func expect(_ expect: Byte) throws {
-        let start = scanner.makeSourceStart()
+        let start = makeSourceStart()
 
-        guard let byte = scanner.peek() else {
-            throw LeafParserError.unexpectedEOF(source: scanner.makeSource(using: start))
+        guard let byte = peek() else {
+            throw LeafParserError.unexpectedEOF(source: makeSource(using: start))
         }
 
         guard byte == expect else {
             throw LeafParserError.expectationFailed(
                 expected: expect.string,
                 got: byte.string,
-                source: scanner.makeSource(using: start)
+                source: makeSource(using: start)
             )
         }
 
-        try scanner.requirePop()
+        try requirePop()
     }
 }
 
 // mark: file private scanner conveniences
-
-extension TemplateByteScanner {
-    @discardableResult
-    func requirePop() throws -> Byte {
-        let start = makeSourceStart()
-        guard let byte = pop() else {
-            throw LeafParserError.unexpectedEOF(source: makeSource(using: start))
-        }
-        return byte
-    }
-
-    func requirePop(n: Int) throws {
-        for _ in 0..<n {
-            try requirePop()
-        }
-    }
-
-    func peekMatches(_ bytes: [Byte]) -> Bool {
-        var iterator = bytes.makeIterator()
-        var i = 0
-        while let next = iterator.next() {
-            switch peek(by: i) {
-            case next:
-                i += 1
-                continue
-            default:
-                return false
-            }
-        }
-
-        return true
-    }
-}

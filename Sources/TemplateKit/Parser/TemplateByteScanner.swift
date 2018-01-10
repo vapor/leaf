@@ -60,3 +60,35 @@ extension TemplateByteScanner {
     }
 }
 
+extension TemplateByteScanner {
+    @discardableResult
+    public func requirePop() throws -> Byte {
+        let start = makeSourceStart()
+        guard let byte = pop() else {
+            fatalError("Unexpected EOF at \(makeSource(using: start))")
+        }
+        return byte
+    }
+
+    public func requirePop(n: Int) throws {
+        for _ in 0..<n {
+            try requirePop()
+        }
+    }
+
+    public func peekMatches(_ bytes: [Byte]) -> Bool {
+        var iterator = bytes.makeIterator()
+        var i = 0
+        while let next = iterator.next() {
+            switch peek(by: i) {
+            case next:
+                i += 1
+                continue
+            default:
+                return false
+            }
+        }
+
+        return true
+    }
+}

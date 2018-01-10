@@ -2,41 +2,40 @@ import Async
 import Bits
 import Dispatch
 import Foundation
+import Service
+import TemplateKit
 
 /// Renders Leaf templates using the Leaf parser and serializer.
-public final class LeafRenderer {
+public final class LeafRenderer: TemplateRenderer, Service {
+    /// See TemplateRenderer.parser
+    public var parser: TemplateParser
+
+    /// See TemplateRenderer.astCache
+    public var astCache: ASTCache?
+
+    /// See TemplateRenderer.templateFileEnding
+    public var templateFileEnding: String
+
     /// The tags available to this renderer.
-    public let tags: [String: LeafTag]
-
-    /// The renderer will use this to read files for
-    /// tags that require it (such as #embed)
-    private var _files: [Int: FileReader & FileCache]
-
-    /// Create a file reader & cache for the supplied queue
-    public typealias FileFactory = (EventLoop) -> (FileReader & FileCache)
-    private let fileFactory: FileFactory
+    public let tags: [String: TagRenderer]
 
     /// Views base directory.
-    public let viewsDir: String
+    public let relativeDirectory: String
 
     /// The event loop this leaf renderer will use
     /// to read files and cache ASTs on.
-    let eventLoop: EventLoop
-    
-    /// If `true`, caches leaf templates
-    let cache: Bool
+    public let eventLoop: EventLoop
 
     /// Create a new Leaf renderer.
     public init(
         config: LeafConfig,
-        on worker: Worker,
-        caching: Bool = true
+        on worker: Worker
     ) {
         self.tags = config.tags
-        self._files = [:]
-        self.fileFactory = config.fileFactory
+        astCache = config.shouldCache ? .init() : nil
         self.eventLoop = worker.eventLoop
-        self.cache = caching
-        self.viewsDir = config.viewsDir.finished(with: "/")
+        self.relativeDirectory = config.viewsDir.finished(with: "/")
+        self.templateFileEnding = ".leaf"
+        self.parser = LeafParser()
     }
 }

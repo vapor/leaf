@@ -25,7 +25,7 @@ extension TemplateRenderer {
     // ASTs only need to be parsed once
     /// Renders the supplied template bytes into a view
     /// using the supplied context.
-    public func render(template: Data, _ context: Encodable) -> Future<View> {
+    public func render(template: Data, _ context: TemplateData) -> Future<View> {
         return Future {
             let hash = template.hashValue
             let ast: [TemplateSyntax]
@@ -36,7 +36,6 @@ extension TemplateRenderer {
                 self.astCache?.storage[hash] = ast
             }
 
-            let context = try TemplateDataEncoder().encode(context)
             let serializer = TemplateSerializer(
                 renderer: self,
                 context: .init(data: context),
@@ -59,6 +58,7 @@ extension TemplateRenderer {
             fatalError()
         }
 
+        let context = try! TemplateDataEncoder().encode(context)
         return render(template: data, context)
     }
 }
