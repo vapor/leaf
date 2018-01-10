@@ -335,6 +335,14 @@ class LeafTests: XCTestCase {
 
     }
 
+    func testStringIf() throws {
+        let template = "#if(name){Hello, #(name)!}"
+        let expected = "Hello, Tanner!"
+        let context = TemplateData.dictionary(["name": .string("Tanner")])
+        try XCTAssertEqual(renderer.testRender(template, context), expected)
+
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -357,6 +365,8 @@ class LeafTests: XCTestCase {
         ("testIndentationCorrection", testIndentationCorrection),
         ("testCount", testCount),
         ("testNestedSet", testNestedSet),
+        ("testDateFormat", testDateFormat),
+        ("testStringIf", testStringIf),
     ]
 }
 
