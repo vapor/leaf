@@ -301,11 +301,40 @@ extension TemplateByteScanner {
 
         switch name {
         case "if":
-            fatalError()
-            // let chained = try extractIfElse(indent: indent)
+            guard params.count == 1 else {
+                throw LeafParserError.expectationFailed(
+                    expected: "one param",
+                    got: "\(params.count) params",
+                    source: makeSource(using: start)
+                )
+            }
+
+            let cond = try TemplateConditional(
+                condition: params[0],
+                body: body ?? [],
+                next: extractIfElse(indent: indent)
+            )
+            type = .conditional(cond)
+        case "embed":
+            guard params.count == 1 else {
+                throw LeafParserError.expectationFailed(
+                    expected: "one param",
+                    got: "\(params.count) params",
+                    source: makeSource(using: start)
+                )
+            }
+            let embed = TemplateEmbed(path: params[0])
+            type = .embed(embed)
         case "for":
-            fatalError()
-            // params should be correct, set cond
+            guard params.count == 2 else {
+                throw LeafParserError.expectationFailed(
+                    expected: "two param",
+                    got: "\(params.count) params",
+                    source: makeSource(using: start)
+                )
+            }
+            let iterator = TemplateIterator(key: params[1], data: params[0], body: body ?? [])
+            type = .iterator(iterator)
         case "//", "/*":
             // omit comments
             type = .raw(TemplateRaw(data: .empty))
@@ -382,10 +411,10 @@ extension TemplateByteScanner {
     }
 
     // extracts if/else syntax sugar
-    private func extractIfElse(indent: Int) throws -> TemplateSyntax? {
-        try extractSpaces()
+    private func extractIfElse(indent: Int) throws -> TemplateConditional? {
         let start = makeSourceStart()
 
+        try extractSpaces()
         if peekMatches([.e, .l, .s, .e]) {
             try requirePop(n: 4)
             try extractSpaces()
@@ -403,18 +432,20 @@ extension TemplateByteScanner {
                 params = [syntax]
             }
             try extractSpaces()
-            let elseBody = try extractBody(indent: indent)
 
-            fatalError()
-//            let kind: TemplateSyntaxType = .tag(
-//                name: "ifElse",
-//                parameters: params,
-//                body: elseBody,
-//                chained: try extractIfElse(indent: indent)
-//            )
-//
-//            let source = makeSource(using: start)
-//            return TemplateSyntax(type: kind, source: source)
+            guard params.count == 1 else {
+                throw LeafParserError.expectationFailed(
+                    expected: "one param",
+                    got: "\(params.count) params",
+                    source: makeSource(using: start)
+                )
+            }
+
+            return try TemplateConditional(
+                condition: params[0],
+                body: extractBody(indent: indent),
+                next: extractIfElse(indent: indent)
+            )
         }
 
         return nil

@@ -25,6 +25,10 @@ public final class TemplateSerializer {
         return Future {
             return try ast.map { syntax -> Future<Data> in
                 return try self.render(syntax: syntax).map(to: Data.self) { context in
+                    if case .null = context {
+                        return Data()
+                    }
+
                     guard let data = context.data else {
                         throw TemplateSerializerError.unexpectedSyntax(syntax)
                     }
@@ -115,12 +119,58 @@ public final class TemplateSerializer {
 
     // Renders `TemplateConditional` to future `TemplateData`.
     private func render(conditional: TemplateConditional, source: TemplateSource) throws -> Future<TemplateData> {
-        fatalError()
+        return try self.render(syntax: conditional.condition).flatMap(to: TemplateData.self) { data in
+            if data.bool == true {
+                return self.serialize(ast: conditional.body).map(to: TemplateData.self) { .data($0.data) }
+            } else if let next = conditional.next {
+                return try self.render(conditional: next, source: source)
+            } else {
+                return Future(.null)
+            }
+        }
     }
 
     // Renders `TemplateEmbed` to future `TemplateData`.
     private func render(embed: TemplateEmbed, source: TemplateSource) throws -> Future<TemplateData> {
-        fatalError()
+        return try render(syntax: embed.path).flatMap(to: TemplateData.self) { path in
+            guard let path = path.string else {
+                throw TemplateSerializerError.unexpectedSyntax(embed.path)
+            }
+
+            return self.renderer.render(path, self.context.data).map(to: TemplateData.self) { .data($0.data) }
+        }
+    }
+
+
+    // Renders `TemplateIterator` to future `TemplateData`.
+    private func render(iterator: TemplateIterator, source: TemplateSource) throws -> Future<TemplateData> {
+        return try flatMap(to: TemplateData.self, render(syntax: iterator.key), render(syntax: iterator.data)) { key, data in
+            guard let key = key.string else {
+                throw TemplateError.serialize(reason: "Could not convert iterator key to string.", source: source)
+            }
+
+            guard let data = data.array else {
+                throw TemplateError.serialize(reason: "Could not convert iterator data to array.", source: source)
+            }
+
+            return data.enumerated().map { (i, item) -> Future<View> in
+                var copy = self.context.data.dictionary ?? [:]
+                copy[key] = item
+                copy["index"] = .int(i)
+                let serializer = TemplateSerializer(
+                    renderer: self.renderer,
+                    context: .init(data: .dictionary(copy)),
+                    on: self.eventLoop
+                )
+                return serializer.serialize(ast: iterator.body)
+            }.map(to: TemplateData.self) { views in
+                var data = Data()
+                for view in views {
+                    data += view.data
+                }
+                return .data(data)
+            }
+        }
     }
 
     // Renders `TemplateSyntax` to future `TemplateData`.
@@ -138,6 +188,7 @@ public final class TemplateSerializer {
         case .raw(let raw): return Future(.data(raw.data))
         case .conditional(let cond): return try render(conditional: cond, source: syntax.source)
         case .embed(let embed): return try render(embed: embed, source: syntax.source)
+        case .iterator(let it): return try render(iterator: it, source: syntax.source)
         }
     }
 }

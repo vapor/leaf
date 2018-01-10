@@ -49,16 +49,19 @@ extension TemplateRenderer {
 // MARK: Convenience
 
 extension TemplateRenderer {
-    /// Loads the leaf template from the supplied path.
-    public func render(_ path: String, _ context: Encodable) -> Future<View> {
+    /// Loads the template from the supplied path.
+    public func render(_ path: String, _ context: TemplateData) -> Future<View> {
         let path = path.hasSuffix(templateFileEnding) ? path : path + templateFileEnding
         let absolutePath = path.hasPrefix("/") ? path : relativeDirectory + path
 
         guard let data = FileManager.default.contents(atPath: absolutePath) else {
-            fatalError()
+            let error = TemplateError(
+                identifier: "fileNotFound",
+                reason: "No file was found at path: \(absolutePath)"
+            )
+            return Future(error: error)
         }
 
-        let context = try! TemplateDataEncoder().encode(context)
         return render(template: data, context)
     }
 }
@@ -70,6 +73,25 @@ extension TemplateRenderer {
     }
 }
 
+/// MARK: Codable
+
+extension TemplateRenderer {
+    /// Loads the template from the supplied path.
+    public func render(template: Data, _ context: Encodable) -> Future<View> {
+        return Future {
+            let context = try TemplateDataEncoder().encode(context)
+            return self.render(template: template, context)
+        }
+    }
+
+    /// Loads the template from the supplied path.
+    public func render(_ path: String, _ context: Encodable) -> Future<View> {
+        return Future {
+            let context = try TemplateDataEncoder().encode(context)
+            return self.render(path, context)
+        }
+    }
+}
 
 /// Caches parsed ASTs.
 public struct ASTCache {
