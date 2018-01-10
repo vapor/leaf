@@ -5,7 +5,6 @@ let package = Package(
     name: "Leaf",
     products: [
         .library(name: "Leaf", targets: ["Leaf"]),
-        .library(name: "TemplateKit", targets: ["TemplateKit"]),
     ],
     dependencies: [
         // Swift Promises, Futures, and Streams.
@@ -16,10 +15,12 @@ let package = Package(
 
         // Service container and configuration system.
         .package(url: "https://github.com/vapor/service.git", .branch("beta")),
+
+        // Easy-to-use foundation for building powerful templating languages in Swift.
+        .package(url: "https://github.com/vapor/template-kit.git", .branch("beta")),
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["Async", "Bits", "CodableKit", "COperatingSystem", "Service", "TemplateKit"]),
         .testTarget(name: "LeafTests", dependencies: ["Leaf"]),
-        .target(name: "TemplateKit", dependencies: ["Async", "Bits", "CodableKit"]),
     ]
 )

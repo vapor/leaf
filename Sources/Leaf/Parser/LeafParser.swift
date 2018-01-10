@@ -12,13 +12,13 @@ public final class LeafParser: TemplateParser {
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse(template: Data) throws -> [TemplateSyntax] {
-        let scanner = TemplateByteScanner(data: template)
+    public func parse(template: Data, file: String) throws -> [TemplateSyntax] {
+        let scanner = TemplateByteScanner(data: template, file: file)
 
         /// create empty base syntax element, to simplify logic
         let base = TemplateSyntax(
             type: .raw(TemplateRaw(data: .empty)),
-            source: TemplateSource(line: 0, column: 0, range: 0..<1)
+            source: scanner.makeSource(using: scanner.makeSourceStart())
         )
         var ast: [TemplateSyntax] = [base]
 
@@ -361,7 +361,7 @@ extension TemplateByteScanner {
         for syntax in ast {
             switch syntax.type {
             case .raw(let raw):
-                let scanner = TemplateByteScanner(data: raw.data)
+                let scanner = TemplateByteScanner(data: raw.data, file: file)
                 var chunkStart = scanner.offset
                 while let byte = scanner.peek() {
                     switch byte {
@@ -427,8 +427,8 @@ extension TemplateByteScanner {
             } else {
                 let syntax = TemplateSyntax(
                     type: .constant(.bool(true)),
-                    source: TemplateSource(line: line, column: column, range: offset..<offset + 1
-                ))
+                    source: makeSource(using: makeSourceStart())
+                )
                 params = [syntax]
             }
             try extractSpaces()
@@ -458,7 +458,7 @@ extension TemplateByteScanner {
         /// create empty base syntax element, to simplify logic
         let base = TemplateSyntax(
             type: .raw(TemplateRaw(data: .empty)),
-            source: TemplateSource(line: 0, column: 0, range: 0..<1) // fixme: actual source
+            source: makeSource(using: makeSourceStart())
         )
         var ast: [TemplateSyntax] = [base]
 
@@ -664,7 +664,7 @@ extension TemplateByteScanner {
             try expect(.quote)
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
-            let ast = try LeafParser().parse(template: bytes)
+            let ast = try LeafParser().parse(template: bytes, file: file)
             kind = .constant(
                 .string(ast)
             )
@@ -690,7 +690,7 @@ extension TemplateByteScanner {
                 try requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = TemplateSyntax(type: .raw(TemplateRaw(data: .empty)), source: TemplateSource(line: 0, column: 0, range: 0..<1))
+                var syntax = TemplateSyntax(type: .raw(TemplateRaw(data: .empty)), source: makeSource(using: makeSourceStart()))
                 kind = try extractTag(indent: 0, previous: &syntax).type
             } else {
                 let id = try extractIdentifier()
