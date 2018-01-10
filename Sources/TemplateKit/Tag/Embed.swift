@@ -1,11 +1,11 @@
 import Async
 
-public final class Embed: TemplateTag {
+public final class Embed: TagRenderer {
     public init() {}
-    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+    public func render(tag parsed: TagContext) throws -> Future<TemplateData> {
         try parsed.requireParameterCount(1)
         let name = parsed.parameters[0].string ?? ""
-        let copy = context
+        let copy = parsed.context
 
         let promise = Promise(TemplateData.self)
 

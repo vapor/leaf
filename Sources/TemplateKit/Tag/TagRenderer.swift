@@ -1,17 +1,13 @@
 import Async
 import Foundation
 
-public protocol TemplateTag {
-    func render(
-        parsed: TagSyntax,
-        context: TemplateContext,
-        renderer: TemplateRenderer
-    ) throws -> Future<TemplateData>
+public protocol TagRenderer {
+    func render(tag: TagContext) throws -> Future<TemplateData>
 }
 
 // MARK: Global
 
-public var defaultTags: [String: TemplateTag] {
+public var defaultTags: [String: TagRenderer] {
     return [
         "": Print(),
         "ifElse": IfElse(),

@@ -1,9 +1,9 @@
 import Async
 
-public final class Count: TemplateTag {
+public final class Count: TagRenderer {
     init() {}
     
-    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+    public func render(tag parsed: TagContext) throws -> Future<TemplateData> {
         let promise = Promise(TemplateData.self)
         try parsed.requireParameterCount(1)
         

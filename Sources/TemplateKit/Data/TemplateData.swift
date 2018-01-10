@@ -170,7 +170,6 @@ extension TemplateData: Equatable {
         case (.int(let a), .int(let b)): return a == b
         case (.double(let a), .double(let b)): return a == b
         case (.data(let a), .data(let b)): return a == b
-        case (.double(let a), .double(let b)): return a == b
         case (.null, .null): return true
         default: return false
         }

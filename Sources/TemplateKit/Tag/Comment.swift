@@ -1,9 +1,8 @@
 import Async
 
-public final class Comment: TemplateTag {
+public final class Comment: TagRenderer {
     public init() {}
-    
-    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+    public func render(tag parsed: TagContext) throws -> Future<TemplateData> {
         return Future(.string(""))
     }
 }

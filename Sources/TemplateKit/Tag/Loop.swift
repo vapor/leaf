@@ -1,16 +1,16 @@
 import Async
 import Foundation
 
-public final class Loop: TemplateTag {
+public final class Loop: TagRenderer {
     public init() {}
-    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+    public func render(tag parsed: TagContext) throws -> Future<TemplateData> {
         let promise = Promise(TemplateData.self)
 
         let body = try parsed.requireBody()
         try parsed.requireParameterCount(2)
         let key = parsed.parameters[1].string ?? ""
         
-        if case .dictionary(var dict) = context.data {
+        if case .dictionary(var dict) = parsed.context.data {
             var results: [Future<Data>] = []
             
             // store the previous values of loop and key

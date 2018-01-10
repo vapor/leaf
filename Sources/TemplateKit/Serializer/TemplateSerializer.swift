@@ -4,30 +4,23 @@ import Foundation
 
 /// Serializes parsed Leaf ASTs into view bytes.
 public protocol TemplateSerializer: Worker {
-    var ast: [TemplateSyntax] { get }
+    var renderer: TemplateRenderer { get }
     var context: TemplateContext { get }
-    func render(_ syntax: TagSyntax) -> Future<TemplateData>
-    func subSerializer(for ast: [TemplateSyntax]) -> Self
+    func subSerializer() -> Self
 }
 
 extension TemplateSerializer {
     /// Serializes the AST into Bytes.
-    public func serialize() -> Future<View> {
+    public func serialize(ast: [TemplateSyntax]) -> Future<View> {
         var parts: [Future<Data>] = []
 
         for syntax in ast {
             let promise = Promise(Data.self)
             switch syntax.type {
-            case .raw(let data):
-                promise.complete(data)
-            case .tag(let name, let parameters, let body, let chained):
-                renderTag(
-                    name: name,
-                    parameters: parameters,
-                    body: body,
-                    chained: chained,
-                    source: syntax.source
-                ).do { context in
+            case .raw(let raw):
+                promise.complete(raw.data)
+            case .tag(let tag):
+                render(tag: tag, source: syntax.source).do { context in
                     guard let data = context.data else {
                         promise.fail(TemplateSerializerError.unexpectedTagData(name: name, source: syntax.source))
                         return
@@ -48,18 +41,16 @@ extension TemplateSerializer {
         }
     }
 
-    // MARK: private
+    // MARK: Private
 
-    // renders a tag using the supplied context
-    private func renderTag(
-        name: String,
-        parameters: [TemplateSyntax],
-        body: [TemplateSyntax]?,
-        chained: TemplateSyntax?,
-        source: TemplateSource
-    ) -> Future<TemplateData> {
+    // Renders a `TemplateTag` to future `TemplateData`.
+    private func render(tag: TemplateTag, source: TemplateSource) -> Future<TemplateData> {
         return Future<TemplateData> {
-            let inputFutures: [Future<TemplateData>] = parameters.map { parameter in
+            guard let tagRenderer = self.renderer.tags[tag.name] else {
+                throw TemplateSerializerError.unknownTag(name: tag.name, source: source)
+            }
+
+            let inputFutures: [Future<TemplateData>] = tag.parameters.map { parameter in
                 let inputPromise = Promise(TemplateData.self)
                 self.resolveSyntax(parameter).do { input in
                     inputPromise.complete(input)
@@ -70,59 +61,37 @@ extension TemplateSerializer {
             }
 
             return inputFutures.flatMap(to: TemplateData.self) { inputs in
-                let tag = TagSyntax(
-                    name: name,
+                let tagContext = TagContext(
+                    name: tag.name,
                     parameters: inputs,
-                    body: body,
+                    body: tag.body,
                     source: source,
+                    context: self.context,
                     on: self
                 )
-                return self.render(tag)
-            }.flatMap(to: TemplateData.self) { data in
-                switch data {
-                case .null:
-                    guard let chained = chained else {
-                        return Future(.null)
-                    }
-                    switch chained.type {
-                    case .tag(let name, let params, let body, let c):
-                        return self.renderTag(
-                            name: name,
-                            parameters: params,
-                            body: body,
-                            chained: c,
-                            source: chained.source
-                        )
-                    default: throw TemplateSerializerError.unexpectedSyntax(chained)
-                    }
-                default: return Future(data)
-                }
+                return try tagRenderer.render(tag: tagContext)
             }
         }
     }
 
-    // resolves a constant to data
-    private func resolveConstant(_ const: TemplateConstant) -> Future<TemplateData> {
-        let promise = Promise(TemplateData.self)
-        switch const {
+    // Renders a `TemplateConstant` to future `TemplateData`.
+    private func render(constant: TemplateConstant, source: TemplateSource) -> Future<TemplateData> {
+        switch constant {
         case .bool(let bool):
-            promise.complete(.bool(bool))
+            return Future(.bool(bool))
         case .double(let double):
-            promise.complete(.double(double))
+            return Future(.double(double))
         case .int(let int):
-            promise.complete(.int(int))
+            return Future(.int(int))
         case .string(let ast):
-            subSerializer(for: ast).serialize().do { view in
-                promise.complete(.data(view.data))
-            }.catch { error in
-                promise.fail(error)
+            return subSerializer().serialize(ast: ast).map(to: TemplateData.self) { view in
+                return .data(view.data)
             }
         }
-        return promise.future
     }
 
-    // resolves an expression to data
-    private func resolveExpression(_ op: ExpressionInfixOperator, left: TemplateSyntax, right: TemplateSyntax) -> Future<TemplateData> {
+    // Renders an infix `TemplateExpression` to future `TemplateData`.
+    private func render(infix: ExpressionInfixOperator, left: TemplateSyntax, right: TemplateSyntax) -> Future<TemplateData> {
         let l = resolveSyntax(left)
         let r = resolveSyntax(right)
 

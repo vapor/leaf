@@ -5,12 +5,12 @@ import Service
 
 /// Used to configure Leaf renderer.
 public struct LeafConfig {
-    let tags: [String: LeafTag]
+    let tags: [String: TagRenderer]
     let viewsDir: String
     let fileFactory: LeafRenderer.FileFactory
 
     public init(
-        tags: [String: LeafTag] = defaultTags,
+        tags: [String: TagRenderer] = defaultTags,
         viewsDir: String = "/",
         fileFactory: @escaping LeafRenderer.FileFactory = File.init
     ) {

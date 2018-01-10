@@ -1,4 +1,4 @@
-/// A reference wrapper around leaf data.
+/// A reference wrapper around template data.
 public final class TemplateContext {
     /// The wrapped data
     public var data: TemplateData

@@ -2,7 +2,7 @@ import Async
 import Dispatch
 
 /// Represents a tag that has been parsed.
-public struct TagSyntax {
+public struct TagContext {
     /// Name used for this tag.
     public let name: String
 
@@ -18,24 +18,29 @@ public struct TagSyntax {
     /// Queue to complete futures on.
     public let eventLoop: Worker
 
+    /// The template data context
+    public let context: TemplateContext
+
     /// Creates a new parsed tag struct.
     init(
         name: String,
         parameters: [TemplateData],
         body: [TemplateSyntax]?,
         source: TemplateSource,
+        context: TemplateContext,
         on worker: Worker
     ) {
         self.name = name
         self.parameters = parameters
         self.body = body
         self.source = source
+        self.context = context
         self.eventLoop = worker.eventLoop
     }
 }
 
 
-extension TagSyntax {
+extension TagContext {
     /// Create a general tag error.
     public func error(reason: String) -> TemplateTagError {
         return .init(

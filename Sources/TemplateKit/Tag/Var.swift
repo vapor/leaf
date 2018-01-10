@@ -1,9 +1,9 @@
 import Async
 
-public final class Var: TemplateTag {
+public final class Var: TagRenderer {
     public init() {}
 
-    public func render(parsed: TagSyntax, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
+    public func render(parsed: TagContext, context: TemplateContext, renderer: TemplateRenderer) throws -> Future<TemplateData> {
         let promise = Promise(TemplateData.self)
 
         var dict = context.data.dictionary ?? [:]
