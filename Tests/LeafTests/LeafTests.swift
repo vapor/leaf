@@ -11,9 +11,10 @@ class LeafTests: XCTestCase {
 
     override func setUp() {
         self.queue = try! DefaultEventLoop(label: "codes.vapor.leaf.test")
+        let container = BasicContainer(config: .init(), environment: .testing, services: .init(), on: queue)
         let viewsDir = "/" + #file.split(separator: "/").dropLast(3).joined(separator: "/").finished(with: "/Views/")
         let config = LeafConfig(tags: .default(), viewsDir: viewsDir, shouldCache: false)
-        self.renderer = LeafRenderer(config: config, on: queue)
+        self.renderer = LeafRenderer(config: config, using: container)
     }
 
     func testRaw() throws {

@@ -24,16 +24,16 @@ public final class LeafRenderer: TemplateRenderer, Service {
 
     /// The event loop this leaf renderer will use
     /// to read files and cache ASTs on.
-    public let eventLoop: EventLoop
+    public let container: Container
 
     /// Create a new Leaf renderer.
     public init(
         config: LeafConfig,
-        on worker: Worker
+        using container: Container
     ) {
         self.tags = config.tags.storage
         astCache = config.shouldCache ? .init() : nil
-        self.eventLoop = worker.eventLoop
+        self.container = container
         self.relativeDirectory = config.viewsDir.finished(with: "/")
         self.templateFileEnding = ".leaf"
         self.parser = LeafParser()

@@ -16,7 +16,7 @@ public final class LeafProvider: Provider {
             let config = try container.make(LeafConfig.self, for: LeafRenderer.self)
             return LeafRenderer(
                 config: config,
-                on: container
+                using: container
             )
         }
 
