@@ -366,6 +366,23 @@ class LeafTests: XCTestCase {
 
     }
 
+    func testKeyEqual() throws {
+        let template = """
+        #if(title == "foo") {it's foo} else {not foo}
+        """
+        let expected = """
+        it's foo
+        """
+
+        struct Stuff: Encodable {
+            var title: String
+        }
+
+        let context = Stuff(title: "foo")
+        let data = try TemplateDataEncoder().encode(context)
+        try XCTAssertEqual(renderer.testRender(template, data), expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -391,6 +408,7 @@ class LeafTests: XCTestCase {
         ("testDateFormat", testDateFormat),
         ("testStringIf", testStringIf),
         ("testEmptyForLoop", testEmptyForLoop),
+        ("testKeyEqual", testKeyEqual)
     ]
 }
 
