@@ -273,7 +273,7 @@ class LeafTests: XCTestCase {
         1,2,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,1,
         """
         
-        let emitter = EmitterStream<Int>()
+        let emitter = PushStream(Int.self)
         
         let data = TemplateData.dictionary([
             "integers": TemplateData.convert(stream: emitter)
@@ -281,11 +281,11 @@ class LeafTests: XCTestCase {
         let render = renderer.render(template: template.data(using: .utf8)!, data)
         
         for i in 1..<10 {
-            emitter.emit(i)
+            emitter.push(i)
         }
         
         for i in (1..<10).reversed() {
-            emitter.emit(i)
+            emitter.push(i)
         }
         
         emitter.close()
