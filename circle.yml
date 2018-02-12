@@ -11,10 +11,11 @@ jobs:
 
   linux:
     docker:
-      - image: swift:4.0
+      - image: norionomura/swift:swift-4.1-branch
     steps:
-      - run: apt-get install -yq libssl-dev
       - checkout
+      - run: apt-get update
+      - run: apt-get install -yq libssl-dev
       - run: swift build
       - run: swift test
 
@@ -22,5 +23,5 @@ workflows:
   version: 2
   tests:
     jobs:
-      - macos
+      # - macos
       - linux
