@@ -8,16 +8,16 @@ let package = Package(
     ],
     dependencies: [
         // Swift Promises, Futures, and Streams.
-        .package(url: "https://github.com/vapor/async.git", "1.0.0-beta.1"..<"1.0.0-beta.2"),
+        .package(url: "https://github.com/vapor/async.git", from: "1.0.0-rc"),
 
         // Core extensions, type-aliases, and functions that facilitate common tasks.
-        .package(url: "https://github.com/vapor/core.git", "3.0.0-beta.1"..<"3.0.0-beta.2"),
+        .package(url: "https://github.com/vapor/core.git", from: "3.0.0-rc"),
 
         // Service container and configuration system.
-        .package(url: "https://github.com/vapor/service.git", "1.0.0-beta.1"..<"1.0.0-beta.2"),
+        .package(url: "https://github.com/vapor/service.git", from: "1.0.0-rc"),
 
         // Easy-to-use foundation for building powerful templating languages in Swift.
-        .package(url: "https://github.com/vapor/template-kit.git", "1.0.0-beta.1"..<"1.0.0-beta.2"),
+        .package(url: "https://github.com/vapor/template-kit.git", from: "1.0.0-rc"),
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["Async", "Bits", "CodableKit", "COperatingSystem", "Service", "TemplateKit"]),
