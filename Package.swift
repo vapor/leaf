@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/service.git", from: "1.0.0-rc"),
 
         // Easy-to-use foundation for building powerful templating languages in Swift.
-        .package(url: "https://github.com/vapor/template-kit.git", from: "1.0.0-rc"),
+        .package(url: "https://github.com/vapor/template-kit.git", .branch("leaf-rc")),
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["Async", "Bits", "CodableKit", "COperatingSystem", "Service", "TemplateKit"]),
