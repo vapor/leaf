@@ -2,7 +2,7 @@
     <img src="https://cloud.githubusercontent.com/assets/1342803/24964182/d6c85ff8-1fa0-11e7-8bd3-d11c6bbdc6dc.png" width="320" alt="Leaf">
     <br>
     <br>
-    <a href="https://docs.vapor.codes/2.0/leaf/package/">
+    <a href="https://docs.vapor.codes/3.0/leaf/getting-started/">
         <img src="http://img.shields.io/badge/read_the-docs-92A8D1.svg" alt="Documentation">
     </a>
     <a href="http://vapor.team">
@@ -15,6 +15,6 @@
         <img src="https://circleci.com/gh/vapor/leaf.svg?style=shield" alt="Continuous Integration">
     </a>
     <a href="https://swift.org">
-        <img src="http://img.shields.io/badge/swift-3.1-brightgreen.svg" alt="Swift 3.1">
+        <img src="http://img.shields.io/badge/swift-4.0-brightgreen.svg" alt="Swift 4.0">
     </a>
 </p>

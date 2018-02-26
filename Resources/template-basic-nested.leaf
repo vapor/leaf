@@ -1,5 +1,0 @@
-Here's a basic template and, #command(parameter) {
-    now we're in the body, which is ALSO a #template("constant") {
-        and a third sub template with a #(variable)
-    }
-}

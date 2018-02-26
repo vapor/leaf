@@ -1,3 +1,0 @@
-#loop(friends, "friend") {
-<li><b>#(friend.name)</b>: #(friend.age)</li>
-}
