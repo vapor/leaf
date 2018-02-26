@@ -157,47 +157,61 @@ extension TemplateByteScanner {
             case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
                 break
             default:
-                throw TemplateError.parse(reason: "Invalid tag name", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Invalid tag name", template: makeSource(using: start), source: .capture())
             }
         }
 
         // Extract the tag params.
         let params: [TemplateSyntax]
         guard let name = String(data: id, encoding: .utf8) else {
-            throw TemplateError.parse(reason: "Invalid UTF-8 string", source: makeSource(using: start))
+            throw TemplateError.parse(reason: "Invalid UTF-8 string", template: makeSource(using: start), source: .capture())
         }
 
         switch name {
         case "for":
             try expect(.leftParenthesis)
+            if peek() == .space {
+                throw TemplateError.parse(
+                    reason: "Whitespace not allowed before key in 'for' tag.",
+                    template: makeSource(using: start),
+                    source: .capture()
+                )
+            }
             let key = try extractIdentifier()
             try expect(.space)
             try expect(.i)
             try expect(.n)
             try expect(.space)
             guard let val = try extractParameter() else {
-                throw TemplateError.parse(reason: "Parameter required after `in` in for-loop", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Parameter required after `in` in for-loop", template: makeSource(using: start), source: .capture())
             }
 
             switch val.type {
             case .identifier, .tag:
                 break
             default:
-                throw TemplateError.parse(reason: "Identifier or tag required", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Identifier or tag required", template: makeSource(using: start), source: .capture())
             }
 
+            if peek(by: -1) == .space {
+                throw TemplateError.parse(
+                    reason: "Whitespace not allowed after value in 'for' tag.",
+                    template: makeSource(using: start),
+                    source: .capture()
+                )
+            }
             try expect(.rightParenthesis)
 
             guard case .identifier(let name) = key.type else {
-                throw TemplateError.parse(reason: "Invalid key type in for-loop", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Invalid key type in for-loop", template: makeSource(using: start), source: .capture())
             }
 
             guard name.path.count == 1 else {
-                throw TemplateError.parse(reason: "One key required in for-loop", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "One key required in for-loop", template: makeSource(using: start), source: .capture())
             }
 
             guard let data = name.path[0].stringValue.data(using: .utf8) else {
-                throw TemplateError.parse(reason: "Invalid UTF-8 string", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Invalid UTF-8 string", template: makeSource(using: start), source: .capture())
             }
 
             let raw = TemplateSyntax(
@@ -272,7 +286,7 @@ extension TemplateByteScanner {
         switch name {
         case "if":
             guard params.count == 1 else {
-                throw TemplateError.parse(reason: "One parameter required for if tag.", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "One parameter required for if tag.", template: makeSource(using: start), source: .capture())
             }
 
             let cond = try TemplateConditional(
@@ -283,13 +297,13 @@ extension TemplateByteScanner {
             type = .conditional(cond)
         case "embed":
             guard params.count == 1 else {
-                throw TemplateError.parse(reason: "One parameter required for embed tag.", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "One parameter required for embed tag.", template: makeSource(using: start), source: .capture())
             }
             let embed = TemplateEmbed(path: params[0])
             type = .embed(embed)
         case "for":
             guard params.count == 2 else {
-                throw TemplateError.parse(reason: "Two parameters required for for-loop.", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Two parameters required for for-loop.", template: makeSource(using: start), source: .capture())
             }
             let iterator = TemplateIterator(key: params[1], data: params[0], body: body ?? [])
             type = .iterator(iterator)
@@ -392,7 +406,7 @@ extension TemplateByteScanner {
             try extractSpaces()
 
             guard params.count == 1 else {
-                throw TemplateError.parse(reason: "One parameter required for else tag.", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "One parameter required for else tag.", template: makeSource(using: start), source: .capture())
             }
 
             return try TemplateConditional(
@@ -568,16 +582,16 @@ extension TemplateByteScanner {
 
         let bytes = data[start.offset..<offset]
         guard let string = String(data: bytes, encoding: .utf8) else {
-            throw TemplateError.parse(reason: "Invalid UTF8 string", source: makeSource(using: start))
+            throw TemplateError.parse(reason: "Invalid UTF8 string", template: makeSource(using: start), source: .capture())
         }
         if bytes.contains(.period) {
             guard let double = Double(string) else {
-                throw TemplateError.parse(reason: "Invalid double", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Invalid double", template: makeSource(using: start), source: .capture())
             }
             return .double(double)
         } else {
             guard let int = Int(string) else {
-                throw TemplateError.parse(reason: "Invalid integer", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Invalid integer", template: makeSource(using: start), source: .capture())
             }
             return .int(int)
         }
@@ -590,7 +604,7 @@ extension TemplateByteScanner {
         let start = makeSourceStart()
 
         guard let byte = peek() else {
-            throw TemplateError.parse(reason: "Unexpected EOF", source: makeSource(using: start))
+            throw TemplateError.parse(reason: "Unexpected EOF", template: makeSource(using: start), source: .capture())
         }
 
         let kind: TemplateSyntaxType
@@ -609,7 +623,7 @@ extension TemplateByteScanner {
         case .exclamation:
             try expect(.exclamation)
             guard let param = try extractParameter() else {
-                throw TemplateError.parse(reason: "Parameter required after not `!`", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Parameter required after not `!`", template: makeSource(using: start), source: .capture())
             }
             kind = .expression(.prefix(operator: .not, right: param))
         default:
@@ -687,7 +701,7 @@ extension TemplateByteScanner {
             }
 
             guard let right = try extractParameter() else {
-                throw TemplateError.parse(reason: "Parameter required after infix operator", source: makeSource(using: start))
+                throw TemplateError.parse(reason: "Parameter required after infix operator", template: makeSource(using: start), source: .capture())
             }
 
             // FIXME: allow for () grouping and proper PEMDAS
@@ -716,11 +730,13 @@ extension TemplateByteScanner {
         let start = makeSourceStart()
 
         guard let byte = peek() else {
-            throw TemplateError.parse(reason: "Unexpected EOF", source: makeSource(using: start))
+            throw TemplateError.parse(reason: "Unexpected EOF", template: makeSource(using: start), source: .capture())
         }
 
         guard byte == expect else {
-            throw TemplateError.parse(reason: "Expected \(expect) got \(byte)", source: makeSource(using: start))
+            let expectedChar = Character(Unicode.Scalar.init(expect))
+            let char = Character(Unicode.Scalar.init(byte))
+            throw TemplateError.parse(reason: "Expected '\(expectedChar)' got '\(char)'", template: makeSource(using: start), source: .capture())
         }
 
         try requirePop()

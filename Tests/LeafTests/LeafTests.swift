@@ -383,6 +383,36 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(template, data), expected)
     }
 
+    func testInvalidForSyntax() throws {
+        let data = try TemplateDataEncoder().encode(["names": ["foo"]])
+        do {
+            _ = try renderer.testRender("#for( name in names) {}", data)
+            XCTFail("Whitespace not allowed here")
+        } catch {
+            XCTAssert("\(error)".contains("space not allowed"))
+        }
+
+        do {
+            _ = try renderer.testRender("#for(name in names ) {}", data)
+            XCTFail("Whitespace not allowed here")
+        } catch {
+            XCTAssert("\(error)".contains("space not allowed"))
+        }
+
+        do {
+            _ = try renderer.testRender("#for( name in names ) {}", data)
+            XCTFail("Whitespace not allowed here")
+        } catch {
+            XCTAssert("\(error)".contains("space not allowed"))
+        }
+
+        do {
+            _ = try renderer.testRender("#for(name in names) {}", data)
+        } catch {
+            XCTFail("\(error)")
+        }
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -408,7 +438,8 @@ class LeafTests: XCTestCase {
         ("testDateFormat", testDateFormat),
         ("testStringIf", testStringIf),
         ("testEmptyForLoop", testEmptyForLoop),
-        ("testKeyEqual", testKeyEqual)
+        ("testKeyEqual", testKeyEqual),
+        ("testInvalidForSyntax", testInvalidForSyntax),
     ]
 }
 
