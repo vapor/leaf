@@ -413,6 +413,20 @@ class LeafTests: XCTestCase {
         }
     }
 
+    func testTemplating() throws {
+        let home = """
+        #set("title", "Home")
+        #set("body") {<p>#(foo)</p>}
+        #embed("base")
+        """
+        let expected = """
+        <title>Home</title>
+        <body><p>bar</p></title>
+        """
+        let data = try TemplateDataEncoder().encode(["foo": "bar"])
+        try XCTAssertEqual(renderer.testRender(home, data), expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -440,6 +454,7 @@ class LeafTests: XCTestCase {
         ("testEmptyForLoop", testEmptyForLoop),
         ("testKeyEqual", testKeyEqual),
         ("testInvalidForSyntax", testInvalidForSyntax),
+        ("testTemplating", testTemplating),
     ]
 }
 
