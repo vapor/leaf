@@ -7,11 +7,9 @@ import XCTest
 
 class LeafTests: XCTestCase {
     var renderer: LeafRenderer!
-    var queue: Worker!
 
     override func setUp() {
-        self.queue = try! DefaultEventLoop(label: "codes.vapor.leaf.test")
-        let container = BasicContainer(config: .init(), environment: .testing, services: .init(), on: queue)
+        let container = BasicContainer(config: .init(), environment: .testing, services: .init(), on: EmbeddedEventLoop())
         let viewsDir = "/" + #file.split(separator: "/").dropLast(3).joined(separator: "/").finished(with: "/Views/")
         let config = LeafConfig(tags: .default(), viewsDir: viewsDir, shouldCache: false)
         self.renderer = LeafRenderer(config: config, using: container)
@@ -266,35 +264,6 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(template, context), expected)
     }
 
-    func testReactiveStreams() throws {
-        let template = "#for(int in integers) {#(int),}"
-        
-        let expected = """
-        1,2,3,4,5,6,7,8,9,9,8,7,6,5,4,3,2,1,
-        """
-        
-        let emitter = PushStream(Int.self)
-        
-        let data = TemplateData.dictionary([
-            "integers": TemplateData.convert(stream: emitter)
-        ])
-        let render = renderer.render(template: template.data(using: .utf8)!, data)
-        
-        for i in 1..<10 {
-            emitter.push(i)
-        }
-        
-        for i in (1..<10).reversed() {
-            emitter.push(i)
-        }
-        
-        emitter.close()
-        
-        let rendered = try render.map(to: String.self) { String(data: $0.data, encoding: .utf8)! }
-            .blockingAwait()
-        XCTAssertEqual(rendered, expected)
-    }
-
     func testCount() throws {
         let template = """
         count: #count(array)
@@ -460,7 +429,7 @@ class LeafTests: XCTestCase {
 
 extension TemplateRenderer {
     func testRender(_ template: String, _ context: TemplateData = .null) throws -> String {
-        let view = try self.render(template: template.data(using: .utf8)!, context).blockingAwait(timeout: .seconds(5))
+        let view = try self.render(template: template.data(using: .utf8)!, context).wait()
         return String(data: view.data, encoding: .utf8)!
     }
 }
