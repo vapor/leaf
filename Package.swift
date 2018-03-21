@@ -11,7 +11,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/core.git", .branch("nio")),
 
         // 📦 Dependency injection / inversion of control framework.
-        .package(url: "https://github.com/vapor/service.git", .branch("nio")),
+        .package(url: "https://github.com/vapor/service.git", .branch("master")),
 
         // 📄 Easy-to-use foundation for building powerful templating languages in Swift.
         .package(url: "https://github.com/vapor/template-kit.git", .branch("nio")),
