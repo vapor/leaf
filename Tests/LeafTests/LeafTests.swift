@@ -396,6 +396,26 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(home, data), expected)
     }
 
+    func testGH96() throws {
+        let template = """
+        #for(name in names) {
+            #(name): index=#(index) last=#(isLast) first=#(isFirst)
+            #if(!isLast) {
+
+            }
+        }
+        """
+        let expected = """
+        tanner: index=0 last=false first=true
+        ziz: index=1 last=false first=false
+        vapor: index=2 last=true first=false
+        """
+        let data = try TemplateDataEncoder().encode([
+            "names": ["tanner", "ziz", "vapor"]
+        ])
+        try XCTAssertEqual(renderer.testRender(template, data), expected)
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -424,6 +444,7 @@ class LeafTests: XCTestCase {
         ("testKeyEqual", testKeyEqual),
         ("testInvalidForSyntax", testInvalidForSyntax),
         ("testTemplating", testTemplating),
+        ("testGH96", testGH96),
     ]
 }
 

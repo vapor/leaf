@@ -13,7 +13,7 @@ public final class LeafProvider: Provider {
     /// See Service.Provider.Register
     public func register(_ services: inout Services) throws {
         services.register(TemplateRenderer.self) { container -> LeafRenderer in
-            let config = try container.make(LeafConfig.self, for: LeafRenderer.self)
+            let config = try container.make(LeafConfig.self)
             return LeafRenderer(
                 config: config,
                 using: container
@@ -21,9 +21,9 @@ public final class LeafProvider: Provider {
         }
 
         services.register { container -> LeafConfig in
-            let dir = try container.make(DirectoryConfig.self, for: LeafRenderer.self)
+            let dir = try container.make(DirectoryConfig.self)
             return try LeafConfig(
-                tags: container.make(for: LeafConfig.self),
+                tags: container.make(),
                 viewsDir: dir.workDir + "Resources/Views",
                 shouldCache: container.environment != .development
             )
@@ -35,5 +35,7 @@ public final class LeafProvider: Provider {
     }
 
     /// See Service.Provider.boot
-    public func boot(_ container: Container) throws { }
+    public func didBoot(_ container: Container) throws -> Future<Void> {
+        return .done(on: container)
+    }
 }
