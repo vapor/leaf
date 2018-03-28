@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/template-kit.git", from: "1.0.0-rc.2"),
     ],
     targets: [
-        .target(name: "Leaf", dependencies: ["Async", "Bits", "CodableKit", "COperatingSystem", "Service", "TemplateKit"]),
+        .target(name: "Leaf", dependencies: ["Async", "Bits", "COperatingSystem", "Service", "TemplateKit"]),
         .testTarget(name: "LeafTests", dependencies: ["Leaf"]),
     ]
 )
