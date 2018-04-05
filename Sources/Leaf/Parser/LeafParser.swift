@@ -209,17 +209,8 @@ extension TemplateByteScanner {
                 throw TemplateError.parse(reason: "One key required in for-loop", template: makeSource(using: start), source: .capture())
             }
 
-            guard let data = name.path[0].stringValue.data(using: .utf8) else {
-                throw TemplateError.parse(reason: "Invalid UTF-8 string", template: makeSource(using: start), source: .capture())
-            }
-
-            let raw = TemplateSyntax(
-                type: .raw(TemplateRaw(data: data)),
-                source: key.source
-            )
-
             let keyConstant = TemplateSyntax(
-                type: .constant(.string([raw])),
+                type: .constant(.string(name.path[0].stringValue)),
                 source: key.source
             )
 
@@ -617,14 +608,14 @@ extension TemplateByteScanner {
             try expect(.quote)
             let ast = try LeafParser().parse(scanner: TemplateByteScanner(data: bytes, file: file))
             kind = .constant(
-                .string(ast)
+                .interpolated(ast)
             )
         case .exclamation:
             try expect(.exclamation)
             guard let param = try extractParameter() else {
                 throw TemplateError.parse(reason: "Parameter required after not `!`", template: makeSource(using: start), source: .capture())
             }
-            kind = .expression(.prefix(operator: .not, right: param))
+            kind = .expression(.prefix(op: .not, right: param))
         default:
             if byte.isDigit || byte == .hyphen {
                 // constant number
@@ -652,7 +643,7 @@ extension TemplateByteScanner {
 
         try extractSpaces()
 
-        let op: ExpressionInfixOperator?
+        let op: TemplateExpression.InfixOperator?
 
         if let byte = peek() {
             switch byte {
@@ -705,7 +696,7 @@ extension TemplateByteScanner {
 
             // FIXME: allow for () grouping and proper PEMDAS
             let exp: TemplateSyntaxType = .expression(.infix(
-                operator: op,
+                op: op,
                 left: syntax,
                 right: right
             ))
