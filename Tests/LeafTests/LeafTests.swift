@@ -330,7 +330,7 @@ class LeafTests: XCTestCase {
         }
 
         let context = Context(categories: [])
-        let data = try TemplateDataEncoder().encode(context)
+        let data = try TemplateDataEncoder().testEncode(context)
         try XCTAssertEqual(renderer.testRender(template, data), expected)
 
     }
@@ -348,12 +348,12 @@ class LeafTests: XCTestCase {
         }
 
         let context = Stuff(title: "foo")
-        let data = try TemplateDataEncoder().encode(context)
+        let data = try TemplateDataEncoder().testEncode(context)
         try XCTAssertEqual(renderer.testRender(template, data), expected)
     }
 
     func testInvalidForSyntax() throws {
-        let data = try TemplateDataEncoder().encode(["names": ["foo"]])
+        let data = try TemplateDataEncoder().testEncode(["names": ["foo"]])
         do {
             _ = try renderer.testRender("#for( name in names) {}", data)
             XCTFail("Whitespace not allowed here")
@@ -392,7 +392,7 @@ class LeafTests: XCTestCase {
         <title>Home</title>
         <body><p>bar</p></title>
         """
-        let data = try TemplateDataEncoder().encode(["foo": "bar"])
+        let data = try TemplateDataEncoder().testEncode(["foo": "bar"])
         try XCTAssertEqual(renderer.testRender(home, data), expected)
     }
 
@@ -410,7 +410,7 @@ class LeafTests: XCTestCase {
         ziz: index=1 last=false first=false
         vapor: index=2 last=true first=false
         """
-        let data = try TemplateDataEncoder().encode([
+        let data = try TemplateDataEncoder().testEncode([
             "names": ["tanner", "ziz", "vapor"]
         ])
         try XCTAssertEqual(renderer.testRender(template, data), expected)
