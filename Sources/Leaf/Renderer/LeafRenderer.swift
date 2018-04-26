@@ -6,7 +6,7 @@ import Service
 import TemplateKit
 
 /// Renders Leaf templates using the Leaf parser and serializer.
-public final class LeafRenderer: TemplateRenderer, Service {
+public final class LeafRenderer: ViewRenderer, TemplateRenderer, Service {
     /// See TemplateRenderer.parser
     public var parser: TemplateParser
 
@@ -14,7 +14,9 @@ public final class LeafRenderer: TemplateRenderer, Service {
     public var astCache: ASTCache?
 
     /// See TemplateRenderer.templateFileEnding
-    public var templateFileEnding: String
+    public var templateFileEnding: String {
+        return ".leaf"
+    }
 
     /// The tags available to this renderer.
     public let tags: [String: TagRenderer]
@@ -27,15 +29,11 @@ public final class LeafRenderer: TemplateRenderer, Service {
     public let container: Container
 
     /// Create a new Leaf renderer.
-    public init(
-        config: LeafConfig,
-        using container: Container
-    ) {
+    public init(config: LeafConfig, using container: Container) {
         self.tags = config.tags.storage
         astCache = config.shouldCache ? .init() : nil
         self.container = container
         self.relativeDirectory = config.viewsDir.finished(with: "/")
-        self.templateFileEnding = ".leaf"
         self.parser = LeafParser()
     }
 }
