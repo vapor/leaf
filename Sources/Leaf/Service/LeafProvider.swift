@@ -10,7 +10,7 @@ public final class LeafProvider: Provider {
 
     /// See Service.Provider.Register
     public func register(_ services: inout Services) throws {
-        services.register(TemplateRenderer.self) { container -> LeafRenderer in
+        services.register([TemplateRenderer.self, ViewRenderer.self]) { container -> LeafRenderer in
             let config = try container.make(LeafConfig.self)
             return LeafRenderer(
                 config: config,
