@@ -657,6 +657,8 @@ extension TemplateByteScanner {
                 op = .multiply
             case .forwardSlash:
                 op = .divide
+            case .percent:
+                op = .modulo
             case .equals:
                 op = .equal
             case .exclamation:
