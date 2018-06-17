@@ -17,10 +17,14 @@ public struct LeafConfig: Service {
     }
 }
 
-public struct LeafTagConfig: Service {
+public class LeafTagConfig: Service {
     var storage: [String: TagRenderer]
 
-    public mutating func use(_ tag: TagRenderer, as name: String) {
+    init(storage: [String: TagRenderer]) {
+        self.storage = storage
+    }
+
+    public func use(_ tag: TagRenderer, as name: String) {
         self.storage[name] = tag
     }
 

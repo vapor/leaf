@@ -27,9 +27,7 @@ public final class LeafProvider: Provider {
             )
         }
 
-        services.register { container -> LeafTagConfig in
-            return LeafTagConfig.default()
-        }
+        services.register(LeafTagConfig.default())
     }
 
     /// See Service.Provider.boot
