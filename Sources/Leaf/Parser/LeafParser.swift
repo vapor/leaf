@@ -418,11 +418,44 @@ extension TemplateByteScanner {
         )
         var ast: [TemplateSyntax] = [base]
 
+        var bodies = 1
+
         // ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
-        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
+        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket, .leftCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
             ast.append(syntax)
-            if peek() == .rightCurlyBracket {
-                break
+            if let next = peek(), next == .leftCurlyBracket {
+                bodies += 1
+                //Append
+                let lastast = syntax
+                switch lastast.type {
+                case .raw(let raw):
+                    ast[ast.count - 1] = TemplateSyntax(
+                        type: .raw(TemplateRaw(data: raw.data + Data(bytes: [next]))),
+                        source: lastast.source
+                    )
+                    try requirePop()
+                default:
+                    throw TemplateKitError(identifier: "extractBody", reason: "Unexpected leftCurlyBracket", source: makeSource(using: makeSourceStart()))
+                }
+            }
+            else if let next = peek(), next == .rightCurlyBracket {
+                bodies -= 1
+                if bodies == 0 {
+                    break
+                } else {
+                    //Append
+                    let lastast = syntax
+                    switch lastast.type {
+                    case .raw(let raw):
+                        ast[ast.count - 1] = TemplateSyntax(
+                            type: .raw(TemplateRaw(data: raw.data + Data(bytes: [next]))),
+                            source: lastast.source
+                        )
+                    default:
+                        throw TemplateKitError(identifier: "extractBody", reason: "Unexpected rightCurlyBracket", source: makeSource(using: makeSourceStart()))
+                    }
+                    try requirePop()
+                }
             }
         }
 
