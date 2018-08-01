@@ -426,12 +426,11 @@ extension TemplateByteScanner {
             if let next = peek(), next == .leftCurlyBracket {
                 bodies += 1
                 //Append
-                let lastast = syntax
-                switch lastast.type {
+                switch syntax.type {
                 case .raw(let raw):
                     ast[ast.count - 1] = TemplateSyntax(
                         type: .raw(TemplateRaw(data: raw.data + Data(bytes: [next]))),
-                        source: lastast.source
+                        source: syntax.source
                     )
                     try requirePop()
                 default:
@@ -444,12 +443,11 @@ extension TemplateByteScanner {
                     break
                 } else {
                     //Append
-                    let lastast = syntax
-                    switch lastast.type {
+                    switch syntax.type {
                     case .raw(let raw):
                         ast[ast.count - 1] = TemplateSyntax(
                             type: .raw(TemplateRaw(data: raw.data + Data(bytes: [next]))),
-                            source: lastast.source
+                            source: syntax.source
                         )
                     default:
                         throw TemplateKitError(identifier: "extractBody", reason: "Unexpected rightCurlyBracket", source: makeSource(using: makeSourceStart()))
