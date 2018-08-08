@@ -297,7 +297,7 @@ class LeafTests: XCTestCase {
         """
 
         let expected = """
-        Date: 2001-01-16
+        Date: 1970-01-16
         """
 
         let context = TemplateData.dictionary(["foo": .double(1_337_000)])
@@ -390,9 +390,13 @@ class LeafTests: XCTestCase {
         """
         let expected = """
         <title>Home</title>
-        <body><p>bar</p></title>
+        <body><p>bar</p></body>
+        
         """
+        renderer.astCache = ASTCache()
+        defer { renderer.astCache = nil }
         let data = try TemplateDataEncoder().testEncode(["foo": "bar"])
+        try XCTAssertEqual(renderer.testRender(home, data), expected)
         try XCTAssertEqual(renderer.testRender(home, data), expected)
     }
 
