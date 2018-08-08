@@ -1,17 +1,15 @@
 import Bits
-import Core
-import TemplateKit
 
 /// Parses leaf templates into a cacheable AST
 /// that can be later combined with Leaf Data to
 /// serialized a View.
-public final class LeafParser: TemplateParser {
+internal final class LeafParser: TemplateParser {
     /// Creates a new Leaf parser
-    public init() { }
+    internal init() { }
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse(scanner: TemplateByteScanner) throws -> [TemplateSyntax] {
+    internal func parse(scanner: TemplateByteScanner) throws -> [TemplateSyntax] {
         var ast: [TemplateSyntax] = []
 
         /// start parsing syntax
@@ -23,6 +21,8 @@ public final class LeafParser: TemplateParser {
         return ast
     }
 }
+
+// MARK: Private
 
 extension TemplateByteScanner {
     /// Base level extraction. Checks for `#` or extracts raw.
