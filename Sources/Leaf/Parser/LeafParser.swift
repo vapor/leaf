@@ -1,36 +1,32 @@
 import Bits
-import Core
-import TemplateKit
 
 /// Parses leaf templates into a cacheable AST
 /// that can be later combined with Leaf Data to
 /// serialized a View.
-public final class LeafParser: TemplateParser {
+internal final class LeafParser: TemplateParser {
     /// Creates a new Leaf parser
-    public init() { }
+    internal init() { }
 
     /// Parses the AST.
     /// throws `RenderError`. 
-    public func parse(scanner: TemplateByteScanner) throws -> [TemplateSyntax] {
-        /// create empty base syntax element, to simplify logic
-        let base = TemplateSyntax(
-            type: .raw(TemplateRaw(data: .empty)),
-            source: scanner.makeSource(using: scanner.makeSourceStart())
-        )
-        var ast: [TemplateSyntax] = [base]
+    internal func parse(scanner: TemplateByteScanner) throws -> [TemplateSyntax] {
+        var ast: [TemplateSyntax] = []
 
         /// start parsing syntax
-        while let syntax = try scanner.extractSyntax(indent: 0, previous: &ast[ast.count - 1]) {
+        while let syntax = try scanner.extractSyntax() {
             ast.append(syntax)
         }
-
+        print(ast)
+        
         return ast
     }
 }
 
+// MARK: Private
+
 extension TemplateByteScanner {
     /// Base level extraction. Checks for `#` or extracts raw.
-    fileprivate func extractSyntax(untilUnescaped signalBytes: Bytes = [], indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax? {
+    fileprivate func extractSyntax(untilUnescaped signalBytes: Bytes = []) throws -> TemplateSyntax? {
         guard let byte = peek() else {
             return nil
         }
@@ -40,7 +36,7 @@ extension TemplateByteScanner {
         if byte == .numberSign {
             if try shouldExtractTag() {
                 try expect(.numberSign)
-                syntax = try extractTag(indent: indent, previous: &previous)
+                syntax = try extractTag()
             } else {
                 let byte = try requirePop()
                 let start = makeSourceStart()
@@ -60,7 +56,6 @@ extension TemplateByteScanner {
                 source: source
             )
         }
-
         return syntax
     }
 
@@ -120,32 +115,8 @@ extension TemplateByteScanner {
     }
 
     /// Extracts a tag, recursively extracting chained tags and tag parameters and bodies.
-    private func extractTag(indent: Int, previous: inout TemplateSyntax) throws -> TemplateSyntax {
+    private func extractTag() throws -> TemplateSyntax {
         let start = makeSourceStart()
-
-        trim: if case .raw(var raw) = previous.type {
-            var offset = 0
-
-            skipwhitespace: for i in (0..<raw.data.count).reversed() {
-                offset = i
-                switch raw.data[i] {
-                case .space:
-                    break
-                case .newLine:
-                    break skipwhitespace
-                default:
-                    break trim
-                }
-            }
-
-            if offset == 0 {
-                raw.data = .empty
-            } else {
-                raw.data = Data(raw.data[0..<offset])
-            }
-
-            previous = TemplateSyntax(type: .raw(raw), source: previous.source)
-        }
 
         /// Extract the tag name.
         let id = try extractTagName()
@@ -260,8 +231,7 @@ extension TemplateByteScanner {
         } else {
             if try shouldExtractBody() {
                 try extractSpaces()
-                let rawBody = try extractBody(indent: indent + 4)
-                body = try correctIndentation(rawBody, to: indent)
+                body = try extractBody()
             } else {
                 body = nil
             }
@@ -280,7 +250,7 @@ extension TemplateByteScanner {
             let cond = try TemplateConditional(
                 condition: params[0],
                 body: body ?? [],
-                next: extractIfElse(indent: indent)
+                next: extractIfElse()
             )
             type = .conditional(cond)
         case "embed":
@@ -311,67 +281,8 @@ extension TemplateByteScanner {
         return TemplateSyntax(type: type, source: source)
     }
 
-    // corrects body indentation by splitting on newlines
-    // and stitching toogether w/ supplied indent level
-    func correctIndentation(_ ast: [TemplateSyntax], to indent: Int) throws -> [TemplateSyntax] {
-        var corrected: [TemplateSyntax] = []
-
-        let indent = indent + 4
-        
-        for syntax in ast {
-            switch syntax.type {
-            case .raw(let raw):
-                let scanner = TemplateByteScanner(data: raw.data, file: file)
-                var chunkStart = scanner.offset
-                while let byte = scanner.peek() {
-                    switch byte {
-                    case .newLine:
-                        // pop the new line
-                        try scanner.requirePop()
-
-                        // break off the previous raw chunk
-                        // and remove indentation from following chunk
-                        let data = Data(raw.data[chunkStart..<scanner.offset])
-                        let new = TemplateSyntax(
-                            type: .raw(TemplateRaw(data: data)),
-                            source: syntax.source
-                        )
-                        corrected.append(new)
-
-                        var spacesSkipped = 0
-                        while scanner.peek() == .space {
-                            try scanner.requirePop()
-                            spacesSkipped += 1
-                            if spacesSkipped >= indent {
-                                break
-                            }
-                        }
-
-                        chunkStart = scanner.offset
-                    default:
-                        try scanner.requirePop()
-                    }
-                }
-
-                // append any remaining bytes
-                if chunkStart < raw.data.count {
-                    let data = Data(raw.data[chunkStart..<raw.data.count])
-                    let new = TemplateSyntax(
-                        type: .raw(TemplateRaw(data: data)),
-                        source: syntax.source
-                    )
-                    corrected.append(new)
-                }
-            default:
-                corrected.append(syntax)
-            }
-        }
-
-        return Array(corrected)
-    }
-
     // extracts if/else syntax sugar
-    private func extractIfElse(indent: Int) throws -> TemplateConditional? {
+    private func extractIfElse() throws -> TemplateConditional? {
         let start = makeSourceStart()
 
         try extractSpaces()
@@ -399,8 +310,8 @@ extension TemplateByteScanner {
 
             return try TemplateConditional(
                 condition: params[0],
-                body: extractBody(indent: indent),
-                next: extractIfElse(indent: indent)
+                body: extractBody(),
+                next: extractIfElse()
             )
         }
 
@@ -408,45 +319,15 @@ extension TemplateByteScanner {
     }
 
     // extracts a tag body { to }
-    private func extractBody(indent: Int) throws -> [TemplateSyntax] {
+    private func extractBody() throws -> [TemplateSyntax] {
         try expect(.leftCurlyBracket)
 
-        /// create empty base syntax element, to simplify logic
-        let base = TemplateSyntax(
-            type: .raw(TemplateRaw(data: .empty)),
-            source: makeSource(using: makeSourceStart())
-        )
-        var ast: [TemplateSyntax] = [base]
-
-        // ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
-        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
+        var ast: [TemplateSyntax] = []
+        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket]) {
             ast.append(syntax)
             if peek() == .rightCurlyBracket {
                 break
             }
-        }
-
-        trim: if let last = ast.last, case .raw(var raw) = last.type {
-            var offset = 0
-
-            skipwhitespace: for i in (0..<raw.data.count).reversed() {
-                offset = i
-                switch raw.data[i] {
-                case .space:
-                    break
-                case .newLine:
-                    break skipwhitespace
-                default:
-                    break trim
-                }
-            }
-
-            if offset == 0 {
-                raw.data = .empty
-            } else {
-                raw.data = Data(raw.data[0..<offset])
-            }
-            ast[ast.count - 1] = TemplateSyntax(type: .raw(raw), source: last.source)
         }
 
         try expect(.rightCurlyBracket)
@@ -605,9 +486,7 @@ extension TemplateByteScanner {
             let bytes = try extractBytes(untilUnescaped: [.quote])
             try expect(.quote)
             let ast = try LeafParser().parse(scanner: TemplateByteScanner(data: bytes, file: file))
-            kind = .constant(
-                .interpolated(ast)
-            )
+            kind = .constant(.interpolated(ast))
         case .exclamation:
             try expect(.exclamation)
             guard let param = try extractParameter() else {
@@ -626,11 +505,7 @@ extension TemplateByteScanner {
                 try requirePop(n: 5)
                 kind = .constant(.bool(false))
             } else if try shouldExtractTag() {
-                var syntax = TemplateSyntax(
-                    type: .raw(TemplateRaw(data: .empty)),
-                    source: makeSource(using: makeSourceStart())
-                )
-                kind = try extractTag(indent: 0, previous: &syntax).type
+                kind = try extractTag().type
             } else {
                 let id = try extractIdentifier()
                 kind = id.type
@@ -694,14 +569,26 @@ extension TemplateByteScanner {
                 throw TemplateKitError(identifier: "parse", reason: "Parameter required after infix operator", source: makeSource(using: start))
             }
 
-            // FIXME: allow for () grouping and proper PEMDAS
-            let exp: TemplateSyntaxType = .expression(.infix(
-                op: op,
-                left: syntax,
-                right: right
-            ))
-            let source = makeSource(using: start)
-            return TemplateSyntax(type: exp, source: source)
+            // FIXME: add support for parens
+            
+            if case .expression(let rexp) = right.type, case .infix(let rop, let rleft, let rright) = rexp, rop.order >= op.order {
+                let lleft = syntax
+                let lop = op
+                let nleft = TemplateSyntax(type: .expression(.infix(op: lop, left: lleft, right: rleft)), source: makeSource(using: start))
+                let source = makeSource(using: start)
+                return TemplateSyntax(type: .expression(.infix(
+                    op: rop,
+                    left: nleft,
+                    right: rright
+                )), source: source)
+            } else {
+                let source = makeSource(using: start)
+                return TemplateSyntax(type: .expression(.infix(
+                    op: op,
+                    left: syntax,
+                    right: right
+                )), source: source)
+            }
         } else {
             return syntax
         }

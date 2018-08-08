@@ -88,9 +88,7 @@ class LeafTests: XCTestCase {
         let template = """
         <p>
             <ul>
-                #for(name in names) {
-                    <li>#(name)</li>
-                }
+                #for(name in names) {<li>#(name)</li>}
             </ul>
         </p>
         """
@@ -104,9 +102,7 @@ class LeafTests: XCTestCase {
         let expect = """
         <p>
             <ul>
-                <li>Vapor</li>
-                <li>Leaf</li>
-                <li>Bits</li>
+                <li>Vapor</li><li>Leaf</li><li>Bits</li>
             </ul>
         </p>
         """
@@ -134,8 +130,8 @@ class LeafTests: XCTestCase {
         */
         bar
         """
-        try XCTAssertEqual(renderer.testRender(template, .null), "foobar")
-        try XCTAssertEqual(renderer.testRender(multilineTemplate, .null), "foo\nbar")
+        try XCTAssertEqual(renderer.testRender(template, .null), "foo\nbar")
+        try XCTAssertEqual(renderer.testRender(multilineTemplate, .null), "foo\n\nbar")
     }
 
     func testHashtag() throws {
@@ -231,39 +227,6 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(template, .null), expected)
     }
 
-    func testIndentationCorrection() throws {
-        let template = """
-        <p>
-            <ul>
-                #for(item in items) {
-                    #if(true) {
-                        <li>#(item)</li>
-                        <br>
-                    }
-                }
-            </ul>
-        </p>
-        """
-
-        let expected = """
-        <p>
-            <ul>
-                <li>foo</li>
-                <br>
-                <li>bar</li>
-                <br>
-                <li>baz</li>
-                <br>
-            </ul>
-        </p>
-        """
-
-        let context = TemplateData.dictionary([
-            "items": .array([.string("foo"), .string("bar"), .string("baz")])
-        ])
-        try XCTAssertEqual(renderer.testRender(template, context), expected)
-    }
-
     func testCount() throws {
         let template = """
         count: #count(array)
@@ -277,13 +240,9 @@ class LeafTests: XCTestCase {
 
     func testNestedSet() throws {
         let template = """
-        #if(a) {
-            #set("title") {A}
-        }
-        title: #get(title)
+        #if(a){#set("title"){A}}title: #get(title)
         """
         let expected = """
-
         title: A
         """
 
@@ -384,9 +343,7 @@ class LeafTests: XCTestCase {
 
     func testTemplating() throws {
         let home = """
-        #set("title", "Home")
-        #set("body") {<p>#(foo)</p>}
-        #embed("base")
+        #set("title", "Home")#set("body"){<p>#(foo)</p>}#embed("base")
         """
         let expected = """
         <title>Home</title>
@@ -400,24 +357,80 @@ class LeafTests: XCTestCase {
         try XCTAssertEqual(renderer.testRender(home, data), expected)
     }
 
+    // https://github.com/vapor/leaf/issues/96
     func testGH96() throws {
         let template = """
         #for(name in names) {
             #(name): index=#(index) last=#(isLast) first=#(isFirst)
-            #if(!isLast) {
-
-            }
         }
         """
         let expected = """
-        tanner: index=0 last=false first=true
-        ziz: index=1 last=false first=false
-        vapor: index=2 last=true first=false
+
+            tanner: index=0 last=false first=true
+
+            ziz: index=1 last=false first=false
+
+            vapor: index=2 last=true first=false
+
         """
         let data = try TemplateDataEncoder().testEncode([
             "names": ["tanner", "ziz", "vapor"]
         ])
         try XCTAssertEqual(renderer.testRender(template, data), expected)
+    }
+    
+    // https://github.com/vapor/leaf/issues/99
+    func testGH99() throws {
+        let template = """
+        Hi #(first) #(last)
+        """
+        let expected = """
+        Hi Foo Bar
+        """
+        let data = try TemplateDataEncoder().testEncode([
+            "first": "Foo", "last": "Bar"
+        ])
+        try XCTAssertEqual(renderer.testRender(template, data), expected)
+    }
+    
+    // https://github.com/vapor/leaf/issues/101
+    func testGH101() throws {
+        let template = """
+        #for(foo in foos){#(index+1):#(foo)}
+        """
+        let expected = "1:A2:B3:C"
+        let data = try TemplateDataEncoder().testEncode([
+            "foos": ["A", "B", "C"]
+        ])
+        try XCTAssertEqual(renderer.testRender(template, data), expected)
+    }
+    
+    // https://github.com/vapor/leaf/issues/105
+    func testGH105() throws {
+        do {
+            let template = """
+            #if(1 + 1 == 2) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+        do {
+            let template = """
+            #if(2 == 1 + 1) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+        do {
+            let template = """
+            #if(1 == 1 + 1 || 1 == 2 - 1) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
     }
 
     static var allTests = [
@@ -439,7 +452,6 @@ class LeafTests: XCTestCase {
         ("testEqual", testEqual),
         ("testEscapeExtraneousBody", testEscapeExtraneousBody),
         ("testEscapeTag", testEscapeTag),
-        ("testIndentationCorrection", testIndentationCorrection),
         ("testCount", testCount),
         ("testNestedSet", testNestedSet),
         ("testDateFormat", testDateFormat),
@@ -449,6 +461,9 @@ class LeafTests: XCTestCase {
         ("testInvalidForSyntax", testInvalidForSyntax),
         ("testTemplating", testTemplating),
         ("testGH96", testGH96),
+        ("testGH99", testGH99),
+        ("testGH101", testGH101),
+        ("testGH105", testGH105),
     ]
 }
 

@@ -1,6 +1,6 @@
 import Dispatch
 import Foundation
 
-extension Data {
+internal extension Data {
     static let empty = Data()
 }
