@@ -404,6 +404,34 @@ class LeafTests: XCTestCase {
         ])
         try XCTAssertEqual(renderer.testRender(template, data), expected)
     }
+    
+    // https://github.com/vapor/leaf/issues/105
+    func testGH105() throws {
+        do {
+            let template = """
+            #if(1 + 1 == 2) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+        do {
+            let template = """
+            #if(2 == 1 + 1) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+        do {
+            let template = """
+            #if(1 == 1 + 1 || 1 == 2 - 1) {hi}
+            """
+            let expected = "hi"
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+    }
 
     static var allTests = [
         ("testPrint", testPrint),
@@ -435,6 +463,7 @@ class LeafTests: XCTestCase {
         ("testGH96", testGH96),
         ("testGH99", testGH99),
         ("testGH101", testGH101),
+        ("testGH105", testGH105),
     ]
 }
 

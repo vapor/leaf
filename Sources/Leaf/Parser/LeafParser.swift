@@ -567,14 +567,26 @@ extension TemplateByteScanner {
                 throw TemplateKitError(identifier: "parse", reason: "Parameter required after infix operator", source: makeSource(using: start))
             }
 
-            // FIXME: allow for () grouping and proper PEMDAS
-            let exp: TemplateSyntaxType = .expression(.infix(
-                op: op,
-                left: syntax,
-                right: right
-            ))
-            let source = makeSource(using: start)
-            return TemplateSyntax(type: exp, source: source)
+            // FIXME: add support for parens
+            
+            if case .expression(let rexp) = right.type, case .infix(let rop, let rleft, let rright) = rexp, rop.order >= op.order {
+                let lleft = syntax
+                let lop = op
+                let nleft = TemplateSyntax(type: .expression(.infix(op: lop, left: lleft, right: rleft)), source: makeSource(using: start))
+                let source = makeSource(using: start)
+                return TemplateSyntax(type: .expression(.infix(
+                    op: rop,
+                    left: nleft,
+                    right: rright
+                )), source: source)
+            } else {
+                let source = makeSource(using: start)
+                return TemplateSyntax(type: .expression(.infix(
+                    op: op,
+                    left: syntax,
+                    right: right
+                )), source: source)
+            }
         } else {
             return syntax
         }
