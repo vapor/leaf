@@ -1,4 +1,10 @@
-/// Available Leaf tags.
+/// Used to configure available Leaf tags.
+///
+///     var leaf = LeafTagConfig.default()
+///     leaf.use(DateTag(), as: "date")
+///     services.register(leaf)
+///
+/// See `TagRenderer` protocol for more information about creating custom tags.
 public struct LeafTagConfig: Service {
     /// Default Leaf tag configuration.
     public static func `default`() -> LeafTagConfig {

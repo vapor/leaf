@@ -1,4 +1,7 @@
 /// Adds Leaf services to your container.
+///
+///     try services.register(LeafProvider())
+///
 public final class LeafProvider: Provider {
     /// Creates a new `LeafProvider`.
     public init() {}
