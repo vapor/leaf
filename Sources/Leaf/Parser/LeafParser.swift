@@ -16,7 +16,6 @@ internal final class LeafParser: TemplateParser {
         while let syntax = try scanner.extractSyntax() {
             ast.append(syntax)
         }
-        print(ast)
         
         return ast
     }
