@@ -195,14 +195,21 @@ extension TemplateByteScanner {
         // Extract tag body.
         let body: [TemplateSyntax]?
         if name == "//" {
+            var onlyCommentLine: Bool
+            onlyCommentLine = peek(by: -4) == .newLine
+
             let s = makeSourceStart()
             let bytes = try extractBytes(untilUnescaped: [.newLine])
-            // pop the newline
-            try requirePop()
+
+            if onlyCommentLine {
+                try requirePop()
+            }
+
             body = [TemplateSyntax(
                 type: .raw(TemplateRaw(data: bytes)),
                 source: makeSource(using: s)
             )]
+
         } else if name == "/*" {
             let s = makeSourceStart()
             var i = 0
