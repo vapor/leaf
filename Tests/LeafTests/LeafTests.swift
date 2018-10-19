@@ -504,6 +504,8 @@ class LeafTests: XCTestCase {
         ("testGH99", testGH99),
         ("testGH101", testGH101),
         ("testGH105", testGH105),
+        ("testGH127Inline", testGH127Inline),
+        ("testGH127SingleLine", testGH127SingleLine)
     ]
 }
 
