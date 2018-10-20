@@ -195,13 +195,12 @@ extension TemplateByteScanner {
         // Extract tag body.
         let body: [TemplateSyntax]?
         if name == "//" {
-            var onlyCommentLine: Bool
-            onlyCommentLine = peek(by: -4) == .newLine
+            let isEntirelyCommentLine: Bool = (peek(by: -4) == .newLine)
 
             let s = makeSourceStart()
             let bytes = try extractBytes(untilUnescaped: [.newLine])
 
-            if onlyCommentLine {
+            if isEntirelyCommentLine {
                 try requirePop()
             }
 
