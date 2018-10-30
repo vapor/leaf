@@ -433,6 +433,46 @@ class LeafTests: XCTestCase {
         }
     }
 
+    // https://github.com/vapor/leaf/issues/127
+    func testGH127Inline() throws {
+        do {
+            let template = """
+            <html>
+            <head>
+            <title></title>#// Translate all copy!!!!!
+            <style>
+            """
+            let expected = """
+            <html>
+            <head>
+            <title></title>
+            <style>
+            """
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+    }
+
+    func testGH127SingleLine() throws {
+        do {
+            let template = """
+            <html>
+            <head>
+            <title></title>
+            #// Translate all copy!!!!!
+            <style>
+            """
+            let expected = """
+            <html>
+            <head>
+            <title></title>
+            <style>
+            """
+            let data = try TemplateDataEncoder().testEncode(["a": "a"])
+            try XCTAssertEqual(renderer.testRender(template, data), expected)
+        }
+    }
+
     static var allTests = [
         ("testPrint", testPrint),
         ("testConstant", testConstant),
@@ -464,6 +504,8 @@ class LeafTests: XCTestCase {
         ("testGH99", testGH99),
         ("testGH101", testGH101),
         ("testGH105", testGH105),
+        ("testGH127Inline", testGH127Inline),
+        ("testGH127SingleLine", testGH127SingleLine)
     ]
 }
 
