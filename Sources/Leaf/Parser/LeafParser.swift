@@ -327,17 +327,12 @@ extension TemplateByteScanner {
     private func extractBody() throws -> [TemplateSyntax] {
         try expect(.leftCurlyBracket)
 
-        /// create empty base syntax element, to simplify logic
-        let base = TemplateSyntax(
-            type: .raw(TemplateRaw(data: .empty)),
-            source: makeSource(using: makeSourceStart())
-        )
-        var ast: [TemplateSyntax] = [base]
+        var ast: [TemplateSyntax] = []
 
         var bodies = 1
 
         // ast.append(TemplateSyntax(type: .raw(.empty), source: TemplateSource(line: 0, column: 0, range: 0..<1)))
-        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket, .leftCurlyBracket], indent: indent, previous: &ast[ast.count - 1]) {
+        while let syntax = try extractSyntax(untilUnescaped: [.rightCurlyBracket, .leftCurlyBracket]) {
             ast.append(syntax)
             if let next = peek(), next == .leftCurlyBracket {
                 bodies += 1
