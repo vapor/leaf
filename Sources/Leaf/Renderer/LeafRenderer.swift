@@ -1,19 +1,12 @@
-import Async
-import Bits
-import Dispatch
-import Foundation
-import Service
-import TemplateKit
-
 /// Renders Leaf templates using the Leaf parser and serializer.
 public final class LeafRenderer: ViewRenderer, TemplateRenderer, Service {
-    /// See TemplateRenderer.parser
+    /// See `TemplateRenderer`.
     public var parser: TemplateParser
 
-    /// See TemplateRenderer.astCache
+    /// See `TemplateRenderer`.
     public var astCache: ASTCache?
 
-    /// See TemplateRenderer.templateFileEnding
+    /// See `TemplateRenderer`.
     public var templateFileEnding: String {
         return ".leaf"
     }

@@ -1,26 +1,20 @@
-import Core
-import Service
-import TemplateKit
-
+/// Adds Leaf services to your container.
+///
+///     try services.register(LeafProvider())
+///
 public final class LeafProvider: Provider {
-    /// See Service.Provider.repositoryName
-    public static let repositoryName = "leaf"
-
+    /// Creates a new `LeafProvider`.
     public init() {}
 
-    /// See Service.Provider.Register
+    /// See `Provider`.
     public func register(_ services: inout Services) throws {
         services.register([TemplateRenderer.self, ViewRenderer.self]) { container -> LeafRenderer in
-            let config = try container.make(LeafConfig.self)
-            return LeafRenderer(
-                config: config,
-                using: container
-            )
+            return try .init(config: container.make(), using: container)
         }
 
         services.register { container -> LeafConfig in
             let dir = try container.make(DirectoryConfig.self)
-            return try LeafConfig(
+            return try .init(
                 tags: container.make(),
                 viewsDir: dir.workDir + "Resources/Views",
                 shouldCache: container.environment != .development
@@ -28,11 +22,11 @@ public final class LeafProvider: Provider {
         }
 
         services.register { container -> LeafTagConfig in
-            return LeafTagConfig.default()
+            return .default()
         }
     }
 
-    /// See Service.Provider.boot
+    /// See `Provider`.
     public func didBoot(_ container: Container) throws -> Future<Void> {
         return .done(on: container)
     }

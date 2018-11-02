@@ -1,11 +1,20 @@
-import Service
-
 /// Used to configure Leaf renderer.
 public struct LeafConfig: Service {
-    let tags: LeafTagConfig
-    let viewsDir: String
-    let shouldCache: Bool
+    /// Available leaf tags.
+    public var tags: LeafTagConfig
+    
+    /// Absolute path to views directory.
+    public var viewsDir: String
+    
+    /// If `true`, Leaf should cache parsed views.
+    public var shouldCache: Bool
 
+    /// Creates a new `LeafConfig`.
+    ///
+    /// - parameters:
+    ///     - tags: Available leaf tags.
+    ///     - viewsDir: Absolute path to views directory.
+    ///     - shouldCache: If `true`, Leaf should cache parsed views.
     public init(
         tags: LeafTagConfig,
         viewsDir: String,
@@ -14,17 +23,5 @@ public struct LeafConfig: Service {
         self.tags = tags
         self.viewsDir = viewsDir
         self.shouldCache = shouldCache
-    }
-}
-
-public struct LeafTagConfig: Service {
-    var storage: [String: TagRenderer]
-
-    public mutating func use(_ tag: TagRenderer, as name: String) {
-        self.storage[name] = tag
-    }
-
-    public static func `default`() -> LeafTagConfig {
-        return .init(storage: defaultTags)
     }
 }
