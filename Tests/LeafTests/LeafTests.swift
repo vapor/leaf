@@ -505,8 +505,91 @@ class LeafTests: XCTestCase {
         ("testGH101", testGH101),
         ("testGH105", testGH105),
         ("testGH127Inline", testGH127Inline),
-        ("testGH127SingleLine", testGH127SingleLine)
+        ("testGH127SingleLine", testGH127SingleLine),
+        ("testRenderPerformance", testRenderPerformance)
     ]
+}
+
+// MARK: - Performance
+
+extension LeafTests {
+    private struct ExampleModel: Encodable {
+        var id: Int = 1
+
+        var string1: String = "a"
+        var string2: String = String(repeating: "b", count: 5)
+        var string3: String = String(repeating: "abcdef", count: 2)
+        var string4: String? = String(repeating: "abc1", count: 4)
+        var string5: String? = String(repeating: "xyz2", count: 4)
+        var string6: String? = String(repeating: "100letters", count: 10)
+
+        var emptyString1: String? = nil
+        var emptyString2: String? = nil
+        var emptyString3: String? = nil
+
+        var int1: Int = 1
+        var int2: Int = 2
+        var int3: Int? = nil
+        var int4: UInt8 = 1
+        var int5: UInt8 = 2
+        var int6: UInt8? = nil
+
+        var date1: Date = Date(timeIntervalSince1970: 1546300800)  // Midnight (GMT) April 1st, 2019
+        var date2: Date? = Date(timeIntervalSince1970: 1546300800)  // Midnight (GMT) April 1st, 2019
+        var date3: Date? = Date(timeIntervalSince1970: 1546300800)  // Midnight (GMT) April 1st, 2019
+        var date4: Date? = Date(timeIntervalSince1970: 1546300800)  // Midnight (GMT) April 1st, 2019
+        var date5: Date? = nil
+
+        var double1: Double = 1
+        var double2: Double? = 2
+        var double3: Double? = nil
+
+        var uuid: UUID = UUID()
+    }
+
+    private struct Index: Encodable {
+        var models = Array(repeating: ExampleModel(), count: 500)
+    }
+
+    private static let exampleIndex = Index()
+
+    func testRenderPerformance() throws {
+        let context = try! TemplateDataEncoder().testEncode(Index())
+        let template = """
+#for(row in models) {
+<tr>
+<td>#(row.id)</td>
+<td>#(row.string1)</td>
+<td>#(row.string2)</td>
+<td>#(row.string3)</td>
+<td>#(row.string4)</td>
+<td>#(row.string5)</td>
+<td>#(row.string6)</td>
+<td>#(row.emptyString1)</td>
+<td>#(row.emptyString2)</td>
+<td>#(row.emptyString3)</td>
+<td>#(row.int1)</td>
+<td>#(row.int2)</td>
+<td>#(row.int3)</td>
+<td>#(row.int4)</td>
+<td>#(row.int5)</td>
+<td>#(row.int6)</td>
+<td>#(date(row.date1, "yyyy-MM-dd HH:mm:ss"))</td>
+<td>#(date(row.date2, "yyyy-MM-dd HH:mm:ss"))</td>
+<td>#(date(row.date3, "yyyy-MM-dd"))</td>
+<td>#(date(row.date4, "HH:mm:ss"))</td>
+<td>#(date(row.date5, "yyyy-MM-dd HH:mm:ss"))</td>
+<td>#(row.double1)</td>
+<td>#(row.double2)</td>
+<td>#(row.double3)</td>
+<td>#(row.uuid)</td>
+</tr>
+}
+"""
+        measure {
+            _ = try! renderer.testRender(template, context)
+        }
+    }
 }
 
 extension TemplateRenderer {
