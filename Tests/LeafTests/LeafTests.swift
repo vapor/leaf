@@ -515,3 +515,9 @@ extension TemplateRenderer {
         return String(data: view.data, encoding: .utf8)!
     }
 }
+
+extension TemplateDataEncoder {
+    func testEncode<E>(_ encodable: E) throws -> TemplateData where E: Encodable {
+        return try encode(encodable, on: EmbeddedEventLoop()).wait()
+    }
+}
