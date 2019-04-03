@@ -3,5 +3,4 @@ import XCTest
 
 XCTMain([
     testCase(LeafTests.allTests),
-    testCase(TemplateDataEncoderTests.allTests),
 ])
