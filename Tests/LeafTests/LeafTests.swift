@@ -556,36 +556,36 @@ extension LeafTests {
     func testRenderPerformance() throws {
         let context = try! TemplateDataEncoder().testEncode(Index())
         let template = """
-#for(row in models) {
-<tr>
-<td>#(row.id)</td>
-<td>#(row.string1)</td>
-<td>#(row.string2)</td>
-<td>#(row.string3)</td>
-<td>#(row.string4)</td>
-<td>#(row.string5)</td>
-<td>#(row.string6)</td>
-<td>#(row.emptyString1)</td>
-<td>#(row.emptyString2)</td>
-<td>#(row.emptyString3)</td>
-<td>#(row.int1)</td>
-<td>#(row.int2)</td>
-<td>#(row.int3)</td>
-<td>#(row.int4)</td>
-<td>#(row.int5)</td>
-<td>#(row.int6)</td>
-<td>#(date(row.date1, "yyyy-MM-dd HH:mm:ss"))</td>
-<td>#(date(row.date2, "yyyy-MM-dd HH:mm:ss"))</td>
-<td>#(date(row.date3, "yyyy-MM-dd"))</td>
-<td>#(date(row.date4, "HH:mm:ss"))</td>
-<td>#(date(row.date5, "yyyy-MM-dd HH:mm:ss"))</td>
-<td>#(row.double1)</td>
-<td>#(row.double2)</td>
-<td>#(row.double3)</td>
-<td>#(row.uuid)</td>
-</tr>
-}
-"""
+        #for(row in models) {
+        <tr>
+        <td>#(row.id)</td>
+        <td>#(row.string1)</td>
+        <td>#(row.string2)</td>
+        <td>#(row.string3)</td>
+        <td>#(row.string4)</td>
+        <td>#(row.string5)</td>
+        <td>#(row.string6)</td>
+        <td>#(row.emptyString1)</td>
+        <td>#(row.emptyString2)</td>
+        <td>#(row.emptyString3)</td>
+        <td>#(row.int1)</td>
+        <td>#(row.int2)</td>
+        <td>#(row.int3)</td>
+        <td>#(row.int4)</td>
+        <td>#(row.int5)</td>
+        <td>#(row.int6)</td>
+        <td>#(date(row.date1, "yyyy-MM-dd HH:mm:ss"))</td>
+        <td>#(date(row.date2, "yyyy-MM-dd HH:mm:ss"))</td>
+        <td>#(date(row.date3, "yyyy-MM-dd"))</td>
+        <td>#(date(row.date4, "HH:mm:ss"))</td>
+        <td>#(date(row.date5, "yyyy-MM-dd HH:mm:ss"))</td>
+        <td>#(row.double1)</td>
+        <td>#(row.double2)</td>
+        <td>#(row.double3)</td>
+        <td>#(row.uuid)</td>
+        </tr>
+        }
+        """
         measure {
             _ = try! renderer.testRender(template, context)
         }
