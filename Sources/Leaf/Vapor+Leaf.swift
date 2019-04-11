@@ -14,7 +14,7 @@ public final class LeafProvider: Provider {
 
         s.register(LeafConfig.self) { c in
             let directory = try c.make(DirectoryConfig.self)
-            return LeafConfig(rootDirectory: directory.workDir + "/Resources/Views")
+            return LeafConfig(rootDirectory: directory.workDir + "Resources/Views/")
         }
     }
 }
