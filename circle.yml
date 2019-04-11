@@ -3,7 +3,7 @@ version: 2
 jobs:
   macos:
     macos:
-      xcode: "9.0"
+      xcode: "10.2"
     steps:
       - checkout
       - run: swift build
@@ -11,7 +11,7 @@ jobs:
 
   linux:
     docker:
-      - image: codevapor/swift:4.1
+      - image: codevapor/swift:5.0
     steps:
       - checkout
       - run: swift build
