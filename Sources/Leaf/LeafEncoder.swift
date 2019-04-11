@@ -90,7 +90,7 @@ private final class SingleValueContainer: SingleValueEncodingContainer, _Contain
 
     /// See `SingleValueEncodingContainer`
     func encode<T>(_ value: T) throws where T: Encodable {
-        if let convertible = value as? LeafDataConvertible {
+        if let convertible = value as? LeafDataRepresentable {
             if let converted = convertible.leafData {
                 self.data = .data(converted)
             } else {
@@ -131,7 +131,7 @@ private final class KeyedContainer<Key>: KeyedEncodingContainerProtocol, _Contai
     func encode<T>(_ value: T, forKey key: Key) throws
         where T : Encodable
     {
-        if let convertible = value as? LeafDataConvertible {
+        if let convertible = value as? LeafDataRepresentable {
             guard let converted = convertible.leafData else {
                 throw EncodingError.invalidValue(value, at: self.codingPath + [key])
             }
@@ -191,7 +191,7 @@ private final class UnkeyedContainer: UnkeyedEncodingContainer, _Container {
 
     func encode<T>(_ value: T) throws where T: Encodable {
         defer { self.count += 1 }
-        if let convertible = value as? LeafDataConvertible {
+        if let convertible = value as? LeafDataRepresentable {
             guard let converted = convertible.leafData else {
                 throw EncodingError.invalidValue(value, at: self.codingPath )
             }

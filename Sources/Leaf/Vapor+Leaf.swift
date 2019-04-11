@@ -19,10 +19,6 @@ public final class LeafProvider: Provider {
     }
 }
 
-public protocol LeafDataConvertible {
-    var leafData: LeafData? { get }
-}
-
 extension LeafRenderer: ViewRenderer {
     public var eventLoop: EventLoop {
         #warning("TODO: make event loop public")
