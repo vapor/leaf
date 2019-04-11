@@ -1,6 +1,8 @@
 import Vapor
 
 public final class LeafProvider: Provider {
+    public init() { }
+    
     public func register(_ s: inout Services) throws {
         s.register(LeafRenderer.self) { c in
             return try LeafRenderer(config: c.make(), threadPool: c.make(), eventLoop: c.eventLoop)
