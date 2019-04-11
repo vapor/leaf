@@ -39,7 +39,7 @@ extension TemplateByteScanner {
             } else {
                 let byte = try requirePop()
                 let start = makeSourceStart()
-                let bytes = try Data(bytes: [byte]) + extractRaw(untilUnescaped: signalBytes)
+                let bytes = try Data([byte]) + extractRaw(untilUnescaped: signalBytes)
                 let source = makeSource(using: start)
                 syntax = TemplateSyntax(
                     type: .raw(TemplateRaw(data: bytes)),
@@ -123,7 +123,7 @@ extension TemplateByteScanner {
         // Verify tag names containg / or * are comment tag names.
         if id.contains(where: { $0 == .forwardSlash || $0 == .asterisk }) {
             switch id {
-            case Data(bytes: [.forwardSlash, .forwardSlash]), Data(bytes: [.forwardSlash, .asterisk]):
+            case Data([.forwardSlash, .forwardSlash]), Data([.forwardSlash, .asterisk]):
                 break
             default:
                 throw TemplateKitError(identifier: "parse", reason: "Invalid tag name", source: makeSource(using: start))
