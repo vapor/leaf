@@ -20,11 +20,6 @@ public final class LeafProvider: Provider {
 }
 
 extension LeafRenderer: ViewRenderer {
-    public var eventLoop: EventLoop {
-        #warning("TODO: make event loop public")
-        fatalError()
-    }
-
     public func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View>
         where E: Encodable
     {
