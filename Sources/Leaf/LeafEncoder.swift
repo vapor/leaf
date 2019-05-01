@@ -1,4 +1,4 @@
-final class LeafEncoder {
+internal final class LeafEncoder {
     func encode<E>(_ encodable: E) throws -> [String: LeafData]
         where E: Encodable
     {

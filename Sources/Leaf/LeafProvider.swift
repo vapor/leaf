@@ -13,8 +13,8 @@ public final class LeafProvider: Provider {
         }
 
         s.register(LeafConfig.self) { c in
-            let directory = try c.make(DirectoryConfig.self)
-            return LeafConfig(rootDirectory: directory.workDir + "Resources/Views/")
+            let directory = try c.make(DirectoryConfiguration.self)
+            return LeafConfig(rootDirectory: directory.viewsDirectory)
         }
     }
 }
@@ -27,26 +27,5 @@ extension LeafRenderer: ViewRenderer {
         return self.render(path: name, context: data).map { buffer in
             return View(data: buffer)
         }
-    }
-}
-
-public protocol ViewRenderer {
-    var eventLoop: EventLoop { get }
-    func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View>
-        where E: Encodable
-}
-
-public struct View: ResponseEncodable {
-    public var data: ByteBuffer
-
-    public init(data: ByteBuffer) {
-        self.data = data
-    }
-
-    public func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
-        let response = Response()
-        response.headers.contentType = .html
-        response.body = .init(buffer: self.data)
-        return request.eventLoop.makeSucceededFuture(response)
     }
 }
