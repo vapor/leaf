@@ -1,6 +1,8 @@
 import XCTest
-@testable import LeafTests
 
-XCTMain([
-    testCase(LeafTests.allTests),
-])
+import LeafTests
+
+var tests = [XCTestCaseEntry]()
+tests += LeafTests.__allTests()
+
+XCTMain(tests)

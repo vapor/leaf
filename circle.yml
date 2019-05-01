@@ -1,26 +1,25 @@
 version: 2
 
 jobs:
-  macos:
-    macos:
-      xcode: "9.0"
-    steps:
-      - checkout
-      - run: swift build
-      - run: swift test
-
   linux:
     docker:
-      - image: codevapor/swift:4.1
+      - image: swift:5.0
     steps:
       - checkout
+      - run: apt-get update; apt-get install -y libssl-dev zlib1g-dev
       - run: swift build
       - run: swift test
+  linux-release:
+    docker:
+      - image: swift:5.0
+    steps:
+      - checkout
+      - run: apt-get update; apt-get install -y libssl-dev zlib1g-dev
       - run: swift build -c release
 
 workflows:
   version: 2
   tests:
     jobs:
-      # - macos
       - linux
+      - linux-release
