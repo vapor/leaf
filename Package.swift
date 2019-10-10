@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.1
 import PackageDescription
 
 let package = Package(
@@ -8,7 +8,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.0.0-alpha"),
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-alpha.2"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0-alpha"),
     ],
     targets: [
         .target(name: "Leaf", dependencies: ["LeafKit", "Vapor"]),
