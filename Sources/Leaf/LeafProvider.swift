@@ -5,7 +5,11 @@ public final class LeafProvider: Provider {
     
     public func register(_ s: inout Services) {
         s.register(LeafRenderer.self) { c in
-            return try LeafRenderer(config: c.make(), threadPool: c.make(), eventLoop: c.eventLoop)
+            return try LeafRenderer(
+                config: c.make(),
+                threadPool: c.application.threadPool,
+                eventLoop: c.eventLoop
+            )
         }
 
         s.register(ViewRenderer.self) { c in

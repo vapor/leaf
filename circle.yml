@@ -3,7 +3,7 @@ version: 2
 jobs:
   linux:
     docker:
-      - image: swift:5.0
+      - image: swift:5.1
     steps:
       - checkout
       - run: apt-get update; apt-get install -y libssl-dev zlib1g-dev
@@ -11,7 +11,7 @@ jobs:
       - run: swift test
   linux-release:
     docker:
-      - image: swift:5.0
+      - image: swift:5.1
     steps:
       - checkout
       - run: apt-get update; apt-get install -y libssl-dev zlib1g-dev
