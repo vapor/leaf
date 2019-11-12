@@ -3,21 +3,21 @@ import Vapor
 public final class LeafProvider: Provider {
     public init() { }
     
-    public func register(_ s: inout Services) {
-        s.register(LeafRenderer.self) { c in
-            return try LeafRenderer(
-                config: c.make(),
-                threadPool: c.application.threadPool,
-                eventLoop: c.eventLoop
+    public func register(_ app: Application) {
+        app.register(LeafRenderer.self) { app in
+            LeafRenderer(
+                config: app.make(),
+                threadPool: app.make(),
+                eventLoop: app.make()
             )
         }
 
-        s.register(ViewRenderer.self) { c in
-            return try c.make(LeafRenderer.self)
+        app.register(ViewRenderer.self) { app in
+            app.make(LeafRenderer.self)
         }
 
-        s.register(LeafConfig.self) { c in
-            let directory = try c.make(DirectoryConfiguration.self)
+        app.register(LeafConfig.self) { app in
+            let directory = app.make(DirectoryConfiguration.self)
             return LeafConfig(rootDirectory: directory.viewsDirectory)
         }
     }
@@ -36,5 +36,15 @@ extension LeafRenderer: ViewRenderer {
         return self.render(path: name, context: data).map { buffer in
             return View(data: buffer)
         }
+    }
+}
+
+extension Request {
+    public var leaf: LeafRenderer {
+        LeafRenderer(
+            config: self.application.make(),
+            threadPool: self.application.make(),
+            eventLoop: self.eventLoop
+        )
     }
 }
