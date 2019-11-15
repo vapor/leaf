@@ -3,6 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "leaf",
+    platforms: [
+       .macOS(.v10_14)
+    ],
     products: [
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
