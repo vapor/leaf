@@ -2,32 +2,13 @@ import Vapor
 
 public final class Leaf: Provider {
     public let application: Application
-    
-    public var cache: LeafCache {
-        get {
-            self.lazy(get: \._cache, as: DefaultLeafCache())
-        }
-        set {
-            self.lazy(set: \._cache, to: newValue)
-        }
-    }
-    var _cache: LeafCache?
-    
-    public var configuration: LeafConfiguration {
-        get {
-            self.lazy(get: \._configuration) {
-                .init(rootDirectory: self.application.directory.viewsDirectory)
-            }
-        }
-        set {
-            self.lazy(set: \._configuration, to: newValue)
-        }
-    }
-    var _configuration: LeafConfiguration?
+    public var cache: LeafCache
     
     public var renderer: LeafRenderer {
         .init(
-            configuration: self.configuration,
+            configuration: .init(
+                rootDirectory: self.application.directory.viewsDirectory
+            ),
             cache: self.cache,
             fileio: self.application.fileio,
             eventLoop: self.application.eventLoopGroup.next()
@@ -36,6 +17,7 @@ public final class Leaf: Provider {
     
     public init(_ application: Application) {
         self.application = application
+        self.cache = DefaultLeafCache()
     }
     
     public func register(_ app: Application) {
@@ -46,7 +28,7 @@ public final class Leaf: Provider {
 extension Request {
     var leaf: LeafRenderer {
         .init(
-            configuration: self.application.leaf.configuration,
+            configuration: .init(rootDirectory: self.application.directory.viewsDirectory),
             cache: self.application.leaf.cache,
             fileio: self.application.fileio,
             eventLoop: self.eventLoop
