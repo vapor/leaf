@@ -1,29 +1,52 @@
 import Vapor
 
-public final class Leaf: Provider {
-    public let application: Application
-    public var cache: LeafCache
-    
-    public var renderer: LeafRenderer {
-        .init(
-            configuration: .init(
-                rootDirectory: self.application.directory.viewsDirectory
-            ),
-            cache: self.cache,
-            fileio: self.application.fileio,
-            eventLoop: self.application.eventLoopGroup.next()
-        )
+extension Application {
+    public var leaf: Leaf {
+        .init(application: self)
     }
-    
-    public init(_ application: Application) {
-        self.application = application
-        self.cache = DefaultLeafCache()
-    }
-    
-    public func register(_ app: Application) {
-        app.views.use { self.renderer }
+
+    public struct Leaf {
+        final class Storage {
+            var cache: LeafCache
+
+            init() {
+                self.cache = DefaultLeafCache()
+            }
+        }
+
+        struct Key: StorageKey {
+            typealias Value = Storage
+        }
+
+        public var renderer: LeafRenderer {
+            .init(
+                configuration: .init(
+                    rootDirectory: self.application.directory.viewsDirectory
+                ),
+                cache: self.cache,
+                fileio: self.application.fileio,
+                eventLoop: self.application.eventLoopGroup.next()
+            )
+        }
+
+        public var cache: LeafCache {
+            self.storage.cache
+        }
+
+        var storage: Storage {
+            if let existing = self.application.storage[Key.self] {
+                return existing
+            } else {
+                let new = Storage()
+                self.application.storage[Key.self] = new
+                return new
+            }
+        }
+
+        public let application: Application
     }
 }
+
 
 extension Request {
     var leaf: LeafRenderer {
@@ -33,12 +56,6 @@ extension Request {
             fileio: self.application.fileio,
             eventLoop: self.eventLoop
         )
-    }
-}
-
-extension Application {
-    public var leaf: Leaf {
-        self.providers.require(Leaf.self)
     }
 }
 
@@ -63,6 +80,16 @@ extension LeafRenderer: ViewRenderer {
         }
         return self.render(path: name, context: data).map { buffer in
             return View(data: buffer)
+        }
+    }
+}
+
+extension Application.Views.Provider {
+    public static var leaf: Self {
+        .init {
+            $0.views.use {
+                $0.leaf.renderer
+            }
         }
     }
 }
