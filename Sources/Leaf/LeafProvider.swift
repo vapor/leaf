@@ -6,6 +6,11 @@ extension Application {
     }
 
     public struct Leaf {
+        public var useCache : Bool {
+            get { cache.useCache }
+            nonmutating set { storage.cache.useCache = newValue }
+        }
+        
         final class Storage {
             var cache: LeafCache
 
