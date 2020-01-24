@@ -7,8 +7,8 @@ extension Application {
 
     public struct Leaf {
         public var useCache : Bool {
-            get { cache.useCache }
-            nonmutating set { storage.cache.useCache = newValue }
+            get { cache.isEnabled }
+            nonmutating set { storage.cache.isEnabled = newValue }
         }
         
         final class Storage {
