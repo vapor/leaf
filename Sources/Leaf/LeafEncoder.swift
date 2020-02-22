@@ -99,7 +99,7 @@ private final class SingleValueContainer: SingleValueEncodingContainer, _Contain
         } else {
             let encoder = _Encoder(codingPath: self.codingPath)
             try value.encode(to: encoder)
-            self.data = encoder.container!.data!
+            self.data = encoder.container!.data
         }
     }
 }
@@ -139,7 +139,7 @@ private final class KeyedContainer<Key>: KeyedEncodingContainerProtocol, _Contai
         } else {
             let encoder = _Encoder(codingPath: codingPath + [key])
             try value.encode(to: encoder)
-            self.dictionary[key.stringValue] = encoder.container!.data!
+            self.dictionary[key.stringValue] = encoder.container!.data
         }
     }
 
