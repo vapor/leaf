@@ -7,6 +7,7 @@ class LeafTests: XCTestCase {
         defer { app.shutdown() }
 
         app.views.use(.leaf)
+        app.leaf.cache.isEnabled = false
 
         app.get("test-file") { req in
             req.view.render(#file, ["foo": "bar"])
