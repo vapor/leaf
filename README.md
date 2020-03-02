@@ -1,6 +1,6 @@
 <p align="center">
     <img 
-        src="https://user-images.githubusercontent.com/1342803/36648663-5357293c-1a64-11e8-8ea1-9c2cddcdba39.png" 
+        src="https://user-images.githubusercontent.com/1342803/75696046-ee2d5280-5c78-11ea-8201-38f109c3a0eb.png" 
         height="64" 
         alt="Leaf"
     >
