@@ -22,7 +22,7 @@ extension Application {
             .init(
                 configuration: self.configuration,
                 cache: self.cache,
-                files: NIOLeafFiles(fileio: self.application.fileio),
+                files: self.files,
                 eventLoop: self.application.eventLoopGroup.next(),
                 userInfo: [
                     "application": self

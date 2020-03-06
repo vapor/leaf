@@ -9,7 +9,8 @@ extension Request {
             files: self.application.leaf.files,
             eventLoop: self.eventLoop,
             userInfo: [
-                "request": self
+                "request": self,
+                "application": self.application
             ]
         )
     }
