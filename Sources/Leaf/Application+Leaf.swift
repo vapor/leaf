@@ -19,14 +19,14 @@ extension Application {
         public let application: Application
 
         public var renderer: LeafRenderer {
-            .init(
+            self.userInfo["application"] = self
+
+            return .init(
                 configuration: self.configuration,
                 cache: self.cache,
                 files: self.files,
                 eventLoop: self.application.eventLoopGroup.next(),
-                userInfo: [
-                    "application": self
-                ]
+                userInfo: self.userInfo
             )
         }
 
@@ -67,6 +67,15 @@ extension Application {
                 self.storage.cache = newValue
             }
         }
+        
+        public var userInfo: [AnyHashable: Any] {
+            get {
+                self.storage.userInfo
+            }
+            nonmutating set {
+                self.storage.userInfo = newValue
+            }
+        }
 
         var storage: Storage {
             if let existing = self.application.storage[Key.self] {
@@ -87,10 +96,12 @@ extension Application {
             var configuration: LeafConfiguration?
             var files: LeafFiles?
             var tags: [String: LeafTag]
+            var userInfo: [AnyHashable: Any]
 
             init() {
                 self.cache = DefaultLeafCache()
                 self.tags = LeafKit.defaultTags
+                self.userInfo = [:]
             }
         }
     }
