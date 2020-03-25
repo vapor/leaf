@@ -54,6 +54,44 @@ class LeafTests: XCTestCase {
             XCTAssertEqual(res.body.string, "Hello vapor @ /test-file")
         }
     }
+    
+    func testContextUserInfo() throws {
+        var test = TestFiles()
+        test.files["/foo.leaf"] = """
+        Hello #custom()!
+        """
+
+        struct CustomTag: LeafTag {
+            
+            func render(_ ctx: LeafContext) throws -> LeafData {
+                let info = ctx.userInfo["info"] as? String ?? ""
+                
+                return .string(info)
+            }
+        }
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+
+        app.views.use(.leaf)
+        app.leaf.configuration.rootDirectory = "/"
+        app.leaf.cache.isEnabled = false
+        app.leaf.tags["custom"] = CustomTag()
+        app.leaf.files = test
+        app.leaf.userInfo["info"] = "World"
+
+        app.get("test-file") { req in
+            req.view.render("foo", [
+                "name": "vapor"
+            ])
+        }
+
+        try app.test(.GET, "test-file") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.headers.contentType, .html)
+            XCTAssertEqual(res.body.string, "Hello World!")
+        }
+    }
 }
 
 struct TestFiles: LeafFiles {

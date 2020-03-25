@@ -2,16 +2,17 @@ import Vapor
 
 extension Request {
     var leaf: LeafRenderer {
-        .init(
+        var userInfo = self.application.leaf.userInfo
+        userInfo["request"] = self
+        userInfo["application"] = self.application
+
+        return .init(
             configuration: self.application.leaf.configuration,
             tags: self.application.leaf.tags,
             cache: self.application.leaf.cache,
             files: self.application.leaf.files,
             eventLoop: self.eventLoop,
-            userInfo: [
-                "request": self,
-                "application": self.application
-            ]
+            userInfo: userInfo
         )
     }
 }
