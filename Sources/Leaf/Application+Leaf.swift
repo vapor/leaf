@@ -19,14 +19,15 @@ extension Application {
         public let application: Application
 
         public var renderer: LeafRenderer {
-            self.userInfo["application"] = self
+            var userInfo = self.userInfo
+            userInfo["application"] = self
 
             return .init(
                 configuration: self.configuration,
                 cache: self.cache,
                 files: self.files,
                 eventLoop: self.application.eventLoopGroup.next(),
-                userInfo: self.userInfo
+                userInfo: userInfo
             )
         }
 
