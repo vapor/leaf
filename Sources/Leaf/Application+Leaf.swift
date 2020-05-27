@@ -51,9 +51,12 @@ extension Application {
             }
         }
 
-        public var files: LeafFiles {
+        public var files: LeafSource {
             get {
-                self.storage.files ?? NIOLeafFiles(fileio: self.application.fileio)
+                self.storage.files ?? NIOLeafFiles(fileio: self.application.fileio,
+                                                   limits: .default,
+                                                   sandboxDirectory: self.configuration.rootDirectory,
+                                                   viewDirectory: self.configuration.rootDirectory)
             }
             nonmutating set {
                 self.storage.files = newValue

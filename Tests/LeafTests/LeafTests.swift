@@ -7,6 +7,7 @@ class LeafTests: XCTestCase {
         defer { app.shutdown() }
 
         app.views.use(.leaf)
+        app.leaf.configuration.rootDirectory = "/"
         app.leaf.cache.isEnabled = false
 
         app.get("test-file") { req in
@@ -18,6 +19,34 @@ class LeafTests: XCTestCase {
             XCTAssertEqual(res.headers.contentType, .html)
             // test: #(foo)
             XCTAssertContains(res.body.string, "test: bar")
+        }
+    }
+    
+    func testSandboxing() throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+
+        app.views.use(.leaf)
+        app.leaf.configuration.rootDirectory = templateFolder
+
+        app.get("hello") { req in
+            req.view.render("hello")
+        }
+        
+        app.get("sandboxed") { req in
+            req.view.render("../hello")
+        }
+
+        try app.test(.GET, "hello") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.headers.contentType, .html)
+            XCTAssertEqual(res.body.string, "Hello, world!\n")
+        }
+        
+        try app.test(.GET, "sandboxed") { res in
+            XCTAssertEqual(res.status, .internalServerError)
+            XCTAssertEqual(res.headers.contentType, .json)
+            XCTAssert(res.body.string.contains("Attempted to escape sandbox"))
         }
     }
 
@@ -94,20 +123,42 @@ class LeafTests: XCTestCase {
     }
 }
 
-struct TestFiles: LeafFiles {
+internal struct TestFiles: LeafSource {
     var files: [String: String]
 
     init() {
         files = [:]
     }
 
-    func file(path: String, on eventLoop: EventLoop) -> EventLoopFuture<ByteBuffer> {
-        if let file = self.files[path] {
+    func file(template: String, escape: Bool = false, on eventLoop: EventLoop) -> EventLoopFuture<ByteBuffer> {
+        if let file = self.files[expand(template)] {
             var buffer = ByteBufferAllocator().buffer(capacity: 0)
             buffer.writeString(file)
             return eventLoop.makeSucceededFuture(buffer)
         } else {
-            return eventLoop.makeFailedFuture("no test file: \(path)")
+            return eventLoop.makeFailedFuture("no test file: \(template)")
         }
     }
+    
+    private func expand(_ template: String) -> String {
+        var path = template
+        // ignore files that already have a type
+        if path.split(separator: "/").last?.split(separator: ".").count ?? 1 < 2  , !path.hasSuffix(".leaf") {
+            path += ".leaf"
+        }
+
+        if !path.hasPrefix("/") {
+            path = "/" + path
+        }
+        return path
+    }
+}
+
+internal var templateFolder: String {
+    return projectFolder + "Views/"
+}
+
+internal var projectFolder: String {
+    let folder = #file.split(separator: "/").dropLast(3).joined(separator: "/")
+    return "/" + folder + "/"
 }
