@@ -28,13 +28,21 @@ class LeafTests: XCTestCase {
 
         app.views.use(.leaf)
         app.leaf.configuration.rootDirectory = templateFolder
+        app.leaf.files = NIOLeafFiles(fileio: app.fileio,
+                                      limits: .default,
+                                      sandboxDirectory: projectFolder,
+                                      viewDirectory: templateFolder)
 
         app.get("hello") { req in
             req.view.render("hello")
         }
         
-        app.get("sandboxed") { req in
+        app.get("allowed") { req in
             req.view.render("../hello")
+        }
+        
+        app.get("sandboxed") { req in
+            req.view.render("../../hello")
         }
 
         try app.test(.GET, "hello") { res in
@@ -43,9 +51,13 @@ class LeafTests: XCTestCase {
             XCTAssertEqual(res.body.string, "Hello, world!\n")
         }
         
+        try app.test(.GET, "allowed") { res in
+            XCTAssertEqual(res.status, .internalServerError)
+            XCTAssert(res.body.string.contains("noTemplateExists"))
+        }
+        
         try app.test(.GET, "sandboxed") { res in
             XCTAssertEqual(res.status, .internalServerError)
-            XCTAssertEqual(res.headers.contentType, .json)
             XCTAssert(res.body.string.contains("Attempted to escape sandbox"))
         }
     }
