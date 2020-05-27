@@ -7,11 +7,11 @@ class LeafTests: XCTestCase {
         defer { app.shutdown() }
 
         app.views.use(.leaf)
-        app.leaf.configuration.rootDirectory = "/"
+        app.leaf.configuration.rootDirectory = projectFolder
         app.leaf.cache.isEnabled = false
 
         app.get("test-file") { req in
-            req.view.render(#file, ["foo": "bar"])
+            req.view.render("Tests/LeafTests/LeafTests.swift", ["foo": "bar"])
         }
 
         try app.test(.GET, "test-file") { res in
