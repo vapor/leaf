@@ -10,7 +10,7 @@ extension Request {
             configuration: self.application.leaf.configuration,
             tags: self.application.leaf.tags,
             cache: self.application.leaf.cache,
-            files: self.application.leaf.files,
+            sources: self.application.leaf.sources,
             eventLoop: self.eventLoop,
             userInfo: userInfo
         )

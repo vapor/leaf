@@ -28,10 +28,10 @@ class LeafTests: XCTestCase {
 
         app.views.use(.leaf)
         app.leaf.configuration.rootDirectory = templateFolder
-        app.leaf.files = NIOLeafFiles(fileio: app.fileio,
-                                      limits: .default,
-                                      sandboxDirectory: projectFolder,
-                                      viewDirectory: templateFolder)
+        app.leaf.sources = .singleSource(NIOLeafFiles(fileio: app.fileio,
+                                                      limits: .default,
+                                                      sandboxDirectory: projectFolder,
+                                                      viewDirectory: templateFolder))
 
         app.get("hello") { req in
             req.view.render("hello")
@@ -81,7 +81,7 @@ class LeafTests: XCTestCase {
         app.leaf.configuration.rootDirectory = "/"
         app.leaf.cache.isEnabled = false
         app.leaf.tags["path"] = RequestPathTag()
-        app.leaf.files = test
+        app.leaf.sources = .singleSource(test)
 
         app.get("test-file") { req in
             req.view.render("foo", [
@@ -118,7 +118,7 @@ class LeafTests: XCTestCase {
         app.leaf.configuration.rootDirectory = "/"
         app.leaf.cache.isEnabled = false
         app.leaf.tags["custom"] = CustomTag()
-        app.leaf.files = test
+        app.leaf.sources = .singleSource(test)
         app.leaf.userInfo["info"] = "World"
 
         app.get("test-file") { req in
@@ -135,34 +135,31 @@ class LeafTests: XCTestCase {
     }
 }
 
+/// Helper `LeafFiles` struct providing an in-memory thread-safe map of "file names" to "file data"
 internal struct TestFiles: LeafSource {
     var files: [String: String]
-
+    var lock: Lock
+    
     init() {
         files = [:]
+        lock = .init()
     }
-
-    func file(template: String, escape: Bool = false, on eventLoop: EventLoop) -> EventLoopFuture<ByteBuffer> {
-        if let file = self.files[expand(template)] {
-            var buffer = ByteBufferAllocator().buffer(capacity: 0)
+    
+    public func file(template: String, escape: Bool = false, on eventLoop: EventLoop) -> EventLoopFuture<ByteBuffer> {
+        var path = template
+        if path.split(separator: "/").last?.split(separator: ".").count ?? 1 < 2,
+           !path.hasSuffix(".leaf") { path += ".leaf" }
+        if !path.hasPrefix("/") { path = "/" + path }
+        
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        if let file = self.files[path] {
+            var buffer = ByteBufferAllocator().buffer(capacity: file.count)
             buffer.writeString(file)
             return eventLoop.makeSucceededFuture(buffer)
         } else {
-            return eventLoop.makeFailedFuture("no test file: \(template)")
+            return eventLoop.makeFailedFuture(LeafError(.noTemplateExists(template)))
         }
-    }
-    
-    private func expand(_ template: String) -> String {
-        var path = template
-        // ignore files that already have a type
-        if path.split(separator: "/").last?.split(separator: ".").count ?? 1 < 2  , !path.hasSuffix(".leaf") {
-            path += ".leaf"
-        }
-
-        if !path.hasPrefix("/") {
-            path = "/" + path
-        }
-        return path
     }
 }
 

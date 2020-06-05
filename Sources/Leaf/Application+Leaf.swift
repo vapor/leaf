@@ -25,7 +25,7 @@ extension Application {
             return .init(
                 configuration: self.configuration,
                 cache: self.cache,
-                files: self.files,
+                sources: self.sources,
                 eventLoop: self.application.eventLoopGroup.next(),
                 userInfo: userInfo
             )
@@ -51,15 +51,16 @@ extension Application {
             }
         }
 
-        public var files: LeafSource {
+        public var sources: LeafSources {
             get {
-                self.storage.files ?? NIOLeafFiles(fileio: self.application.fileio,
-                                                   limits: .default,
-                                                   sandboxDirectory: self.configuration.rootDirectory,
-                                                   viewDirectory: self.configuration.rootDirectory)
+                self.storage.sources ?? LeafSources.singleSource(
+                                            NIOLeafFiles(fileio: self.application.fileio,
+                                                        limits: .default,
+                                                        sandboxDirectory: self.configuration.rootDirectory,
+                                                        viewDirectory: self.configuration.rootDirectory))
             }
             nonmutating set {
-                self.storage.files = newValue
+                self.storage.sources = newValue
             }
         }
 
@@ -98,7 +99,7 @@ extension Application {
         final class Storage {
             var cache: LeafCache
             var configuration: LeafConfiguration?
-            var files: LeafFiles?
+            var sources: LeafSources?
             var tags: [String: LeafTag]
             var userInfo: [AnyHashable: Any]
 
