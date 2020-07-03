@@ -5,9 +5,7 @@ internal final class LeafEncoder {
         let encoder = _Encoder(codingPath: [])
         try encodable.encode(to: encoder)
         let data = encoder.container!.data!.resolve()
-        guard let dictionary = data.dictionary else {
-            fatalError()
-        }
+        guard let dictionary = data.dictionary else { fatalError() }
         return dictionary
     }
 }
@@ -34,9 +32,7 @@ enum _Data {
 
 /// Private `Encoder`.
 private final class _Encoder: Encoder {
-    var userInfo: [CodingUserInfoKey: Any] {
-        return [:]
-    }
+    var userInfo: [CodingUserInfoKey: Any] { [:] }
     let codingPath: [CodingKey]
     var container: _Container?
 
@@ -90,12 +86,8 @@ private final class SingleValueContainer: SingleValueEncodingContainer, _Contain
 
     /// See `SingleValueEncodingContainer`
     func encode<T>(_ value: T) throws where T: Encodable {
-        if let convertible = value as? LeafDataRepresentable {
-            if let converted = convertible.leafData {
-                self.data = .data(converted)
-            } else {
-                throw EncodingError.invalidValue(value, at: self.codingPath)
-            }
+        if let leafRepresentable = value as? LeafDataRepresentable {
+            self.data = .data(leafRepresentable.leafData)
         } else {
             let encoder = _Encoder(codingPath: self.codingPath)
             try value.encode(to: encoder)
@@ -131,11 +123,8 @@ private final class KeyedContainer<Key>: KeyedEncodingContainerProtocol, _Contai
     func encode<T>(_ value: T, forKey key: Key) throws
         where T : Encodable
     {
-        if let convertible = value as? LeafDataRepresentable {
-            guard let converted = convertible.leafData else {
-                throw EncodingError.invalidValue(value, at: self.codingPath + [key])
-            }
-            self.dictionary[key.stringValue] = .data(converted)
+        if let leafRepresentable = value as? LeafDataRepresentable {
+            self.dictionary[key.stringValue] = .data(leafRepresentable.leafData)
         } else {
             let encoder = _Encoder(codingPath: codingPath + [key])
             try value.encode(to: encoder)
@@ -191,11 +180,8 @@ private final class UnkeyedContainer: UnkeyedEncodingContainer, _Container {
 
     func encode<T>(_ value: T) throws where T: Encodable {
         defer { self.count += 1 }
-        if let convertible = value as? LeafDataRepresentable {
-            guard let converted = convertible.leafData else {
-                throw EncodingError.invalidValue(value, at: self.codingPath )
-            }
-            self.array.append(.data(converted))
+        if let leafRepresentable = value as? LeafDataRepresentable {
+            self.array.append(.data(leafRepresentable.leafData))
         } else {
             let encoder = _Encoder(codingPath: codingPath)
             try value.encode(to: encoder)

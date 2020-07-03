@@ -5,10 +5,14 @@ class LeafTests: XCTestCase {
     func testApplication() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
-
+        
         app.views.use(.leaf)
         app.leaf.configuration.rootDirectory = projectFolder
-        app.leaf.cache.isEnabled = false
+        app.leaf.sources = .singleSource(NIOLeafFiles(fileio: app.fileio,
+                                                      limits: .default,
+                                                      sandboxDirectory: projectFolder,
+                                                      viewDirectory: projectFolder))
+
 
         app.get("test-file") { req in
             req.view.render("Tests/LeafTests/LeafTests.swift", ["foo": "bar"])
