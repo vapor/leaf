@@ -1,24 +1,21 @@
 import Vapor
+import LeafKit
 
-extension Request {
-    var leaf: LeafRenderer {
-        var userInfo = self.application.leaf.userInfo
-        userInfo["request"] = self
-        userInfo["application"] = self.application
-
-        return .init(
-            configuration: self.application.leaf.configuration,
-            tags: self.application.leaf.tags,
-            cache: self.application.leaf.cache,
-            sources: self.application.leaf.sources,
-            eventLoop: self.eventLoop,
-            userInfo: userInfo
-        )
-    }
+public extension Request {
+    var leaf: LeafEngine { .init(self.application, self) }
 }
 
-extension LeafContext {
-    public var request: Request? {
-        self.userInfo["request"] as? Request
+public extension LeafUnsafeEntity {
+    var req: Request? { externalObjects?["req"] as? Request }
+}
+
+extension Request: LeafContextPublisher {
+    public var coreVariables: [String : LeafDataGenerator] {
+        ["url": .lazy(["isSecure": LeafData.bool(self.url.scheme?.contains("https")),
+                        "host": LeafData.string(self.url.host),
+                        "port": LeafData.int(self.url.port),
+                        "path": LeafData.string(self.url.path),
+                        "query": LeafData.string(self.url.query)])
+        ]
     }
 }

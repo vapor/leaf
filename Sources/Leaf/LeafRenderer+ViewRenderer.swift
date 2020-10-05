@@ -1,21 +1,12 @@
 import Vapor
 
-extension LeafRenderer: ViewRenderer {
-    public func `for`(_ request: Request) -> ViewRenderer {
-        request.leaf
-    }
+extension LeafEngine: ViewRenderer {
+    public func `for`(_ request: Request) -> ViewRenderer { request.leaf }
 
-    public func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View>
-        where E: Encodable
-    {
-        let data: [String: LeafData]
-        do {
-            data = try LeafEncoder().encode(context)
-        } catch {
-            return self.eventLoop.makeFailedFuture(error)
-        }
-        return self.render(path: name, context: data).map { buffer in
-            return View(data: buffer)
-        }
+    public func render<E>(_ name: String,
+                          _ context: E) -> EventLoopFuture<View> where E: Encodable {
+        guard let context = LeafRenderer.Context(encodable: context) else {
+            return eventLoop.makeFailedFuture("Provided context failed to encode or is not a dictionary") }
+        return render(template: name, context: context)
     }
 }
