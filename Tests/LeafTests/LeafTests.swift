@@ -3,7 +3,11 @@ import XCTVapor
 import NIOConcurrencyHelpers
 
 class LeafTests: XCTestCase {
+    var app = Application(.testing)
+    
     override func setUp() {
+        app.shutdown()
+        
         LeafConfiguration.__VERYUNSAFEReset()
         LeafEngine.entities = .leaf4Core
         LeafEngine.cache.dropAll()
@@ -11,12 +15,15 @@ class LeafTests: XCTestCase {
         LeafEngine.sources = .init()
         LeafRenderer.Context.grantUnsafeEntityAccess = true
         LeafRenderer.Context.missingVariableThrows = false
+        
+        app = Application(.testing)
+    }
+    
+    override func tearDown() {
+        app.shutdown()
     }
     
     func testApplication() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
         app.views.use(.leaf)
 
         app.get("test-file") { $0.view.render("Views/test", ["foo": "bar"]) }
@@ -29,8 +36,6 @@ class LeafTests: XCTestCase {
     }
     
     func testSandboxing() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
         LeafEngine.sources = .singleSource(NIOLeafFiles(fileio: app.fileio,
                                                         limits: .default,
                                                         sandboxDirectory: projectFolder,
@@ -78,9 +83,6 @@ class LeafTests: XCTestCase {
         Hello #(name ?? "Unknown user") @ #(path() ?? "Could not retrieve path")
         """
         
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
         app.views.use(.leaf)
 
         app.get("test-file") {
@@ -112,10 +114,6 @@ class LeafTests: XCTestCase {
         
         LeafEngine.entities.use(CustomTag(), asFunction: "custom")
         
-        
-        let app = Application(.testing)
-        defer { app.shutdown() }
-
         app.views.use(.leaf)
         try app.leaf.context.register(object: "World", as: "info", type: .unsafe)
         
@@ -138,10 +136,7 @@ class LeafTests: XCTestCase {
         """
         
         LeafEngine.sources = .singleSource(test)
-        
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
+                
         app.views.use(.leaf)
 
         app.get("template") { $0.view.render("template") }

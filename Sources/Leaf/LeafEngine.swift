@@ -29,14 +29,16 @@ public struct LeafEngine {
         self.app = app
         self.req = req
         self.eventLoop = req?.eventLoop ?? app.eventLoopGroup.next()
+        self.renderer = LeafRenderer(cache: LeafEngine.cache,
+                                     sources: LeafEngine.sources,
+                                     eventLoop: eventLoop)
         if req != nil { _ = context }
     }
     
-    internal let app: Application
-    internal let req: Request?
+    internal unowned var app: Application
+    internal unowned var req: Request?
     
-    private static
-    let threadSpecific: ThreadSpecificVariable<LeafRenderer> = .init()
+    private let renderer: LeafRenderer
 }
 
 // MARK: - Public Properties & Methods
@@ -103,15 +105,6 @@ internal extension LeafEngine {
             if req != nil { req!.storage[Key.self] = newValue }
             else { app.storage[Key.self] = newValue }
         }
-    }
-    
-    var renderer: LeafRenderer {
-        if let e = LeafEngine.threadSpecific.currentValue { return e }
-        let new = LeafRenderer(cache: LeafEngine.cache,
-                               sources: LeafEngine.sources,
-                               eventLoop: eventLoop)
-        Self.threadSpecific.currentValue = new
-        return new
     }
     
     func flattenContexts(_ top: LeafRenderer.Context) throws -> LeafRenderer.Context {
