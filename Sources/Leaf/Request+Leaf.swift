@@ -6,16 +6,9 @@ public extension Request {
 }
 
 public extension LeafUnsafeEntity {
-    var req: Request? { externalObjects?["req"] as? Request }
+    var req: Request? { unsafeObjects?["req"] as? Request }
 }
 
 extension Request: LeafContextPublisher {
-    public var coreVariables: [String : LeafDataGenerator] {
-        ["url": .lazy(["isSecure": LeafData.bool(self.url.scheme?.contains("https")),
-                        "host": LeafData.string(self.url.host),
-                        "port": LeafData.int(self.url.port),
-                        "path": LeafData.string(self.url.path),
-                        "query": LeafData.string(self.url.query)])
-        ]
-    }
+    public var variables: [String : LeafDataGenerator] { [:] }
 }

@@ -6,11 +6,9 @@ public extension Application {
 }
 
 public extension LeafUnsafeEntity {
-    var app: Application? { externalObjects?["app"] as? Application }
+    var app: Application? { unsafeObjects?["app"] as? Application }
 }
 
 extension Application: LeafContextPublisher {
-    public var coreVariables: [String : LeafDataGenerator] {
-        ["isRelease": .immediate(self.environment.isRelease)]
-    }
+    public var variables: [String : LeafDataGenerator] { [:] }
 }

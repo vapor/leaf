@@ -48,10 +48,10 @@ public extension LeafEngine {
         get {
             if let hit = storage?.context { return hit }
             
-            let mode: (Any?, String) = req != nil ? (req, "req") : (app, "app")
+            let mode: (Any, String) = req != nil ? (req!, "req") : (app, "app")
             let new = Storage(.emptyContext(isRoot: req == nil))
             
-            try? new.context.register(object: mode.0, as: mode.1, type: .all)
+            try! new.context.register(object: mode.0, toScope: mode.1, type: [.bothModes, .preventOverlay])
             storage = new
             return new.context
         }
