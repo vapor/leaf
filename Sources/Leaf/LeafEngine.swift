@@ -35,10 +35,10 @@ public struct LeafEngine {
         if req != nil { _ = context }
     }
     
-    internal unowned var app: Application
-    internal unowned var req: Request?
+    unowned var app: Application
+    unowned var req: Request?
     
-    private let renderer: LeafRenderer
+    let renderer: LeafRenderer
 }
 
 // MARK: - Public Properties & Methods
