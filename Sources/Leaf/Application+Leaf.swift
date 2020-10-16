@@ -10,5 +10,5 @@ public extension LeafUnsafeEntity {
 }
 
 extension Application: LeafContextPublisher {
-    public var variables: [String : LeafDataGenerator] { [:] }
+    public var leafVariables: [String : LeafDataGenerator] { [:] }
 }
