@@ -9,8 +9,8 @@ class LeafFileMW: XCTestCase {
         LeafEngine.cache.dropAll()
         LeafEngine.rootDirectory = projectFolder
         LeafEngine.sources = .init()
-        LeafRenderer.Context.grantUnsafeEntityAccess = true
-        LeafRenderer.Context.missingVariableThrows = true
+        LeafRenderer.Option.grantUnsafeEntityAccess = true
+        LeafRenderer.Option.missingVariableThrows = true
     }
     
     func testFileMiddleware() throws {

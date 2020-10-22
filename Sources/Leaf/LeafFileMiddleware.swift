@@ -69,7 +69,8 @@ public final class LeafFileMiddleware: Middleware {
                             let src = buffer.readString(length: buffer.readableBytes) ?? ""
                             // FIXME: process check is blocking
                             record.process = LeafEngine.entities.validate(in: src) != false
-                            return record.process ? self.process(path, on: request)
+                            self[path] = record
+                            return record.process ? self.process(path, on: request, update: true)
                                                   : self.stream(path, on: request)
                         }
                 }
@@ -79,7 +80,9 @@ public final class LeafFileMiddleware: Middleware {
     }
     
     /// Process as Leaf.
-    private func process(_ path: String, on req: Request) -> EventLoopFuture<Response> {
+    private func process(_ path: String,
+                         on req: Request,
+                         update: Bool = false) -> EventLoopFuture<Response> {
         /// Ensure source for this directory is set up, fail if it isn't.
         if let failure = checkSource(req) { return failure }
         
@@ -92,11 +95,15 @@ public final class LeafFileMiddleware: Middleware {
         try? context.overlay(req.leaf.context)
                
         return req.leaf.renderer
-            .render(template: path, from: scope, context: context)
+            .render(template: path,
+                    from: scope,
+                    context: context,
+                    options: [.caching(update ? .update : .default)])
             .map {
                 var headers: HTTPHeaders = [:]
                 headers.contentType = .fileExtension(path.fileExt) ?? Self.defaultType
-                headers.add(name: .eTag, value: "\(Date().timeIntervalSinceReferenceDate)")
+                headers.add(name: .eTag,
+                            value: "\(self[path]!.modTime.timeIntervalSinceReferenceDate)")
                 return Response(status: .ok, headers: headers, body: .init(buffer: $0))
             }
     }

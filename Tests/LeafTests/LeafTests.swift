@@ -13,8 +13,8 @@ class LeafTests: XCTestCase {
         LeafEngine.cache.dropAll()
         LeafEngine.rootDirectory = projectFolder
         LeafEngine.sources = .init()
-        LeafRenderer.Context.grantUnsafeEntityAccess = true
-        LeafRenderer.Context.missingVariableThrows = true
+        LeafRenderer.Option.grantUnsafeEntityAccess = true
+        LeafRenderer.Option.missingVariableThrows = true
         
         app = Application(.testing)
     }
@@ -88,7 +88,7 @@ class LeafTests: XCTestCase {
         app.get("test-file") {
             $0.leaf.render(template: "foo",
                            context: ["name": "vapor"],
-                           options: [.cacheBypass(true)])
+                           options: [.caching(.bypass)])
         }
 
         try app.test(.GET, "test-file", afterResponse: {
@@ -167,15 +167,18 @@ extension Request {
                         "host": LeafData.string(self.url.host),
                         "port": LeafData.int(self.url.port),
                         "path": LeafData.string(self.url.path),
-                        "query": LeafData.string(self.url.query)])
+                        "query": LeafData.string(self.url.query)]),
         ]
     }
 }
 
 struct ExtensionMiddleware: Middleware {
-    func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
-        do { try request.leaf.context.register(generators: request.customVars, toScope: "req") }
+    func respond(to request: Request,
+                 chainingTo next: Responder) -> EventLoopFuture<Response> {
+        do {
+            try request.leaf.context.register(generators: request.customVars, toScope: "req")
+            return next.respond(to: request)
+        }
         catch { return request.eventLoop.makeFailedFuture(error) }
-        return next.respond(to: request)
     }
 }
