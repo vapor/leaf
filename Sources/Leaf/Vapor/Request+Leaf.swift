@@ -1,5 +1,4 @@
 import Vapor
-import LeafKit
 
 public extension Request {
     var leaf: LeafEngine { .init(self.application, self) }

@@ -1,6 +1,5 @@
 import NIO
 import Vapor
-import LeafKit
 
 public struct LeafEngine {
     // MARK: - Public Global Properties
@@ -65,8 +64,7 @@ public extension LeafEngine {
                 context: LeafRenderer.Context = .emptyContext(),
                 options: LeafRenderer.Options? = nil) -> EventLoopFuture<View> {
         var context = context
-        do { try context = flattenContexts(context) }
-        catch { return eventLoop.makeFailedFuture(error) }
+        do { try context = flattenContexts(context) } catch { return fail(error) }
         return renderer.render(template: template,
                                context: context,
                                options: options)
@@ -78,8 +76,7 @@ public extension LeafEngine {
                 context: LeafRenderer.Context = .emptyContext(),
                 options: LeafRenderer.Options? = nil) -> EventLoopFuture<View> {
         var context = context
-        do { try context = flattenContexts(context) }
-        catch { return eventLoop.makeFailedFuture(error) }
+        do { try context = flattenContexts(context) } catch { return fail(error) }
         return renderer.render(template: template,
                                from: source,
                                context: context,

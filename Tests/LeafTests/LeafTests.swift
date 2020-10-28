@@ -2,27 +2,7 @@ import Leaf
 import XCTVapor
 import NIOConcurrencyHelpers
 
-class LeafTests: XCTestCase {
-    var app = Application(.testing)
-    
-    override func setUp() {
-        app.shutdown()
-        
-        LeafConfiguration.__VERYUNSAFEReset()
-        LeafEngine.entities = .leaf4Core
-        LeafEngine.cache.dropAll()
-        LeafEngine.rootDirectory = projectFolder
-        LeafEngine.sources = .init()
-        LeafRenderer.Option.grantUnsafeEntityAccess = true
-        LeafRenderer.Option.missingVariableThrows = true
-        
-        app = Application(.testing)
-    }
-    
-    override func tearDown() {
-        app.shutdown()
-    }
-    
+class LeafTests: LeafTestClass {
     func testApplication() throws {
         app.views.use(.leaf)
 
@@ -135,15 +115,25 @@ class LeafTests: XCTestCase {
         URI: #($req.url)
         """
         
+        var isReleaseRequired: Bool {
+            try! LeafEngine.cache.info(for: .searchKey("template"),
+                                                 on: app.leaf.eventLoop)
+                .wait()!.requiredVars.contains("$app.isRelease")
+        }
+        
         LeafEngine.sources = .singleSource(test)
                 
         app.views.use(.leaf)
-        
-        try app.leaf.context.register(generators: app.customVars, toScope: "app")
         app.middleware.use(ExtensionMiddleware())
         
-        app.get("template") { $0.view.render("template") }
+        try app.leaf.context.register(generators: app.customVars, toScope: "app")
         
+        app.get("template") { $0.leaf.render(template: "template", options: [.caching(.update)]) }
+        
+        try app.test(.GET, "template")
+        XCTAssertTrue(isReleaseRequired)
+        
+        try app.leaf.context.lockAsLiteral(in: "app", key: "isRelease")
         try app.test(.GET, "template", afterResponse: {
             XCTAssertEqual($0.status, .ok)
             XCTAssertEqual($0.headers.contentType, .html)
@@ -152,6 +142,7 @@ class LeafTests: XCTestCase {
             URI: ["host": , "isSecure": , "path": "/template", "port": , "query": ]
             """)
         })
+        XCTAssertTrue(!isReleaseRequired)
     }
 }
 

@@ -1,5 +1,4 @@
 import Vapor
-import LeafKit
 
 public extension Application.Views.Provider {
     static var leaf: Self {

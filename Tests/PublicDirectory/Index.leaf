@@ -1,0 +1,5 @@
+#for(file in files):
+#if(file.isRegularFile):
+#(file.name): Created #Date(file.creationDate), Modified #Date(file.contentModificationDate)
+#endif
+#endfor
