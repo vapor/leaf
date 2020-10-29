@@ -53,13 +53,13 @@ class LeafTests: LeafTestClass {
             }
         }
         
-        let test = LeafTestFiles()
+        let test = LeafMemorySource()
         
         LeafEngine.rootDirectory = "/"
         LeafEngine.sources = .singleSource(test)
         LeafEngine.entities.use(RequestPath(), asFunction: "path")
                 
-        test.files["/foo.leaf"] = """
+        test["/foo.leaf"] = """
         Hello #(name ?? "Unknown user") @ #(path() ?? "Could not retrieve path")
         """
         
@@ -86,8 +86,8 @@ class LeafTests: LeafTestClass {
                 .string(unsafeObjects?["info"] as? String) }
         }
         
-        let test = LeafTestFiles()
-        test.files["/foo.leaf"] = "Hello #custom()!"
+        let test = LeafMemorySource()
+        test["/foo.leaf"] = "Hello #custom()!"
         
         LeafEngine.rootDirectory = "/"
         LeafEngine.sources = .singleSource(test)
@@ -109,8 +109,8 @@ class LeafTests: LeafTestClass {
     }
     
     func testLiteralContext() throws {
-        let test = LeafTestFiles()
-        test.files["/template.leaf"] = """
+        let test = LeafMemorySource()
+        test["/template.leaf"] = """
         Debug: #($app.isRelease != true)
         URI: #($req.url)
         """

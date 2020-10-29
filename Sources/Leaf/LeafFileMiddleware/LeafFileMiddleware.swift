@@ -32,9 +32,10 @@ public final class LeafFileMiddleware: Middleware {
         case prohibit
         /// Ignore access to directories - pass to next responder
         case ignore
-        /// Handle via a file in the directory.
+        /// Handle via a file  - always relative to the requested directory, must be immediately inside it.
         case relative(String)
-        /// Handle all indexing via a single file. Can be relative to the instance's directory.
+        /// Handle all indexing via a single file. Never relative to the requested directory - can be absolutely
+        /// pathed, or relative to the instance's configured directory.
         case absolute(String)
         
         @LeafRuntimeGuard
@@ -200,11 +201,15 @@ private extension LeafFileMiddleware {
         req.succeed(req.fileio.streamFile(at: path)) }
     
     func contextualize(_ dir: String, on req: Request) {
-        let contents = try? FileManager.default
-            .contentsOfDirectory(at: URL(fileURLWithPath: dir, isDirectory: true),
-                                 includingPropertiesForKeys: LFMIndexing.keys,
-                                 options: LFMIndexing.options)
-        try? req.leaf.context.setValue(at: "files", to: contents)
+        let object = LeafData.dictionary([
+            "rootDirectory": dir,
+            "files": try? FileManager.default
+                .contentsOfDirectory(at: URL(fileURLWithPath: dir, isDirectory: true),
+                                     includingPropertiesForKeys: LFMIndexing.keys,
+                                     options: LFMIndexing.options)
+        ])
+        
+        try? req.leaf.context.register(object: object, toScope: "index", type: [.default, .lockContextVariables])
     }
     
     func checkSource(_ req: Request) -> ELF<Response>? {
@@ -226,7 +231,7 @@ private extension LeafFileMiddleware.DirectoryIndexing {
     var valid: Bool {
         switch self {
             case .relative(let p): return !p.isEmpty && !p.contains("/")
-            case .absolute(let p): return !p.isEmpty && p.last! != "/"
+            case .absolute(let p): return !p.isEmpty && p.last != "/"
             default: return true
         }
     }

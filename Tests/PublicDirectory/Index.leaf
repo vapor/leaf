@@ -1,5 +1,16 @@
-#for(file in files):
+#define(type = file.mimeType.serialized)
+#define(created = Date(timeStamp: file.creationDate,
+                       fixedFormat: "YYYY-mm-dd hh:mm:ss"))
+#define(modified = Date(timeStamp: file.contentModificationDate,
+                        fixedFormat: "YYYY-mm-dd hh:mm:ss"))
+
+#let(start = Timestamp())
+
+#for(file in $index.files):
 #if(file.isRegularFile):
-#(file.name): Created #Date(file.creationDate), Modified #Date(file.contentModificationDate)
+#(file.name) (#type()):  Created #created() / Modified #modified()
+
 #endif
 #endfor
+
+Execution Time: #((Timestamp() - start) * 1_000) ms

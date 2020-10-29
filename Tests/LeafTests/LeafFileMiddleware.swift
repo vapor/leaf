@@ -57,17 +57,20 @@ class LeafFileMW: LeafTestClass {
         try setupMiddleware()
                 
         try app.testable().test(.GET, "/") {
+            XCTAssert($0.body.string.contains("Index.leaf"))
             print($0.body.string)
-            XCTAssert($0.body.string.contains("Index.leaf")) }
+        }
     }
     
     func testTypeContext() throws {
         try setupMiddleware()
         
-        try LeafFileMiddleware.defaultContext?.setValue(at: "version", to: "1.0.0")
+        LeafFileMiddleware.defaultContext?["version"] = "1.0.0"
         
         try app.testable().test(.GET, "/Leaf.leaf") {
-            XCTAssert($0.body.string.contains("1.0.0")) }
+            XCTAssert($0.body.string.contains("1.0.0"))
+            LeafFileMiddleware.defaultContext?["version"] = nil
+        }
     }
 }
 
