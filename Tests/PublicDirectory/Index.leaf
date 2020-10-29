@@ -6,6 +6,8 @@
 
 #let(start = Timestamp())
 
+Contents of #($index.requestPath) (#($index.absolutePath))
+------------------------------------------------------------------
 #for(file in $index.files):
 #if(file.isRegularFile):
 #(file.name) (#type()):  Created #created() / Modified #modified()
