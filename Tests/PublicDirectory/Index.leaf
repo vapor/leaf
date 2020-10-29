@@ -1,8 +1,8 @@
 #define(type = file.mimeType.serialized)
 #define(created = Date(timeStamp: file.creationDate,
-                       fixedFormat: "YYYY-mm-dd hh:mm:ss"))
+                       fixedFormat: "YYYY-MM-dd hh:mm:ss"))
 #define(modified = Date(timeStamp: file.contentModificationDate,
-                        fixedFormat: "YYYY-mm-dd hh:mm:ss"))
+                        fixedFormat: "YYYY-MM-dd hh:mm:ss"))
 
 #let(start = Timestamp())
 
