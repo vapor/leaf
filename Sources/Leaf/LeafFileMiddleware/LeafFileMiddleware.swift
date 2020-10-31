@@ -201,16 +201,16 @@ private extension LeafFileMiddleware {
         req.succeed(req.fileio.streamFile(at: path)) }
     
     func contextualize(_ dir: String, on req: Request) {
-        let files = try? FileManager.default
+        let files = (try? FileManager.default
             .contentsOfDirectory(at: URL(fileURLWithPath: dir, isDirectory: true),
                                  includingPropertiesForKeys: LFMIndexing.keys,
-                                 options: LFMIndexing.options)
+                                 options: LFMIndexing.options)) ?? []
         
         let object = LeafData.dictionary(
             ["absolutePath": dir,
              "requestPath": dir.count == self.dir.count ? "/"
                             : String(dir[self.dir.index(before: self.dir.endIndex)..<dir.endIndex]),
-             "files": files])
+             "files": files.map {$0._leafData}  ])
         
         try? req.leaf.context.register(object: object,
                                        toScope: "index",

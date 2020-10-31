@@ -1,15 +1,19 @@
 import Foundation
 import Vapor
 
-extension URL: LeafDataRepresentable {
-    public static var leafDataType: LeafDataType? { .dictionary }
-    public var leafData: LeafData { (try? resourceValues(forKeys: .init(LFMIndexing.keys))).leafData }
+extension URL {
+    var _leafData: LeafData {
+        var values = (try? resourceValues(forKeys: .init(LFMIndexing.keys)))?._leafData ?? [:]
+        values["name"] = lastPathComponent
+        values["absolutePath"] = absoluteString
+        values["pathComponents"] = pathComponents
+        values["mimeType"] = HTTPMediaType.fileExtension(pathExtension) ?? .plainText
+        return .dictionary(values)
+    }
 }
 
-extension URLResourceValues: LeafDataRepresentable {
-    public static var leafDataType: LeafDataType? { .dictionary }
-    public var leafData: LeafData {.dictionary([
-        "name": name,
+extension URLResourceValues {
+    var _leafData: [String: LeafDataRepresentable] {[
         "isApplication": isApplication,
         "isDirectory": isDirectory,
         "isRegularFile": isRegularFile,
@@ -18,6 +22,5 @@ extension URLResourceValues: LeafDataRepresentable {
         "fileSize": fileSize,
         "creationDate": creationDate,
         "contentModificationDate": contentModificationDate,
-        "mimeType": canonicalPath.map {HTTPMediaType.fileExtension($0.fileExt) ?? .plainText}
-    ])}
+    ]}
 }
