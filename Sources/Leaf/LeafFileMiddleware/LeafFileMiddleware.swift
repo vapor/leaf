@@ -86,7 +86,7 @@ public extension LeafFileMiddleware {
         /// Fully qualify path
         var path = URL(fileURLWithPath: dir + (request.url.path.removingPercentEncoding ?? ""))
                       .standardizedFileURL.path
-        guard !path.isEmpty else { return fail(badRequest) }
+        guard !path.isEmpty, (path.count + 1) >= dir.count else { return fail(badRequest) }
         
         /// Validate it exists and add trailing slash if it's a directory
         var isDir: ObjCBool = false
@@ -209,7 +209,7 @@ private extension LeafFileMiddleware {
         let object = LeafData.dictionary(
             ["absolutePath": dir,
              "requestPath": dir.count == self.dir.count ? "/"
-                            : String(dir[self.dir.index(before: self.dir.endIndex)..<dir.endIndex]),
+                          : String(dir[self.dir.index(before: self.dir.endIndex)..<dir.endIndex]),
              "files": files.map {$0._leafData}  ])
         
         try? req.leaf.context.register(object: object,

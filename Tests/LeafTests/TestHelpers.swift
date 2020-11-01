@@ -1,4 +1,5 @@
 import Leaf
+import XCTLeafKit
 import XCTVapor
 import NIOConcurrencyHelpers
 

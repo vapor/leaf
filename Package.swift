@@ -20,7 +20,8 @@ let package = Package(
         ]),
         .testTarget(name: "LeafTests", dependencies: [
             .target(name: "Leaf"),
-            .product(name: "XCTVapor", package: "vapor")
+            .product(name: "XCTVapor", package: "vapor"),
+            .product(name: "XCTLeafKit", package: "leaf-kit")
         ]),
     ]
 )

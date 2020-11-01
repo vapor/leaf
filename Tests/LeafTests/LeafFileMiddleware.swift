@@ -49,7 +49,7 @@ class LeafFileMW: LeafTestClass {
         try setupMiddleware()
                 
         try app.testable().test(.GET, "/") {
-            XCTAssert($0.body.string.contains("Index.leaf")) }
+            XCTAssert($0.body.string.contains("Contents of /")) }
     }
     
     func testAbsolute() throws {
@@ -57,9 +57,11 @@ class LeafFileMW: LeafTestClass {
         try setupMiddleware()
                 
         try app.testable().test(.GET, "/") {
-            XCTAssert($0.body.string.contains("Index.leaf"))
+            XCTAssert($0.body.string.contains("Contents of /")) }
+        
+        try app.testable().test(.GET, "/MoreViews/") {
             print($0.body.string)
-        }
+            XCTAssert($0.body.string.contains("Contents of /MoreViews")) }
     }
     
     func testTypeContext() throws {
