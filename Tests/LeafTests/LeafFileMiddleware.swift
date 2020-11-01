@@ -57,11 +57,12 @@ class LeafFileMW: LeafTestClass {
         try setupMiddleware()
                 
         try app.testable().test(.GET, "/") {
+            print($0.body.string)
             XCTAssert($0.body.string.contains("Contents of /")) }
         
-        try app.testable().test(.GET, "/MoreViews/") {
+        try app.testable().test(.GET, "/More/") {
             print($0.body.string)
-            XCTAssert($0.body.string.contains("Contents of /MoreViews")) }
+            XCTAssert($0.body.string.contains("Contents of /More")) }
     }
     
     func testTypeContext() throws {
