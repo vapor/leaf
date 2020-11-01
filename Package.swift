@@ -10,7 +10,7 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.0.0-rc.1.16"),
+        .package(name: "leaf-kit", url: "https://github.com/vapor/leaf-kit", from: "1.0.0-tau.1"),
         .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0"),
     ],
     targets: [
@@ -21,6 +21,7 @@ let package = Package(
         .testTarget(name: "LeafTests", dependencies: [
             .target(name: "Leaf"),
             .product(name: "XCTVapor", package: "vapor"),
+            .product(name: "XCTLeafKit", package: "leaf-kit")
         ]),
     ]
 )
