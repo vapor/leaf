@@ -20,7 +20,7 @@ extension URLResourceValues {
         "isHidden": isHidden,
         "isSymbolicLink": isSymbolicLink,
         "fileSize": fileSize,
-        "creationDate": creationDate,
+        "creationDate": creationDate, // returns nil on Ubuntu xenial
         "contentModificationDate": contentModificationDate,
     ]}
 }
