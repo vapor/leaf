@@ -1,7 +1,7 @@
 import Vapor
 
 extension Request {
-    var leaf: LeafRenderer {
+    public var leaf: LeafRenderer {
         var userInfo = self.application.leaf.userInfo
         userInfo["request"] = self
         userInfo["application"] = self.application
