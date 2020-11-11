@@ -24,6 +24,7 @@ extension Application {
 
             return .init(
                 configuration: self.configuration,
+                tags: self.tags,
                 cache: self.cache,
                 sources: self.sources,
                 eventLoop: self.application.eventLoopGroup.next(),
