@@ -1,4 +1,5 @@
 import Leaf
+import LeafKit
 import XCTVapor
 
 class LeafTests: XCTestCase {

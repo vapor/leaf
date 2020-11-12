@@ -1,4 +1,5 @@
 import Vapor
+import LeafKit
 
 extension LeafRenderer: ViewRenderer {
     public func `for`(_ request: Request) -> ViewRenderer {
