@@ -1,6 +1,6 @@
 import Leaf
-import XCTVapor
 import LeafKit
+import XCTVapor
 
 class LeafTests: XCTestCase {
     func testApplication() throws {
