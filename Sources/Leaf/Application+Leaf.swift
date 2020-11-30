@@ -23,10 +23,16 @@ extension Application {
             var userInfo = self.userInfo
             userInfo["application"] = self
 
+            var cache = self.cache
+            if self.application.environment == .development {
+                cache.isEnabled = false
+            } else {
+                self.application.logger.notice("Starting Leaf Renderer with caching enabled")
+            }
             return .init(
                 configuration: self.configuration,
                 tags: self.tags,
-                cache: self.cache,
+                cache: cache,
                 sources: self.sources,
                 eventLoop: self.application.eventLoopGroup.next(),
                 userInfo: userInfo
