@@ -26,6 +26,8 @@ extension Application {
             var cache = self.cache
             if self.application.environment == .development {
                 cache.isEnabled = false
+            } else {
+                self.application.logger.notice("Starting Leaf Renderer with caching enabled")
             }
             return .init(
                 configuration: self.configuration,
