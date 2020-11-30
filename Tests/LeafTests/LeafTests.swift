@@ -164,6 +164,24 @@ class LeafTests: XCTestCase {
             XCTAssertEqual(res.body.string, "Hello World! @ application")
         }
     }
+
+    func testLeafCacheDisabledInDevelopment() throws {
+        let app = Application(.development)
+        defer { app.shutdown() }
+
+        app.views.use(.leaf)
+
+        XCTAssertFalse(app.leaf.cache.isEnabled)
+    }
+
+    func testLeafCacheEnabledInProduction() throws {
+        let app = Application(.production)
+        defer { app.shutdown() }
+
+        app.views.use(.leaf)
+
+        XCTAssertTrue(app.leaf.cache.isEnabled)
+    }
 }
 
 /// Helper `LeafFiles` struct providing an in-memory thread-safe map of "file names" to "file data"
