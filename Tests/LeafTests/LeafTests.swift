@@ -171,7 +171,12 @@ class LeafTests: XCTestCase {
 
         app.views.use(.leaf)
 
-        XCTAssertFalse(app.leaf.cache.isEnabled)
+        guard let renderer = app.view as? LeafRenderer else {
+            XCTFail()
+            return
+        }
+
+        XCTAssertFalse(renderer.cache.isEnabled)
     }
 
     func testLeafCacheEnabledInProduction() throws {
@@ -180,7 +185,12 @@ class LeafTests: XCTestCase {
 
         app.views.use(.leaf)
 
-        XCTAssertTrue(app.leaf.cache.isEnabled)
+        guard let renderer = app.view as? LeafRenderer else {
+            XCTFail()
+            return
+        }
+
+        XCTAssertTrue(renderer.cache.isEnabled)
     }
 }
 
