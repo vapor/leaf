@@ -192,6 +192,44 @@ class LeafTests: XCTestCase {
 
         XCTAssertTrue(renderer.cache.isEnabled)
     }
+
+    func testLeafRendererWithEncodableContext() throws {
+        var test = TestFiles()
+        test.files["/foo.leaf"] = """
+        Hello #(name)!
+        """
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.views.use(.leaf)
+        app.leaf.sources = .singleSource(test)
+
+        struct NotHTML: ResponseEncodable {
+            var data: ByteBuffer
+
+            func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
+                let response = Response(headers: ["content-type": "application/not-html"],
+                                        body: .init(buffer: self.data))
+                return request.eventLoop.makeSucceededFuture(response)
+            }
+        }
+
+        struct Foo: Encodable {
+            var name: String
+        }
+
+        app.get("foo") { req in
+            return req.application.leaf.renderer.render(path: "foo", context: Foo(name: "World")).map {
+                return NotHTML(data: $0)
+            }
+        }
+
+        try app.test(.GET, "foo") { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.headers.first(name: "content-type"), "application/not-html")
+            XCTAssertEqual(res.body.string, "Hello World!")
+        }
+    }
 }
 
 /// Helper `LeafFiles` struct providing an in-memory thread-safe map of "file names" to "file data"
