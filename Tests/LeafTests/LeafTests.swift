@@ -230,6 +230,33 @@ class LeafTests: XCTestCase {
             XCTAssertEqual(res.body.string, "Hello World!")
         }
     }
+
+    func testNoFatalErrorWhenAttemptingToUseArrayAsContext() throws {
+        var test = TestFiles()
+        test.files["/foo.leaf"] = """
+        Hello #(name)!
+        """
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.views.use(.leaf)
+        app.leaf.sources = .singleSource(test)
+
+        struct MyModel: Content {
+            let name: String
+        }
+
+        app.get("noCrash") { req -> EventLoopFuture<View> in
+            let myModel1 = MyModel(name: "Alice")
+            let myModel2 = MyModel(name: "Alice")
+            let context = [myModel1, myModel2]
+            return req.view.render("foo", context)
+        }
+
+        try app.test(.GET, "noCrash") { res in
+            XCTAssertEqual(res.status, .ok)
+        }
+    }
 }
 
 /// Helper `LeafFiles` struct providing an in-memory thread-safe map of "file names" to "file data"
