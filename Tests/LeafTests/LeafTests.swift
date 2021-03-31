@@ -254,7 +254,8 @@ class LeafTests: XCTestCase {
         }
 
         try app.test(.GET, "noCrash") { res in
-            XCTAssertEqual(res.status, .ok)
+            // We used to fatal error
+            XCTAssertEqual(res.status, .internalServerError)
         }
     }
 }

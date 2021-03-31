@@ -7,7 +7,9 @@ internal final class LeafEncoder {
         let encoder = _Encoder(codingPath: [])
         try encodable.encode(to: encoder)
         let data = encoder.container!.data!.resolve()
-        guard let dictionary = data.dictionary else { fatalError() }
+        guard let dictionary = data.dictionary else {
+            throw LeafError(.unsupportedFeature("You must use a top level dictionary or type for the context. Arrays are not allowed"))
+        }
         return dictionary
     }
 }
