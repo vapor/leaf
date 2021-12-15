@@ -189,7 +189,9 @@ private final class UnkeyedContainer: UnkeyedEncodingContainer, _Container {
         } else {
             let encoder = _Encoder(codingPath: codingPath)
             try value.encode(to: encoder)
-            self.array.append(encoder.container!.data!)
+            if let safeData = encoder.container!.data {
+                self.array.append(safeData)
+            }
         }
     }
 
