@@ -1,6 +1,7 @@
 import Leaf
 import LeafKit
 import XCTVapor
+import Foundation
 
 class LeafTests: XCTestCase {
     func testApplication() throws {
@@ -256,6 +257,40 @@ class LeafTests: XCTestCase {
         try app.test(.GET, "noCrash") { res in
             // We used to fatal error
             XCTAssertEqual(res.status, .internalServerError)
+        }
+    }
+    
+    // Test for GH Issue #197
+    func testNoFatalErrorWhenAttemptingToUseArrayWithNil() throws {
+        var test = TestFiles()
+        test.files["/foo.leaf"] = """
+        #(value)
+        """
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        app.views.use(.leaf)
+        app.leaf.sources = .singleSource(test)
+        
+        struct ArrayWithNils: Content {
+            let value:[UUID?]
+        }
+        
+        let id1 = UUID.init()
+        let id2 = UUID.init()
+
+
+        app.get("noCrash") { req -> EventLoopFuture<View> in
+            let context = ArrayWithNils(value: [id1,nil,id2, nil])
+            return req.view.render("foo", context)
+        }
+
+        try app.test(.GET, "noCrash") { res in
+            // Expected result .ok
+            XCTAssertEqual(res.status, .ok)
+            
+            // Rendered result should match to all non-nil values
+            XCTAssertEqual(res.body.string, "[\"\(id1)\", \"\(id2)\"]")
         }
     }
 }
