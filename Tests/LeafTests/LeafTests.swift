@@ -3,7 +3,7 @@ import LeafKit
 import XCTVapor
 import Foundation
 
-class LeafTests: XCTestCase {
+final class LeafTests: XCTestCase {
     func testApplication() throws {
         let app = Application(.testing)
         defer { app.shutdown() }
@@ -59,7 +59,7 @@ class LeafTests: XCTestCase {
         
         try app.test(.GET, "allowed") { res in
             XCTAssertEqual(res.status, .internalServerError)
-            XCTAssert(res.body.string.contains("noTemplateExists"))
+            XCTAssert(res.body.string.contains("No template found"))
         }
         
         try app.test(.GET, "sandboxed") { res in
