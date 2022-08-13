@@ -72,16 +72,19 @@ extension LeafEncoder {
             return self.storage as! EncoderKeyedContainerImpl<Key>
         }
 
+        /// See ``Encoder/container(keyedBy:)``.
         func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> {
             .init(self.rawContainer(keyedBy: type))
         }
 
+        /// See ``Encoder/unkeyedContainer()``.
         func unkeyedContainer() -> UnkeyedEncodingContainer {
             guard self.storage == nil else { fatalError("Can't encode to multiple containers at the same encoding level") }
             self.storage = EncoderUnkeyedContainerImpl(encoder: self)
             return self.storage as! EncoderUnkeyedContainerImpl
         }
 
+        /// See ``Encoder/singleValueContainer()``.
         func singleValueContainer() -> SingleValueEncodingContainer {
             guard self.storage == nil else { fatalError("Can't encode to multiple containers at the same encoding level") }
             self.storage = EncoderValueContainerImpl(encoder: self)
@@ -106,11 +109,17 @@ extension LeafEncoder {
 
     private final class EncoderValueContainerImpl: SingleValueEncodingContainer, LeafEncodingResolvable {
         let encoder: EncoderImpl
-        var codingPath: [CodingKey] { self.encoder.codingPath }
         var resolvedData: LeafData?
+
+        /// See ``SingleValueEncodingContainer/codingPath``.
+        var codingPath: [CodingKey] { self.encoder.codingPath }
         
         init(encoder: EncoderImpl) { self.encoder = encoder }
+
+        /// See ``SingleValueEncodingContainer/encodeNil()``.
         func encodeNil() throws {}
+
+        /// See ``SingleValueEncodingContainer/encode(_:)``.
         func encode<T>(_ value: T) throws where T: Encodable {
             self.resolvedData = try self.encoder.encode(value, forKey: nil)?.resolvedData
         }
@@ -118,67 +127,93 @@ extension LeafEncoder {
 
     private final class EncoderKeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
         let encoder: EncoderImpl
-        var codingPath: [CodingKey] { self.encoder.codingPath }
         var data: [String: LeafEncodingResolvable] = [:]
         var resolvedData: LeafData? { let compact = self.data.compactMapValues { $0.resolvedData }; return compact.isEmpty ? nil : .dictionary(compact) }
-        
+
+        /// See ``KeyedEncodingContainerProtocol/codingPath``.
+        var codingPath: [CodingKey] { self.encoder.codingPath }
+
         init(encoder: EncoderImpl) { self.encoder = encoder }
-        func insert<T: LeafEncodingResolvable>(_ value: T?, forKey key: CodingKey) -> T? {
-            guard let value = value else { return nil }
+
+        func insert<T>(_ value: LeafEncodingResolvable, forKey key: CodingKey, as: T.Type = T.self) -> T {
             self.data[key.stringValue] = value
-            return value
+            return value as! T
         }
+
+        /// See ``KeyedEncodingContainerProtocol/encodeNil()``.
         func encodeNil(forKey key: Key) throws {}
+
+        /// See ``KeyedEncodingContainerProtocol/encode(_:forKey:)``.
         func encode<T>(_ value: T, forKey key: Key) throws where T : Encodable {
-            func _go<T: LeafEncodingResolvable>(_ data: T) -> T? { self.insert(data, forKey: key) }
-            guard let r = try self.encoder.encode(value, forKey: key) else { return }
-            _ = _openExistential(r, do: _go(_:))
+            guard let encodedValue = try self.encoder.encode(value, forKey: key) else { return }
+            self.data[key.stringValue] = encodedValue
         }
+
+        /// See ``KeyedEncodingContainerProtocol/nestedContainer(keyedBy:forKey:)``.
         func nestedContainer<NK>(keyedBy keyType: NK.Type, forKey key: Key) -> KeyedEncodingContainer<NK> where NK: CodingKey {
             /// Use a subencoder to create a nested container so the coding paths are correctly maintained.
             /// Save the subcontainer in our data so it can be resolved later before returning it.
-            .init(self.insert(EncoderImpl(subdecoding: self.encoder, withKey: key).rawContainer(keyedBy: NK.self), forKey: key)!)
+            .init(self.insert(EncoderImpl(subdecoding: self.encoder, withKey: key).rawContainer(keyedBy: NK.self), forKey: key, as: EncoderKeyedContainerImpl<NK>.self))
         }
+
+        /// See ``KeyedEncodingContainerProtocol/nestedUnkeyedContainer(forKey:)``.
         func nestedUnkeyedContainer(forKey key: Key) -> UnkeyedEncodingContainer {
-            self.insert((EncoderImpl(subdecoding: self.encoder, withKey: key).unkeyedContainer() as! EncoderUnkeyedContainerImpl), forKey: key)!
+            self.insert((EncoderImpl(subdecoding: self.encoder, withKey: key).unkeyedContainer() as! EncoderUnkeyedContainerImpl), forKey: key)
         }
+
         /// A super encoder is, in fact, just a subdecoder with delusions of grandeur and some rather haughty
         /// pretensions. (It's mostly Codable's fault anyway.)
         func superEncoder() -> Encoder {
-            self.insert(EncoderImpl(subdecoding: self.encoder, withKey: GenericCodingKey(stringValue: "super")), forKey: GenericCodingKey(stringValue: "super"))!
+            self.insert(EncoderImpl(subdecoding: self.encoder, withKey: GenericCodingKey(stringValue: "super")), forKey: GenericCodingKey(stringValue: "super"))
         }
-        func superEncoder(forKey key: Key) -> Encoder { self.insert(EncoderImpl(subdecoding: self.encoder, withKey: key), forKey: key)! }
+
+        /// See ``KeyedEncodingContainerProtocol/superEncoder(forKey:)``.
+        func superEncoder(forKey key: Key) -> Encoder { self.insert(EncoderImpl(subdecoding: self.encoder, withKey: key), forKey: key) }
     }
     
     private final class EncoderUnkeyedContainerImpl: UnkeyedEncodingContainer, LeafEncodingResolvable {
         let encoder: EncoderImpl
-        var codingPath: [CodingKey] { self.encoder.codingPath }
-        var count: Int = 0
         var data: [LeafEncodingResolvable] = []
         var nextCodingKey: CodingKey { GenericCodingKey(intValue: self.count) }
         var resolvedData: LeafData? { let compact = data.compactMap(\.resolvedData); return compact.isEmpty ? nil : .array(compact) }
         
+        /// See ``UnkeyedEncodingContainer/codingPath``.
+        var codingPath: [CodingKey] { self.encoder.codingPath }
+
+        /// See ``UnkeyedEncodingContainer/count``.
+        var count: Int = 0
+
         init(encoder: EncoderImpl) { self.encoder = encoder }
-        func add<T: LeafEncodingResolvable>(_ value: T) throws -> T {
-            /// Don't increment count until after the append; we don't want to do so if it throws.
+
+        func add<T>(_ value: LeafEncodingResolvable, as: T.Type = T.self) -> T {
             self.data.append(value)
             self.count += 1
-            return value
+            return value as! T
         }        
+
+        /// See ``UnkeyedEncodingContainer/encodeNil()``.
         func encodeNil() throws {}
+
+        /// See ``UnkeyedEncodingContainer/encode(_:)``.
         func encode<T>(_ value: T) throws where T: Encodable {
-            func _go<T: LeafEncodingResolvable>(_ value: T) throws -> T { try self.add(value) }
-            guard let r = try self.encoder.encode(value, forKey: self.nextCodingKey) else { return }
-            _ = try _openExistential(r, do: _go(_:))
+            guard let encodedValue = try self.encoder.encode(value, forKey: self.nextCodingKey) else { return }
+            self.data.append(encodedValue)
+            self.count += 1
         }
+
+        /// See ``UnkeyedEncodingContainer/nestedContainer(keyedBy:)``.
         func nestedContainer<NK>(keyedBy keyType: NK.Type) -> KeyedEncodingContainer<NK> where NK: CodingKey {
-            try! .init(self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey).rawContainer(keyedBy: NK.self)))
+            .init(self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey).rawContainer(keyedBy: NK.self), as: EncoderKeyedContainerImpl<NK>.self))
         }
+
+        /// See ``UnkeyedEncodingContainer/nestedUnkeyedContainer()``.
         func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
-            try! self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey).unkeyedContainer() as! EncoderUnkeyedContainerImpl)
+            self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey).unkeyedContainer() as! EncoderUnkeyedContainerImpl)
         }
+
+        /// See ``UnkeyedEncodingContainer/superEncoder()``.
         func superEncoder() -> Encoder {
-            try! self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey))
+            self.add(EncoderImpl(subdecoding: self.encoder, withKey: self.nextCodingKey))
         }
     }
 }
