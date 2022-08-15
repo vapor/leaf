@@ -7,3 +7,4 @@ jobs:
      with:
        with_coverage: false
        with_tsan: true
+       with_public_api_check: true
