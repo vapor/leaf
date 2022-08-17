@@ -4,9 +4,9 @@ import XCTVapor
 import Foundation
 
 final class LeafEncoderTests: XCTestCase {
-    private func testRender(
+    private func testRender<E: Encodable>(
         of testLeaf: String,
-        context: Encodable? = nil,
+        context: E? = nil,
         expect expectedStatus: HTTPStatus = .ok,
         afterResponse: (XCTHTTPResponse) throws -> (),
         file: StaticString = #filePath, line: UInt = #line
@@ -19,8 +19,7 @@ final class LeafEncoderTests: XCTestCase {
         app.views.use(.leaf)
         app.leaf.sources = .singleSource(test)
         if let context = context {
-            func _defRoute<T: Encodable>(context: T) { app.get("foo") { $0.view.render("foo", context) } }
-            _openExistential(context, do: _defRoute(context:))
+            app.get("foo") { $0.view.render("foo", context) }
         } else {
             app.get("foo") { $0.view.render("foo") }
         }
@@ -33,7 +32,7 @@ final class LeafEncoderTests: XCTestCase {
     }
     
     func testEmptyContext() throws {
-        try testRender(of: "Hello!\n") {
+        try testRender(of: "Hello!\n", context: Bool?.none) {
             XCTAssertEqual($0.body.string, "Hello!\n")
         }
     }
@@ -104,8 +103,7 @@ final class LeafEncoderTests: XCTestCase {
             
             private enum CodingKeys: String, CodingKey { case id, call }
             init(justTheId: Int, call: BetterCallSuperGoodman) {
-                self.justTheId = justTheId
-                self.call = call
+                (self.justTheId, self.call) = (justTheId, call)
             }
             init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: Self.CodingKeys.self)
@@ -121,17 +119,13 @@ final class LeafEncoderTests: XCTestCase {
         
         try testRender(of: """
             KHAAAAAAAAN!!!!!!!!!
-            
             #(id), or you'd better call:
-            
             #(call)
             """, context: BreakingCodable(justTheId: 8675309, call: .init(nestedId: 8008, value: "Who R U?"))
         ) {
             XCTAssertEqual($0.body.string, """
                 KHAAAAAAAAN!!!!!!!!!
-                
                 8675309, or you'd better call:
-                
                 [nestedId: "8008", value: "Who R U?"]
                 """)
         }
