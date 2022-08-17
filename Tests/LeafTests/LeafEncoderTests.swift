@@ -136,4 +136,16 @@ final class LeafEncoderTests: XCTestCase {
                 """)
         }
     }
+    
+    func testEncodeDoesntElideEmptyContainers() throws {
+        struct CodableContainersNeedBetterSemantics: Codable {
+            let title: String
+            let todoList: [String]
+            let toundoList: [String: String]
+        }
+        
+        try testRender(of: "#count(todoList)\n#count(toundoList)", context: CodableContainersNeedBetterSemantics(title: "a", todoList: [], toundoList: [:])) {
+            XCTAssertEqual($0.body.string, "0\n0")
+        }
+    }
 }
