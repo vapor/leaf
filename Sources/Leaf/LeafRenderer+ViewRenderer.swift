@@ -27,7 +27,7 @@ extension LeafRenderer {
     {
         let data: [String: LeafData]
         do {
-            data = try LeafEncoder().encode(context)
+            data = try LeafEncoder.encode(context)
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
