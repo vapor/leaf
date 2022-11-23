@@ -136,7 +136,7 @@ extension LeafEncoder {
     }
 
     private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
-        private weak var encoder: EncoderImpl?
+        private weak var encoder: EncoderImpl!
         private var data: [String: LeafEncodingResolvable] = [:]
         private var nestedEncoderCaptures = [AnyObject]()
         
