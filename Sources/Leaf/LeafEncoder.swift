@@ -78,8 +78,11 @@ extension LeafEncoder {
             self.codingPath = codingPath
         }
         
-        convenience init(from encoder: EncoderImpl, withKey key: CodingKey?) {
-            self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compacted())
+        convenience init(from encoder: EncoderImpl?, withKey key: CodingKey?) {
+            self.init(
+                userInfo: encoder?.userInfo ?? [:],
+                codingPath: (encoder?.codingPath ?? []) + [key].compacted()
+            )
         }
         
         /// Need to expose the ability to access unwrapped keyed container to enable use of nested
@@ -134,10 +137,13 @@ extension LeafEncoder {
             }
         }
     }
+    
+    struct EncoderDeallocated: Error { }
 
     private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
-        private let encoder: EncoderImpl
+        private weak var encoder: EncoderImpl?
         private var data: [String: LeafEncodingResolvable] = [:]
+        private var nestedEncoderCaptures = [AnyObject]()
         
         /// See ``LeafEncodingResolvable/resolvedData``.
         var resolvedData: LeafData? { .dictionary(self.data.compactMapValues { $0.resolvedData }) }
@@ -145,14 +151,15 @@ extension LeafEncoder {
         init(encoder: EncoderImpl) { self.encoder = encoder }
 
         /// See ``KeyedEncodingContainerProtocol/codingPath``.
-        var codingPath: [CodingKey] { self.encoder.codingPath }
+        var codingPath: [CodingKey] { self.encoder?.codingPath ?? [] }
 
         /// See ``KeyedEncodingContainerProtocol/encodeNil()``.
         func encodeNil(forKey key: Key) throws {}
 
         /// See ``KeyedEncodingContainerProtocol/encode(_:forKey:)``.
         func encode<T>(_ value: T, forKey key: Key) throws where T : Encodable {
-            guard let encodedValue = try self.encoder.encode(value, forKey: key) else { return }
+            guard let encoder else { throw EncoderDeallocated() }
+            guard let encodedValue = try encoder.encode(value, forKey: key) else { return }
             self.data[key.stringValue] = encodedValue
         }
 
@@ -160,8 +167,12 @@ extension LeafEncoder {
         func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
             /// Use a subencoder to create a nested container so the coding paths are correctly maintained.
             /// Save the subcontainer in our data so it can be resolved later before returning it.
-            .init(self.insert(
-                EncoderImpl(from: self.encoder, withKey: key).rawContainer(keyedBy: NestedKey.self),
+            
+            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
+            self.nestedEncoderCaptures.append(nestedEncoder)
+            
+            return KeyedEncodingContainer(self.insert(
+                nestedEncoder.rawContainer(keyedBy: NestedKey.self),
                 forKey: key,
                 as: KeyedContainerImpl<NestedKey>.self
             ))
@@ -169,8 +180,12 @@ extension LeafEncoder {
 
         /// See ``KeyedEncodingContainerProtocol/nestedUnkeyedContainer(forKey:)``.
         func nestedUnkeyedContainer(forKey key: Key) -> UnkeyedEncodingContainer {
-            self.insert(
-                EncoderImpl(from: self.encoder, withKey: key).unkeyedContainer() as! UnkeyedContainerImpl,
+            
+            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
+            self.nestedEncoderCaptures.append(nestedEncoder)
+            
+            return self.insert(
+                nestedEncoder.unkeyedContainer() as! UnkeyedContainerImpl,
                 forKey: key
             )
         }
@@ -178,15 +193,23 @@ extension LeafEncoder {
         /// A super encoder is, in fact, just a subdecoder with delusions of grandeur and some rather haughty
         /// pretensions. (It's mostly Codable's fault anyway.)
         func superEncoder() -> Encoder {
-            self.insert(
-                EncoderImpl(from: self.encoder, withKey: GenericCodingKey(stringValue: "super")),
+            
+            let superEncoder = EncoderImpl(from: self.encoder, withKey: GenericCodingKey(stringValue: "super"))
+            self.nestedEncoderCaptures.append(superEncoder)
+            
+            return self.insert(
+                superEncoder,
                 forKey: GenericCodingKey(stringValue: "super")
             )
         }
 
         /// See ``KeyedEncodingContainerProtocol/superEncoder(forKey:)``.
         func superEncoder(forKey key: Key) -> Encoder {
-            self.insert(EncoderImpl(from: self.encoder, withKey: key), forKey: key)
+            
+            let superEncoder = EncoderImpl(from: self.encoder, withKey: key)
+            self.nestedEncoderCaptures.append(superEncoder)
+            
+            return self.insert(superEncoder, forKey: key)
         }
 
         /// Helper for the encoding methods.
@@ -197,14 +220,15 @@ extension LeafEncoder {
     }
     
     private final class UnkeyedContainerImpl: UnkeyedEncodingContainer, LeafEncodingResolvable {
-        private let encoder: EncoderImpl
+        private weak var encoder: EncoderImpl?
         private var data: [LeafEncodingResolvable] = []
+        private var nestedEncoderCaptures = [AnyObject]()
         
         /// See ``LeafEncodingResolvable/resolvedData``.
         var resolvedData: LeafData? { .array(data.compactMap(\.resolvedData)) }
         
         /// See ``UnkeyedEncodingContainer/codingPath``.
-        var codingPath: [CodingKey] { self.encoder.codingPath }
+        var codingPath: [CodingKey] { self.encoder?.codingPath ?? [] }
 
         /// See ``UnkeyedEncodingContainer/count``.
         var count: Int = 0
@@ -216,7 +240,9 @@ extension LeafEncoder {
 
         /// See ``UnkeyedEncodingContainer/encode(_:)``.
         func encode<T>(_ value: T) throws where T: Encodable {
-            guard let encodedValue = try self.encoder.encode(value, forKey: self.nextCodingKey) else { return }
+            
+            guard let encoder else { throw EncoderDeallocated() }
+            guard let encodedValue = try encoder.encode(value, forKey: self.nextCodingKey) else { return }
             
             self.data.append(encodedValue)
             self.count += 1
@@ -224,20 +250,32 @@ extension LeafEncoder {
 
         /// See ``UnkeyedEncodingContainer/nestedContainer(keyedBy:)``.
         func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> {
-            .init(self.add(
-                EncoderImpl(from: self.encoder, withKey: self.nextCodingKey).rawContainer(keyedBy: NestedKey.self),
+            
+            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: self.nextCodingKey)
+            self.nestedEncoderCaptures.append(nestedEncoder)
+            
+            return KeyedEncodingContainer(self.add(
+                nestedEncoder.rawContainer(keyedBy: NestedKey.self),
                 as: KeyedContainerImpl<NestedKey>.self
             ))
         }
 
         /// See ``UnkeyedEncodingContainer/nestedUnkeyedContainer()``.
         func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
-            self.add(EncoderImpl(from: self.encoder, withKey: self.nextCodingKey).unkeyedContainer() as! UnkeyedContainerImpl)
+            
+            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: self.nextCodingKey)
+            self.nestedEncoderCaptures.append(nestedEncoder)
+            
+            return self.add(nestedEncoder.unkeyedContainer() as! UnkeyedContainerImpl)
         }
 
         /// See ``UnkeyedEncodingContainer/superEncoder()``.
         func superEncoder() -> Encoder {
-            self.add(EncoderImpl(from: self.encoder, withKey: self.nextCodingKey))
+            
+            let superEncoder = EncoderImpl(from: self.encoder, withKey: self.nextCodingKey)
+            self.nestedEncoderCaptures.append(superEncoder)
+            
+            return self.add(superEncoder)
         }
 
         /// A `CodingKey` corresponding to the index that will be given to the next value added to the array.
