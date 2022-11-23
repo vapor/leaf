@@ -7,7 +7,7 @@ internal struct LeafEncoder {
     /// top level; it may not be an array or scalar value.
     static func encode<E>(_ encodable: E) throws -> [String: LeafData] where E: Encodable {
         let encoder = EncoderImpl(codingPath: [])
-        try encodable.encode(to: encoder)
+        try encoder.encode(encodable)
         
         // If the context encoded nothing at all, yield an empty dictionary.
         let data = encoder.storage?.resolvedData ?? .dictionary([:])
