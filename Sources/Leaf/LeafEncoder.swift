@@ -1,5 +1,4 @@
 import LeafKit
-import Algorithms
 
 internal struct LeafEncoder {
     /// Use `Codable` to convert an (almost) arbitrary encodable type to a dictionary of key/``LeafData`` pairs
@@ -79,7 +78,7 @@ extension LeafEncoder {
         }
         
         convenience init(from encoder: EncoderImpl, withKey key: CodingKey?) {
-            self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compacted())
+            self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compactMap { $0 })
         }
         
         /// Need to expose the ability to access unwrapped keyed container to enable use of nested

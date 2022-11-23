@@ -12,11 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.3.1"),
-        
         .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0"),
-        
-        // Swift collection algorithms
-        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
     ],
     targets: [
         .target(name: "Leaf", dependencies: [
