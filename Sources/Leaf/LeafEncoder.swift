@@ -220,7 +220,7 @@ extension LeafEncoder {
     }
     
     private final class UnkeyedContainerImpl: UnkeyedEncodingContainer, LeafEncodingResolvable {
-        private weak var encoder: EncoderImpl?
+        private weak var encoder: EncoderImpl!
         private var data: [LeafEncodingResolvable] = []
         
         private var nestedEncoderCaptures = [AnyObject]()
