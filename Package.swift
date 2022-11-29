@@ -22,6 +22,7 @@ let package = Package(
         .target(name: "Leaf", dependencies: [
             .product(name: "LeafKit", package: "leaf-kit"),
             .product(name: "Vapor", package: "vapor"),
+            .product(name: "Algorithms", package: "swift-algorithms")
         ]),
         .testTarget(name: "LeafTests", dependencies: [
             .target(name: "Leaf"),
