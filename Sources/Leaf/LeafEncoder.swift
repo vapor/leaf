@@ -79,7 +79,7 @@ extension LeafEncoder {
         }
         
         convenience init(from encoder: EncoderImpl, withKey key: CodingKey?) {
-            self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compactMap { $0 })
+            self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compacted())
         }
         
         /// Need to expose the ability to access unwrapped keyed container to enable use of nested
