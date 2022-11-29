@@ -1,4 +1,5 @@
 import LeafKit
+import Algorithms
 
 internal struct LeafEncoder {
     /// Use `Codable` to convert an (almost) arbitrary encodable type to a dictionary of key/``LeafData`` pairs
