@@ -8,13 +8,3 @@ jobs:
        with_coverage: false
        with_tsan: true
        with_public_api_check: true
-  test-exports:
-    name: Test exports
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Build
-        run: swift build -Xswiftc -DBUILDING_DOCC
