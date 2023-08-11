@@ -11,4 +11,4 @@ jobs:
      with:
        package_name: leaf
        modules: Leaf
-       pathsToInvalidate: /leaf
+       pathsToInvalidate: /leaf/*
