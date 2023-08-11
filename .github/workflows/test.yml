@@ -1,10 +1,11 @@
 name: test
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 on:
-- pull_request
+  pull_request: { types: [opened, reopened, synchronize, ready_for_review] }
+  push: { branches: [ main ] }
+
 jobs:
   unit-tests:
-     uses: vapor/ci/.github/workflows/run-unit-tests.yml@reusable-workflows
-     with:
-       with_coverage: false
-       with_tsan: true
-       with_public_api_check: true
+     uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
