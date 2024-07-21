@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:5.8
 import PackageDescription
 
 let package = Package(
@@ -13,8 +13,8 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.10.3"),        
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.92.1"),
+        .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.11.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.102.1"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
     ],
     targets: [
