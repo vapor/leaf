@@ -117,7 +117,7 @@ final class LeafTests: XCTestCase {
     func testContextUserInfo() throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        Hello #custom()! @ #source()
+        Hello #custom()! @ #source() app nil? #application()
         """
 
         struct CustomTag: LeafTag {
@@ -133,6 +133,12 @@ final class LeafTests: XCTestCase {
                 .string(ctx.request?.url.path ?? "application")
             }
         }
+        
+        struct ApplicationTag: LeafTag {
+            func render(_ ctx: LeafContext) throws -> LeafData {
+                .string(ctx.application != nil ? "non-nil app" : "nil app")
+            }
+        }
 
         let app = Application(.testing)
         defer { app.shutdown() }
@@ -142,6 +148,7 @@ final class LeafTests: XCTestCase {
         app.leaf.cache.isEnabled = false
         app.leaf.tags["custom"] = CustomTag()
         app.leaf.tags["source"] = SourceTag()
+        app.leaf.tags["application"] = ApplicationTag()
         app.leaf.sources = .singleSource(test)
         app.leaf.userInfo["info"] = "World"
 
@@ -152,7 +159,7 @@ final class LeafTests: XCTestCase {
         try app.test(.GET, "test-file") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello World! @ /test-file")
+            XCTAssertEqual(res.body.string, "Hello World! @ /test-file app nil? non-nil app")
         }
 
         app.get("test-file-with-application-renderer") { req in
@@ -162,7 +169,7 @@ final class LeafTests: XCTestCase {
         try app.test(.GET, "test-file-with-application-renderer") { res in
             XCTAssertEqual(res.status, .ok)
             XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello World! @ application")
+            XCTAssertEqual(res.body.string, "Hello World! @ application app nil? non-nil app")
         }
     }
 
