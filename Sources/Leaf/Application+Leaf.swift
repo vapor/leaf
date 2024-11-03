@@ -21,7 +21,7 @@ extension Application {
 
         public var renderer: LeafRenderer {
             var userInfo = self.userInfo
-            userInfo["application"] = self
+            userInfo["application"] = self.application
 
             var cache = self.cache
             if self.application.environment == .development {
