@@ -33,6 +33,9 @@ let package = Package(
                 .target(name: "Leaf"),
                 .product(name: "XCTVapor", package: "vapor"),
             ],
+            exclude: [
+                "Views",
+            ],
             swiftSettings: swiftSettings
         ),
     ]
