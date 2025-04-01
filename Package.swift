@@ -1,4 +1,4 @@
-// swift-tools-version:5.8
+// swift-tools-version:5.10
 import PackageDescription
 
 let package = Package(
@@ -13,19 +13,35 @@ let package = Package(
         .library(name: "Leaf", targets: ["Leaf"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.11.0"),
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.102.1"),
-        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
+        .package(url: "https://github.com/vapor/leaf-kit.git", from: "1.12.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.114.1"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.1"),
     ],
     targets: [
-        .target(name: "Leaf", dependencies: [
-            .product(name: "LeafKit", package: "leaf-kit"),
-            .product(name: "Vapor", package: "vapor"),
-            .product(name: "Algorithms", package: "swift-algorithms")
-        ]),
-        .testTarget(name: "LeafTests", dependencies: [
-            .target(name: "Leaf"),
-            .product(name: "XCTVapor", package: "vapor"),
-        ]),
+        .target(
+            name: "Leaf",
+            dependencies: [
+                .product(name: "LeafKit", package: "leaf-kit"),
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "Algorithms", package: "swift-algorithms")
+            ],
+            swiftSettings: swiftSettings
+        ),
+        .testTarget(
+            name: "LeafTests",
+            dependencies: [
+                .target(name: "Leaf"),
+                .product(name: "XCTVapor", package: "vapor"),
+            ],
+            swiftSettings: swiftSettings
+        ),
     ]
 )
+
+var swiftSettings: [SwiftSetting] { [
+    .enableUpcomingFeature("ExistentialAny"),
+    .enableUpcomingFeature("ConciseMagicFile"),
+    .enableUpcomingFeature("ForwardTrailingClosures"),
+    .enableUpcomingFeature("DisableOutwardActorInference"),
+    .enableExperimentalFeature("StrictConcurrency=complete"),
+] }

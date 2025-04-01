@@ -8,4 +8,7 @@ on:
 
 jobs:
   unit-tests:
-     uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
+    uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
+    with:
+      with_musl: true
+      with_android: true
