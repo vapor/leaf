@@ -1,15 +1,13 @@
-import Vapor
 import LeafKit
+import Vapor
 
-extension LeafRenderer: ViewRenderer {
-    public func `for`(_ request: Request) -> ViewRenderer {
+extension LeafKit.LeafRenderer: Vapor.ViewRenderer {
+    public func `for`(_ request: Request) -> any ViewRenderer {
         request.leaf
     }
 
-    public func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View>
-        where E: Encodable
-    {
-        return self.render(path: name, context: context).map { buffer in
+    public func render(_ name: String, _ context: some Encodable) -> EventLoopFuture<View> {
+        self.render(path: name, context: context).map { buffer in
             View(data: buffer)
         }
     }
@@ -22,10 +20,9 @@ extension LeafRenderer {
     ///   - path: The name of the template to render.
     ///   - context: Contextual data to render the template with.
     /// - Returns: The serialized bytes of the rendered template.
-    public func render<Context>(path: String, context: Context) -> EventLoopFuture<ByteBuffer>
-        where Context: Encodable
-    {
+    public func render(path: String, context: some Encodable) -> EventLoopFuture<ByteBuffer> {
         let data: [String: LeafData]
+
         do {
             data = try LeafEncoder.encode(context)
         } catch {
