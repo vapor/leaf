@@ -49,6 +49,7 @@ extension Application {
         }
 
         public var tags: [String: LeafTag] {
+        public var tags: [String: any LeafTag] {
             get {
                 self.storage.tags
             }
@@ -70,7 +71,7 @@ extension Application {
             }
         }
 
-        public var cache: LeafCache {
+        public var cache: any LeafCache {
             get {
                 self.storage.cache
             }
@@ -102,11 +103,11 @@ extension Application {
             typealias Value = Storage
         }
 
-        final class Storage {
-            var cache: LeafCache
+        final class Storage: @unchecked Sendable {
+            var cache: any LeafCache
             var configuration: LeafConfiguration?
             var sources: LeafSources?
-            var tags: [String: LeafTag]
+            var tags: [String: any LeafTag]
             var userInfo: [AnyHashable: Any]
 
             init() {

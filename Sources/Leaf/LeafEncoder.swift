@@ -67,18 +67,18 @@ extension LeafEncoder {
         let codingPath: [CodingKey]
         
         /// This encoder's root stored value, if any has been encoded.
-        var storage: LeafEncodingResolvable?
-        
+        var storage: (any LeafEncodingResolvable)?
+
         /// An encoder can be resolved to the resolved value of its storage. This ability is used to support the
         /// the use of `superEncoder()` and `superEncoder(forKey:)`.
         var resolvedData: LeafData? { self.storage?.resolvedData }
 
-        init(userInfo: [CodingUserInfoKey: Any] = [:], codingPath: [CodingKey]) {
+        init(userInfo: [CodingUserInfoKey: Any] = [:], codingPath: [any CodingKey]) {
             self.userInfo = userInfo
             self.codingPath = codingPath
         }
-        
-        convenience init(from encoder: EncoderImpl, withKey key: CodingKey?) {
+
+        convenience init(from encoder: EncoderImpl, withKey key: (any CodingKey)?) {
             self.init(userInfo: encoder.userInfo, codingPath: encoder.codingPath + [key].compacted())
         }
         
@@ -96,17 +96,22 @@ extension LeafEncoder {
             .init(self.rawContainer(keyedBy: type))
         }
 
-        /// See ``Encoder/unkeyedContainer()``.
-        func unkeyedContainer() -> UnkeyedEncodingContainer {
-            guard self.storage == nil else { fatalError("Can't encode to multiple containers at the same encoding level") }
+        // See `Encoder.unkeyedContainer()`.
+        func unkeyedContainer() -> any UnkeyedEncodingContainer {
+            guard self.storage == nil else {
+                fatalError("Can't encode to multiple containers at the same encoding level")
+            }
 
             self.storage = UnkeyedContainerImpl(encoder: self)
             return self.storage as! UnkeyedContainerImpl
         }
 
-        /// See ``Encoder/singleValueContainer()``.
-        func singleValueContainer() -> SingleValueEncodingContainer {
-            guard self.storage == nil else { fatalError("Can't encode to multiple containers at the same encoding level") }
+        // See `Encoder.singleValueContainer()`.
+        func singleValueContainer() -> any SingleValueEncodingContainer {
+            guard self.storage == nil else {
+                fatalError("Can't encode to multiple containers at the same encoding level")
+            }
+
             return self
         }
 
@@ -120,9 +125,9 @@ extension LeafEncoder {
 
         /// Encode an arbitrary encodable input, optionally deepening the current coding path with a
         /// given key during encoding, and return it as a resolvable item.
-        func encode<T>(_ value: T, forKey key: CodingKey?) throws -> LeafEncodingResolvable? where T: Encodable {
-            if let leafRepresentable = value as? LeafDataRepresentable {
-                /// Shortcut through ``LeafDataRepresentable`` if `T` conforms to it.
+        func encode(_ value: some Encodable, forKey key: (any CodingKey)?) throws -> (any LeafEncodingResolvable)? {
+            if let leafRepresentable = value as? any LeafDataRepresentable {
+                /// Shortcut through ``LeafDataRepresentable`` if `value` conforms to it.
                 return leafRepresentable.leafData
             } else {
                 /// Otherwise, route encoding through a new subdecoder based on self, with an appropriate
@@ -284,10 +289,12 @@ extension LeafEncoder {
         }
 
         /// A `CodingKey` corresponding to the index that will be given to the next value added to the array.
-        private var nextCodingKey: CodingKey { GenericCodingKey(intValue: self.count) }
+        private var nextCodingKey: any CodingKey {
+            GenericCodingKey(intValue: self.count)
+        }
 
         /// Helper for the encoding methods.
-        private func add<T>(_ value: LeafEncodingResolvable, as: T.Type = T.self) -> T {
+        private func add<T>(_ value: any LeafEncodingResolvable, as: T.Type = T.self) -> T {
             self.data.append(value)
             self.count += 1
             return value as! T

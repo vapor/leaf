@@ -1,65 +1,70 @@
+import Foundation
 import Leaf
 import LeafKit
+import XCTest
 import XCTVapor
-import Foundation
 
 final class LeafEncoderTests: XCTestCase {
-    private func testRender<E: Encodable>(
+    override class func setUp() {
+        // Make dictionary serialization output deterministic
+        LeafConfiguration.dictFormatter = { "[\($0.sorted { $0.0 < $1.0 }.map { "\($0): \"\($1)\"" }.joined(separator: ", "))]" }
+    }
+
+    private func testRender(
         of testLeaf: String,
-        context: E? = nil,
+        context: (some Encodable & Sendable)? = nil,
         expect expectedStatus: HTTPStatus = .ok,
-        afterResponse: (XCTHTTPResponse) throws -> (),
+        afterResponse: (TestingHTTPResponse) async throws -> (),
         file: StaticString = #filePath, line: UInt = #line
-    ) throws {
+    ) async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = testLeaf
-        
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.views.use(.leaf)
-        app.leaf.sources = .singleSource(test)
-        if let context = context {
-            app.get("foo") { $0.view.render("foo", context) }
-        } else {
-            app.get("foo") { $0.view.render("foo") }
+
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.sources = .singleSource(test)
+            if let context {
+                app.get("foo") { try await $0.view.render("foo", context) }
+            } else {
+                app.get("foo") { try await $0.view.render("foo") }
+            }
+
+            try await app.testable().test(.GET, "foo") { res async throws in
+                XCTAssertEqual(res.status, expectedStatus, file: file, line: line)
+                try await afterResponse(res)
+            }
         }
-        
-        try app.test(.GET, "foo") { res in
-            XCTAssertEqual(res.status, expectedStatus, file: file, line: line)
-            try afterResponse(res)
-        }
-        
     }
     
-    func testEmptyContext() throws {
-        try testRender(of: "Hello!\n", context: Bool?.none) {
+    func testEmptyContext() async throws {
+        try await testRender(of: "Hello!\n", context: Bool?.none) {
             XCTAssertEqual($0.body.string, "Hello!\n")
         }
     }
     
-    func testSimpleScalarContext() throws {
+    func testSimpleScalarContext() async throws {
         struct Simple: Codable {
             let value: Int
         }
         
-        try testRender(of: "Value #(value)", context: Simple(value: 1)) {
+        try await testRender(of: "Value #(value)", context: Simple(value: 1)) {
             XCTAssertEqual($0.body.string, "Value 1")
         }
     }
     
-    func testMultiValueContext() throws {
+    func testMultiValueContext() async throws {
         struct Multi: Codable {
             let value: Int
             let anotherValue: String
         }
         
-        try testRender(of: "Value #(value), string #(anotherValue)", context: Multi(value: 1, anotherValue: "one")) {
+        try await testRender(of: "Value #(value), string #(anotherValue)", context: Multi(value: 1, anotherValue: "one")) {
             XCTAssertEqual($0.body.string, "Value 1, string one")
         }
     }
     
-    func testArrayContextFails() throws {
-        try testRender(of: "[1, 2, 3, 4, 5]", context: [1, 2, 3, 4, 5], expect: .internalServerError) {
+    func testArrayContextFails() async throws {
+        try await testRender(of: "[1, 2, 3, 4, 5]", context: [1, 2, 3, 4, 5], expect: .internalServerError) {
             struct Err: Content { let error: Bool, reason: String }
             let errInfo = try $0.content.decode(Err.self)
             XCTAssertEqual(errInfo.error, true)
@@ -67,31 +72,27 @@ final class LeafEncoderTests: XCTestCase {
         }
     }
     
-    func testNestedContainersContext() throws {
-        _ = try XCTUnwrap(ProcessInfo.processInfo.environment["SWIFT_DETERMINISTIC_HASHING"]) // required for this test to work
-        
+    func testNestedContainersContext() async throws {
         struct Nested: Codable         { let deepSixRedOctober: [Int: MoreNested] }
         struct MoreNested: Codable     { let things: [EvenMoreNested] }
         struct EvenMoreNested: Codable { let thing: [String: Double] }
-        
-        try testRender(of: "Everything #(deepSixRedOctober)", context: Nested(deepSixRedOctober: [
+
+        try await testRender(of: "Everything #(deepSixRedOctober)", context: Nested(deepSixRedOctober: [
             1: .init(things: [
                 .init(thing: ["a": 1.0, "b": 2.0]),
-                .init(thing: ["c": 4.0, "d": 8.0])
+                .init(thing: ["c": 4.0, "d": 8.0]),
             ]),
             2: .init(things: [
-                .init(thing: ["z": 67_108_864.0])
+                .init(thing: ["z": 67_108_864.0]),
             ])
         ])) {
             XCTAssertEqual($0.body.string, """
-                Everything [2: "[things: "["[thing: "[z: "67108864.0"]"]"]"]", 1: "[things: "["[thing: "[a: "1.0", b: "2.0"]"]", "[thing: "[d: "8.0", c: "4.0"]"]"]"]"]
+                Everything [1: "[things: "["[thing: "[a: "1.0", b: "2.0"]"]", "[thing: "[c: "4.0", d: "8.0"]"]"]"]", 2: "[things: "["[thing: "[z: "67108864.0"]"]"]"]"]
                 """)
         }
     }
     
-    func testSuperEncoderContext() throws {
-        _ = try XCTUnwrap(ProcessInfo.processInfo.environment["SWIFT_DETERMINISTIC_HASHING"]) // required for this test to work
-
+    func testSuperEncoderContext() async throws {
         struct BetterCallSuperGoodman: Codable {
             let nestedId: Int
             let value: String?
@@ -100,45 +101,55 @@ final class LeafEncoderTests: XCTestCase {
         struct BreakingCodable: Codable {
             let justTheId: Int
             let call: BetterCallSuperGoodman
-            
+            let called: BetterCallSuperGoodman
+
             private enum CodingKeys: String, CodingKey { case id, call }
-            init(justTheId: Int, call: BetterCallSuperGoodman) {
-                (self.justTheId, self.call) = (justTheId, call)
+            init(justTheId: Int, call: BetterCallSuperGoodman, called: BetterCallSuperGoodman) {
+                (self.justTheId, self.call, self.called) = (justTheId, call, called)
             }
-            init(from decoder: Decoder) throws {
+            init(from decoder: any Decoder) throws {
                 let container = try decoder.container(keyedBy: Self.CodingKeys.self)
                 self.justTheId = try container.decode(Int.self, forKey: .id)
                 self.call = try .init(from: container.superDecoder(forKey: .call))
+                self.called = try .init(from: container.superDecoder())
             }
-            func encode(to encoder: Encoder) throws {
+            func encode(to encoder: any Encoder) throws {
                 var container = encoder.container(keyedBy: Self.CodingKeys.self)
                 try container.encode(self.justTheId, forKey: .id)
                 try self.call.encode(to: container.superEncoder(forKey: .call))
+                try self.called.encode(to: container.superEncoder())
             }
         }
         
-        try testRender(of: """
-            KHAAAAAAAAN!!!!!!!!!
+        try await testRender(of: """
             #(id), or you'd better call:
             #(call)
-            """, context: BreakingCodable(justTheId: 8675309, call: .init(nestedId: 8008, value: "Who R U?"))
+            unless you called:
+            #(super)
+            """,
+            context: BreakingCodable(
+                justTheId: 8675309,
+                call: .init(nestedId: 8008, value: "Who R U?"),
+                called: .init(nestedId: 1337, value: "Super!")
+            )
         ) {
             XCTAssertEqual($0.body.string, """
-                KHAAAAAAAAN!!!!!!!!!
                 8675309, or you'd better call:
                 [nestedId: "8008", value: "Who R U?"]
+                unless you called:
+                [nestedId: "1337", value: "Super!"]
                 """)
         }
     }
     
-    func testEncodeDoesntElideEmptyContainers() throws {
+    func testEncodeDoesntElideEmptyContainers() async throws {
         struct CodableContainersNeedBetterSemantics: Codable {
             let title: String
             let todoList: [String]
             let toundoList: [String: String]
         }
         
-        try testRender(of: "#count(todoList)\n#count(toundoList)", context: CodableContainersNeedBetterSemantics(title: "a", todoList: [], toundoList: [:])) {
+        try await testRender(of: "#count(todoList)\n#count(toundoList)", context: CodableContainersNeedBetterSemantics(title: "a", todoList: [], toundoList: [:])) {
             XCTAssertEqual($0.body.string, "0\n0")
         }
     }
