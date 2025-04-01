@@ -1,4 +1,3 @@
-import Foundation
 import Leaf
 import LeafKit
 import NIOConcurrencyHelpers
@@ -27,10 +26,10 @@ final class LeafTests: XCTestCase {
                 fileio: app.fileio,
                 limits: .default,
                 sandboxDirectory: projectFolder,
-                viewDirectory: projectFolder
+                viewDirectory: templateFolder
             ))
             app.get("test-file") { req in
-                try await req.view.render("Tests/LeafTests/LeafTests.swift", ["foo": "bar"])
+                try await req.view.render("foo", ["foo": "bar"])
             }
 
             try await app.testable().test(.GET, "test-file") { res async throws in
@@ -286,7 +285,7 @@ final class LeafTests: XCTestCase {
             app.leaf.sources = .singleSource(test)
 
             struct ArrayWithNils: Content {
-                let value:[UUID?]
+                let value: [UUID?]
             }
 
             let id1 = UUID.init()
@@ -294,7 +293,7 @@ final class LeafTests: XCTestCase {
 
 
             app.get("noCrash") { req -> View in
-                let context = ArrayWithNils(value: [id1,nil,id2, nil])
+                let context = ArrayWithNils(value: [id1, nil, id2, nil])
 
                 return try await req.view.render("foo", context)
             }
@@ -328,7 +327,7 @@ struct TestFiles: LeafSource {
         {
             path += ".leaf"
         }
-        if !path.hasPrefix("/") {
+        if !path.starts(with: "/") {
             path = "/" + path
         }
 

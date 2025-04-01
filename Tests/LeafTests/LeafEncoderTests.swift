@@ -1,4 +1,3 @@
-import Foundation
 import Leaf
 import LeafKit
 import XCTest
