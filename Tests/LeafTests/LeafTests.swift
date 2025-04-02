@@ -18,6 +18,7 @@ public func withApp<T>(_ block: (Application) async throws -> T) async throws ->
 }
 
 final class LeafTests: XCTestCase {
+    #if !os(Android)
     func testApplication() async throws {
         try await withApp { app in
             app.views.use(.leaf)
@@ -79,6 +80,7 @@ final class LeafTests: XCTestCase {
             }
         }
     }
+    #endif
 
     func testContextRequest() async throws {
         var test = TestFiles()
