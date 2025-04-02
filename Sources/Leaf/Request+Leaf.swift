@@ -1,5 +1,5 @@
-import Vapor
 import LeafKit
+import Vapor
 
 extension Request {
     public var leaf: LeafRenderer {

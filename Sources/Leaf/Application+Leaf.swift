@@ -1,5 +1,5 @@
-import Vapor
 import LeafKit
+import Vapor
 
 extension Application.Views.Provider {
     public static var leaf: Self {
@@ -39,16 +39,15 @@ extension Application {
 
         public var configuration: LeafConfiguration {
             get {
-                self.storage.configuration ?? LeafConfiguration(
-                    rootDirectory: self.application.directory.viewsDirectory
-                )
+                self.storage.configuration ??
+                LeafConfiguration(rootDirectory: self.application.directory.viewsDirectory)
             }
             nonmutating set {
                 self.storage.configuration = newValue
             }
         }
 
-        public var tags: [String: LeafTag] {
+        public var tags: [String: any LeafTag] {
             get {
                 self.storage.tags
             }
@@ -59,18 +58,19 @@ extension Application {
 
         public var sources: LeafSources {
             get {
-                self.storage.sources ?? LeafSources.singleSource(
-                                            NIOLeafFiles(fileio: self.application.fileio,
-                                                        limits: .default,
-                                                        sandboxDirectory: self.configuration.rootDirectory,
-                                                        viewDirectory: self.configuration.rootDirectory))
+                self.storage.sources ?? LeafSources.singleSource(NIOLeafFiles(
+                    fileio: self.application.fileio,
+                    limits: .default,
+                    sandboxDirectory: self.configuration.rootDirectory,
+                    viewDirectory: self.configuration.rootDirectory
+                ))
             }
             nonmutating set {
                 self.storage.sources = newValue
             }
         }
 
-        public var cache: LeafCache {
+        public var cache: any LeafCache {
             get {
                 self.storage.cache
             }
@@ -78,7 +78,7 @@ extension Application {
                 self.storage.cache = newValue
             }
         }
-        
+
         public var userInfo: [AnyHashable: Any] {
             get {
                 self.storage.userInfo
@@ -102,11 +102,11 @@ extension Application {
             typealias Value = Storage
         }
 
-        final class Storage {
-            var cache: LeafCache
+        final class Storage: @unchecked Sendable {
+            var cache: any LeafCache
             var configuration: LeafConfiguration?
             var sources: LeafSources?
-            var tags: [String: LeafTag]
+            var tags: [String: any LeafTag]
             var userInfo: [AnyHashable: Any]
 
             init() {
@@ -117,7 +117,6 @@ extension Application {
         }
     }
 }
-
 
 extension LeafContext {
     public var application: Application? {

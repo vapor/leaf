@@ -1,78 +1,92 @@
 import Leaf
 import LeafKit
+import NIOConcurrencyHelpers
+import XCTest
 import XCTVapor
-import Foundation
+
+public func withApp<T>(_ block: (Application) async throws -> T) async throws -> T {
+    let app = try await Application.make(.testing)
+    let result: T
+    do {
+        result = try await block(app)
+    } catch {
+        try? await app.asyncShutdown()
+        throw error
+    }
+    try await app.asyncShutdown()
+    return result
+}
 
 final class LeafTests: XCTestCase {
-    func testApplication() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        
-        app.views.use(.leaf)
-        app.leaf.configuration.rootDirectory = projectFolder
-        app.leaf.sources = .singleSource(NIOLeafFiles(fileio: app.fileio,
-                                                      limits: .default,
-                                                      sandboxDirectory: projectFolder,
-                                                      viewDirectory: projectFolder))
+    #if !os(Android)
+    func testApplication() async throws {
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.configuration.rootDirectory = projectFolder
+            app.leaf.sources = .singleSource(NIOLeafFiles(
+                fileio: app.fileio,
+                limits: .default,
+                sandboxDirectory: projectFolder,
+                viewDirectory: templateFolder
+            ))
+            app.get("test-file") { req in
+                try await req.view.render("foo", ["foo": "bar"])
+            }
 
-
-        app.get("test-file") { req in
-            req.view.render("Tests/LeafTests/LeafTests.swift", ["foo": "bar"])
-        }
-
-        try app.test(.GET, "test-file") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            // test: #(foo)
-            XCTAssertContains(res.body.string, "test: bar")
-        }
-    }
-    
-    func testSandboxing() throws {
-        let app = Application(.testing)
-        defer { app.shutdown() }
-
-        app.views.use(.leaf)
-        app.leaf.configuration.rootDirectory = templateFolder
-        app.leaf.sources = .singleSource(NIOLeafFiles(fileio: app.fileio,
-                                                      limits: .default,
-                                                      sandboxDirectory: projectFolder,
-                                                      viewDirectory: templateFolder))
-
-        app.get("hello") { req in
-            req.view.render("hello")
-        }
-        
-        app.get("allowed") { req in
-            req.view.render("../hello")
-        }
-        
-        app.get("sandboxed") { req in
-            req.view.render("../../hello")
-        }
-
-        try app.test(.GET, "hello") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello, world!\n")
-        }
-        
-        try app.test(.GET, "allowed") { res in
-            XCTAssertEqual(res.status, .internalServerError)
-            XCTAssert(res.body.string.contains("No template found"))
-        }
-        
-        try app.test(.GET, "sandboxed") { res in
-            XCTAssertEqual(res.status, .internalServerError)
-            XCTAssert(res.body.string.contains("Attempted to escape sandbox"))
+            try await app.testable().test(.GET, "test-file") { res async throws in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                // test: #(foo)
+                XCTAssertContains(res.body.string, "test: bar")
+            }
         }
     }
 
-    func testContextRequest() throws {
+    func testSandboxing() async throws {
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.configuration.rootDirectory = templateFolder
+            app.leaf.sources = .singleSource(NIOLeafFiles(
+                fileio: app.fileio,
+                limits: .default,
+                sandboxDirectory: projectFolder,
+                viewDirectory: templateFolder
+            ))
+
+            app.get("hello") { req in
+                try await req.view.render("hello")
+            }
+            app.get("allowed") { req in
+                try await req.view.render("../hello")
+            }
+            app.get("sandboxed") { req in
+                try await req.view.render("../../../../hello")
+            }
+
+            try await app.testable().test(.GET, "hello") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                XCTAssertEqual(res.body.string, "Hello, world!\n")
+            }
+
+            try await app.testable().test(.GET, "allowed") { res async in
+                XCTAssertEqual(res.status, .internalServerError)
+                XCTAssert(res.body.string.contains("No template found"))
+            }
+
+            try await app.testable().test(.GET, "sandboxed") { res async in
+                XCTAssertEqual(res.status, .internalServerError)
+                XCTAssert(res.body.string.contains("Attempted to escape sandbox"))
+            }
+        }
+    }
+    #endif
+
+    func testContextRequest() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        Hello #(name) @ #source()
-        """
+            Hello #(name) @ #source()
+            """
 
         struct SourceTag: LeafTag {
             func render(_ ctx: LeafContext) throws -> LeafData {
@@ -80,51 +94,47 @@ final class LeafTests: XCTestCase {
             }
         }
 
-        let app = Application(.testing)
-        defer { app.shutdown() }
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.configuration.rootDirectory = "/"
+            app.leaf.cache.isEnabled = false
+            app.leaf.tags["source"] = SourceTag()
+            app.leaf.sources = .singleSource(test)
 
-        app.views.use(.leaf)
-        app.leaf.configuration.rootDirectory = "/"
-        app.leaf.cache.isEnabled = false
-        app.leaf.tags["source"] = SourceTag()
-        app.leaf.sources = .singleSource(test)
+            app.get("test-file") { req in
+                try await req.view.render("foo", [
+                    "name": "vapor"
+                ])
+            }
+            app.get("test-file-with-application-renderer") { req in
+                try await req.application.leaf.renderer.render("foo", [
+                    "name": "World"
+                ])
+            }
 
-        app.get("test-file") { req in
-            req.view.render("foo", [
-                "name": "vapor"
-            ])
-        }
+            try await app.testable().test(.GET, "test-file") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                XCTAssertEqual(res.body.string, "Hello vapor @ /test-file")
+            }
 
-        try app.test(.GET, "test-file") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello vapor @ /test-file")
-        }
-
-        app.get("test-file-with-application-renderer") { req in
-            req.application.leaf.renderer.render("foo", [
-                "name": "World"
-            ])
-        }
-
-        try app.test(.GET, "test-file-with-application-renderer") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello World @ application")
+            try await app.testable().test(.GET, "test-file-with-application-renderer") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                XCTAssertEqual(res.body.string, "Hello World @ application")
+            }
         }
     }
     
-    func testContextUserInfo() throws {
+    func testContextUserInfo() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        Hello #custom()! @ #source() app nil? #application()
-        """
+            Hello #custom()! @ #source() app nil? #application()
+            """
 
         struct CustomTag: LeafTag {
             func render(_ ctx: LeafContext) throws -> LeafData {
-                let info = ctx.userInfo["info"] as? String ?? ""
-                
-                return .string(info)
+                .string(ctx.userInfo["info"] as? String ?? "")
             }
         }
 
@@ -140,201 +150,212 @@ final class LeafTests: XCTestCase {
             }
         }
 
-        let app = Application(.testing)
-        defer { app.shutdown() }
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.configuration.rootDirectory = "/"
+            app.leaf.cache.isEnabled = false
+            app.leaf.tags["custom"] = CustomTag()
+            app.leaf.tags["source"] = SourceTag()
+            app.leaf.tags["application"] = ApplicationTag()
+            app.leaf.sources = .singleSource(test)
+            app.leaf.userInfo["info"] = "World"
 
-        app.views.use(.leaf)
-        app.leaf.configuration.rootDirectory = "/"
-        app.leaf.cache.isEnabled = false
-        app.leaf.tags["custom"] = CustomTag()
-        app.leaf.tags["source"] = SourceTag()
-        app.leaf.tags["application"] = ApplicationTag()
-        app.leaf.sources = .singleSource(test)
-        app.leaf.userInfo["info"] = "World"
+            app.get("test-file") { req in
+                try await req.view.render("foo")
+            }
+            app.get("test-file-with-application-renderer") { req in
+                try await req.application.leaf.renderer.render("foo")
+            }
 
-        app.get("test-file") { req in
-            req.view.render("foo")
-        }
+            try await app.testable().test(.GET, "test-file") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                XCTAssertEqual(res.body.string, "Hello World! @ /test-file app nil? non-nil app")
+            }
 
-        try app.test(.GET, "test-file") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello World! @ /test-file app nil? non-nil app")
-        }
-
-        app.get("test-file-with-application-renderer") { req in
-            req.application.leaf.renderer.render("foo")
-        }
-
-        try app.test(.GET, "test-file-with-application-renderer") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.contentType, .html)
-            XCTAssertEqual(res.body.string, "Hello World! @ application app nil? non-nil app")
+            try await app.testable().test(.GET, "test-file-with-application-renderer") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.contentType, .html)
+                XCTAssertEqual(res.body.string, "Hello World! @ application app nil? non-nil app")
+            }
         }
     }
 
-    func testLeafCacheDisabledInDevelopment() throws {
-        let app = Application(.development)
-        defer { app.shutdown() }
+    func testLeafCacheDisabledInDevelopment() async throws {
+        let app = try await Application.make(.development)
 
         app.views.use(.leaf)
 
         guard let renderer = app.view as? LeafRenderer else {
-            XCTFail()
-            return
+            try? await app.asyncShutdown()
+            return XCTFail("app.view is not a LeafRenderer")
         }
 
         XCTAssertFalse(renderer.cache.isEnabled)
+        try await app.asyncShutdown()
     }
 
-    func testLeafCacheEnabledInProduction() throws {
-        let app = Application(.production)
-        defer { app.shutdown() }
+    func testLeafCacheEnabledInProduction() async throws {
+        let app = try await Application.make(.production)
 
         app.views.use(.leaf)
 
         guard let renderer = app.view as? LeafRenderer else {
-            XCTFail()
-            return
+            try? await app.asyncShutdown()
+            return XCTFail("app.view is not a LeafRenderer")
         }
 
         XCTAssertTrue(renderer.cache.isEnabled)
+        try await app.asyncShutdown()
     }
 
-    func testLeafRendererWithEncodableContext() throws {
+    func testLeafRendererWithEncodableContext() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        Hello #(name)!
-        """
+            Hello #(name)!
+            """
 
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.views.use(.leaf)
-        app.leaf.sources = .singleSource(test)
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.sources = .singleSource(test)
 
-        struct NotHTML: ResponseEncodable {
-            var data: ByteBuffer
+            struct NotHTML: AsyncResponseEncodable {
+                var data: ByteBuffer
 
-            func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
-                let response = Response(headers: ["content-type": "application/not-html"],
-                                        body: .init(buffer: self.data))
-                return request.eventLoop.makeSucceededFuture(response)
+                func encodeResponse(for request: Request) async throws -> Response {
+                    .init(
+                        headers: ["content-type": "application/not-html"],
+                        body: .init(buffer: self.data)
+                    )
+                }
             }
-        }
 
-        struct Foo: Encodable {
-            var name: String
-        }
-
-        app.get("foo") { req in
-            return req.application.leaf.renderer.render(path: "foo", context: Foo(name: "World")).map {
-                return NotHTML(data: $0)
+            struct Foo: Encodable {
+                var name: String
             }
-        }
 
-        try app.test(.GET, "foo") { res in
-            XCTAssertEqual(res.status, .ok)
-            XCTAssertEqual(res.headers.first(name: "content-type"), "application/not-html")
-            XCTAssertEqual(res.body.string, "Hello World!")
+            app.get("foo") { req in
+                let data = try await req.application.leaf.renderer.render(path: "foo", context: Foo(name: "World")).get()
+
+                return NotHTML(data: data)
+            }
+
+            try await app.testable().test(.GET, "foo") { res async in
+                XCTAssertEqual(res.status, .ok)
+                XCTAssertEqual(res.headers.first(name: "content-type"), "application/not-html")
+                XCTAssertEqual(res.body.string, "Hello World!")
+            }
         }
     }
 
-    func testNoFatalErrorWhenAttemptingToUseArrayAsContext() throws {
+    func testNoFatalErrorWhenAttemptingToUseArrayAsContext() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        Hello #(name)!
-        """
+            Hello #(name)!
+            """
 
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.views.use(.leaf)
-        app.leaf.sources = .singleSource(test)
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.sources = .singleSource(test)
 
-        struct MyModel: Content {
-            let name: String
-        }
+            struct MyModel: Content {
+                let name: String
+            }
 
-        app.get("noCrash") { req -> EventLoopFuture<View> in
-            let myModel1 = MyModel(name: "Alice")
-            let myModel2 = MyModel(name: "Alice")
-            let context = [myModel1, myModel2]
-            return req.view.render("foo", context)
-        }
+            app.get("noCrash") { req -> View in
+                let myModel1 = MyModel(name: "Alice")
+                let myModel2 = MyModel(name: "Alice")
+                let context = [myModel1, myModel2]
+                return try await req.view.render("foo", context)
+            }
 
-        try app.test(.GET, "noCrash") { res in
-            // We used to fatal error
-            XCTAssertEqual(res.status, .internalServerError)
+            try await app.testable().test(.GET, "noCrash") { res async in
+                XCTAssertEqual(res.status, .internalServerError)
+            }
         }
     }
     
     // Test for GH Issue #197
-    func testNoFatalErrorWhenAttemptingToUseArrayWithNil() throws {
+    func testNoFatalErrorWhenAttemptingToUseArrayWithNil() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
-        #(value)
-        """
+            #(value)
+            """
 
-        let app = Application(.testing)
-        defer { app.shutdown() }
-        app.views.use(.leaf)
-        app.leaf.sources = .singleSource(test)
-        
-        struct ArrayWithNils: Content {
-            let value:[UUID?]
-        }
-        
-        let id1 = UUID.init()
-        let id2 = UUID.init()
+        try await withApp { app in
+            app.views.use(.leaf)
+            app.leaf.sources = .singleSource(test)
+
+            struct ArrayWithNils: Content {
+                let value: [UUID?]
+            }
+
+            let id1 = UUID.init()
+            let id2 = UUID.init()
 
 
-        app.get("noCrash") { req -> EventLoopFuture<View> in
-            let context = ArrayWithNils(value: [id1,nil,id2, nil])
-            return req.view.render("foo", context)
-        }
+            app.get("noCrash") { req -> View in
+                let context = ArrayWithNils(value: [id1, nil, id2, nil])
 
-        try app.test(.GET, "noCrash") { res in
-            // Expected result .ok
-            XCTAssertEqual(res.status, .ok)
-            
-            // Rendered result should match to all non-nil values
-            XCTAssertEqual(res.body.string, "[\"\(id1)\", \"\(id2)\"]")
+                return try await req.view.render("foo", context)
+            }
+
+            try await app.testable().test(.GET, "noCrash") { res async in
+                // Expected result .ok
+                XCTAssertEqual(res.status, .ok)
+
+                // Rendered result should match to all non-nil values
+                XCTAssertEqual(res.body.string, "[\"\(id1)\", \"\(id2)\"]")
+            }
         }
     }
 }
 
 /// Helper `LeafFiles` struct providing an in-memory thread-safe map of "file names" to "file data"
-internal struct TestFiles: LeafSource {
+struct TestFiles: LeafSource {
     var files: [String: String]
-    var lock: Lock
-    
+    var lock: NIOLock
+
     init() {
         files = [:]
         lock = .init()
     }
     
-    public func file(template: String, escape: Bool = false, on eventLoop: EventLoop) -> EventLoopFuture<ByteBuffer> {
+    public func file(template: String, escape: Bool = false, on eventLoop: any EventLoop) -> EventLoopFuture<ByteBuffer> {
         var path = template
+
         if path.split(separator: "/").last?.split(separator: ".").count ?? 1 < 2,
-           !path.hasSuffix(".leaf") { path += ".leaf" }
-        if !path.hasPrefix("/") { path = "/" + path }
-        
-        self.lock.lock()
-        defer { self.lock.unlock() }
-        if let file = self.files[path] {
-            var buffer = ByteBufferAllocator().buffer(capacity: file.count)
-            buffer.writeString(file)
-            return eventLoop.makeSucceededFuture(buffer)
-        } else {
-            return eventLoop.makeFailedFuture(LeafError(.noTemplateExists(template)))
+           !path.hasSuffix(".leaf")
+        {
+            path += ".leaf"
+        }
+        if !path.starts(with: "/") {
+            path = "/" + path
+        }
+
+        return self.lock.withLock {
+            if let file = self.files[path] {
+                var buffer = ByteBufferAllocator().buffer(capacity: file.count)
+                buffer.writeString(file)
+                return eventLoop.makeSucceededFuture(buffer)
+            } else {
+                return eventLoop.makeFailedFuture(LeafError(.noTemplateExists(template)))
+            }
         }
     }
 }
 
-internal var templateFolder: String {
-    return projectFolder + "Views/"
+var templateFolder: String {
+    URL(fileURLWithPath: #filePath, isDirectory: false)
+        .deletingLastPathComponent()
+        .appendingPathComponent("Views", isDirectory: true)
+        .path
 }
 
-internal var projectFolder: String {
-    let folder = #file.split(separator: "/").dropLast(3).joined(separator: "/")
-    return "/" + folder + "/"
+var projectFolder: String {
+    URL(fileURLWithPath: #filePath, isDirectory: false) // .../leaf/Tests/LeafTests/LeafTests.swift
+        .deletingLastPathComponent() // .../leaf/Tests/LeafTests
+        .deletingLastPathComponent() // .../leaf/Tests
+        .deletingLastPathComponent() // .../leaf
+        .path
 }
