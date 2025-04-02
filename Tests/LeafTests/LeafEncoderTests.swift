@@ -4,11 +4,6 @@ import XCTest
 import XCTVapor
 
 final class LeafEncoderTests: XCTestCase {
-    override class func setUp() {
-        // Make dictionary serialization output deterministic
-        LeafConfiguration.dictFormatter = { "[\($0.sorted { $0.0 < $1.0 }.map { "\($0): \"\($1)\"" }.joined(separator: ", "))]" }
-    }
-
     private func testRender(
         of testLeaf: String,
         context: (some Encodable & Sendable)? = nil,
