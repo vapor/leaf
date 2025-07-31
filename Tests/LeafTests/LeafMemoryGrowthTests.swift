@@ -8,7 +8,7 @@ import XCTVapor
  ```bash
  #!/bin/zsh
  swift test --filter LeafMemoryGrowthTests &
- sleep 3
+ sleep 5
  PID=$(ps aux | grep '[l]eafPackageTests' | awk '{print $2}' | head -n1)
  echo "leafPackageTests PID: $PID"
  leaks $PID
