@@ -151,7 +151,7 @@ extension LeafEncoder {
     }
 
     private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
-        private let encoder: EncoderImpl
+        private weak var encoder: EncoderImpl?
         private var data: [String: any LeafEncodingResolvable] = [:]
         private var nestedEncoderCaptures: [AnyObject] = []
 
@@ -166,7 +166,7 @@ extension LeafEncoder {
 
         // See `KeyedEncodingContainerProtocol.codingPath`.
         var codingPath: [any CodingKey] {
-            self.encoder.codingPath
+            self.encoder?.codingPath ?? []
         }
 
         // See `KeyedEncodingContainerProtocol.encodeNil()`.
@@ -174,7 +174,8 @@ extension LeafEncoder {
 
         // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
         func encode(_ value: some Encodable, forKey key: Key) throws {
-            guard let encodedValue = try self.encoder.encode(value, forKey: key) else {
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            guard let encodedValue = try encoder.encode(value, forKey: key) else {
                 return
             }
 
@@ -183,7 +184,8 @@ extension LeafEncoder {
 
         // See `KeyedEncodingContainerProtocol.nestedContainer(keyedBy:forKey:)`.
         func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
-            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            let nestedEncoder = EncoderImpl(from: encoder, withKey: key)
 
             self.nestedEncoderCaptures.append(nestedEncoder)
 
@@ -198,7 +200,8 @@ extension LeafEncoder {
 
         // See `KeyedEncodingContainerProtocol.nestedUnkeyedContainer(forKey:)`.
         func nestedUnkeyedContainer(forKey key: Key) -> any UnkeyedEncodingContainer {
-            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            let nestedEncoder = EncoderImpl(from: encoder, withKey: key)
 
             self.nestedEncoderCaptures.append(nestedEncoder)
 
@@ -211,15 +214,17 @@ extension LeafEncoder {
         /// A super encoder is, in fact, just a subdecoder with delusions of grandeur and some rather haughty
         /// pretensions. (It's mostly Codable's fault anyway.)
         func superEncoder() -> any Encoder {
-            self.insert(
-                EncoderImpl(from: self.encoder, withKey: GenericCodingKey(stringValue: "super")),
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            return self.insert(
+                EncoderImpl(from: encoder, withKey: GenericCodingKey(stringValue: "super")),
                 forKey: GenericCodingKey(stringValue: "super")
             )
         }
 
         // See `KeyedEncodingContainerProtocol/superEncoder(forKey:)`.
         func superEncoder(forKey key: Key) -> any Encoder {
-            self.insert(EncoderImpl(from: self.encoder, withKey: key), forKey: key)
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            return self.insert(EncoderImpl(from: encoder, withKey: key), forKey: key)
         }
 
         /// Helper for the encoding methods.
@@ -230,7 +235,7 @@ extension LeafEncoder {
     }
 
     private final class UnkeyedContainerImpl: UnkeyedEncodingContainer, LeafEncodingResolvable {
-        private let encoder: EncoderImpl
+        private weak var encoder: EncoderImpl?
         private var data: [any LeafEncodingResolvable] = []
         private var nestedEncoderCaptures: [AnyObject] = []
 
@@ -241,7 +246,7 @@ extension LeafEncoder {
 
         // See `UnkeyedEncodingContainer.codingPath`.
         var codingPath: [any CodingKey] {
-            self.encoder.codingPath
+            self.encoder?.codingPath ?? []
         }
 
         // See `UnkeyedEncodingContainer.count`.
@@ -258,7 +263,8 @@ extension LeafEncoder {
 
         // See `UnkeyedEncodingContainer.encode(_:)`.
         func encode(_ value: some Encodable) throws {
-            guard let encodedValue = try self.encoder.encode(value, forKey: self.nextCodingKey) else {
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            guard let encodedValue = try encoder.encode(value, forKey: self.nextCodingKey) else {
                 return
             }
 
@@ -267,7 +273,8 @@ extension LeafEncoder {
 
         // See `UnkeyedEncodingContainer.nestedContainer(keyedBy:)`.
         func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> {
-            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: self.nextCodingKey)
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            let nestedEncoder = EncoderImpl(from: encoder, withKey: self.nextCodingKey)
 
             self.nestedEncoderCaptures.append(nestedEncoder)
             return .init(self.add(
@@ -278,7 +285,8 @@ extension LeafEncoder {
 
         // See `UnkeyedEncodingContainer.nestedUnkeyedContainer()`.
         func nestedUnkeyedContainer() -> any UnkeyedEncodingContainer {
-            let nestedEncoder = EncoderImpl(from: self.encoder, withKey: self.nextCodingKey)
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            let nestedEncoder = EncoderImpl(from: encoder, withKey: self.nextCodingKey)
 
             self.nestedEncoderCaptures.append(nestedEncoder)
             return self.add(nestedEncoder.unkeyedContainer() as! UnkeyedContainerImpl)
@@ -286,7 +294,8 @@ extension LeafEncoder {
 
         // See `UnkeyedEncodingContainer.superEncoder()`.
         func superEncoder() -> any Encoder {
-            self.add(EncoderImpl(from: self.encoder, withKey: self.nextCodingKey))
+            guard let encoder = self.encoder else { fatalError("encoder deallocated") }
+            return self.add(EncoderImpl(from: encoder, withKey: self.nextCodingKey))
         }
 
         /// A `CodingKey` corresponding to the index that will be given to the next value added to the array.
