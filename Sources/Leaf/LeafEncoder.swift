@@ -151,7 +151,7 @@ extension LeafEncoder {
     }
 
     private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
-        private let encoder: EncoderImpl
+        private unowned let encoder: EncoderImpl
         private var data: [String: any LeafEncodingResolvable] = [:]
         private var nestedEncoderCaptures: [AnyObject] = []
 
@@ -230,7 +230,7 @@ extension LeafEncoder {
     }
 
     private final class UnkeyedContainerImpl: UnkeyedEncodingContainer, LeafEncodingResolvable {
-        private let encoder: EncoderImpl
+        private unowned let encoder: EncoderImpl
         private var data: [any LeafEncodingResolvable] = []
         private var nestedEncoderCaptures: [AnyObject] = []
 
