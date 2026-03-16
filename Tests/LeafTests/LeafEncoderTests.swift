@@ -81,7 +81,7 @@ final class LeafEncoderTests: XCTestCase {
             ])
         ])) {
             XCTAssertEqual($0.body.string, """
-                Everything [1: "[things: "["[thing: "[a: "1.0", b: "2.0"]"]", "[thing: "[c: "4.0", d: "8.0"]"]"]"]", 2: "[things: "["[thing: "[z: "67108864.0"]"]"]"]"]
+                Everything [1: &quot;[things: &quot;[&quot;[thing: &quot;[a: &quot;1.0&quot;, b: &quot;2.0&quot;]&quot;]&quot;, &quot;[thing: &quot;[c: &quot;4.0&quot;, d: &quot;8.0&quot;]&quot;]&quot;]&quot;]&quot;, 2: &quot;[things: &quot;[&quot;[thing: &quot;[z: &quot;67108864.0&quot;]&quot;]&quot;]&quot;]&quot;]
                 """)
         }
     }
@@ -129,9 +129,9 @@ final class LeafEncoderTests: XCTestCase {
         ) {
             XCTAssertEqual($0.body.string, """
                 8675309, or you'd better call:
-                [nestedId: "8008", value: "Who R U?"]
+                [nestedId: &quot;8008&quot;, value: &quot;Who R U?&quot;]
                 unless you called:
-                [nestedId: "1337", value: "Super!"]
+                [nestedId: &quot;1337&quot;, value: &quot;Super!&quot;]
                 """)
         }
     }

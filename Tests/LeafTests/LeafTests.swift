@@ -305,7 +305,7 @@ final class LeafTests: XCTestCase {
                 XCTAssertEqual(res.status, .ok)
 
                 // Rendered result should match to all non-nil values
-                XCTAssertEqual(res.body.string, "[\"\(id1)\", \"\(id2)\"]")
+                XCTAssertEqual(res.body.string, "[&quot;\(id1)&quot;, &quot;\(id2)&quot;]")
             }
         }
     }
