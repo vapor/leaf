@@ -1,25 +1,14 @@
 import Leaf
 import LeafKit
 import NIOConcurrencyHelpers
-import XCTest
-import XCTVapor
+import Testing
+import VaporTesting
 
-public func withApp<T>(_ block: (Application) async throws -> T) async throws -> T {
-    let app = try await Application.make(.testing)
-    let result: T
-    do {
-        result = try await block(app)
-    } catch {
-        try? await app.asyncShutdown()
-        throw error
-    }
-    try await app.asyncShutdown()
-    return result
-}
-
-final class LeafTests: XCTestCase {
+@Suite("Leaf tests")
+struct LeafTests {
     #if !os(Android)
-    func testApplication() async throws {
+    @Test("application")
+    func application() async throws {
         try await withApp { app in
             app.views.use(.leaf)
             app.leaf.configuration.rootDirectory = projectFolder
@@ -33,16 +22,17 @@ final class LeafTests: XCTestCase {
                 try await req.view.render("foo", ["foo": "bar"])
             }
 
-            try await app.testable().test(.GET, "test-file") { res async throws in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
+            try await app.test(.GET, "test-file") { res async throws in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
                 // test: #(foo)
-                XCTAssertContains(res.body.string, "test: bar")
+                #expect(res.body.string.contains("test: bar"))
             }
         }
     }
 
-    func testSandboxing() async throws {
+    @Test("sandboxing")
+    func sandboxing() async throws {
         try await withApp { app in
             app.views.use(.leaf)
             app.leaf.configuration.rootDirectory = templateFolder
@@ -63,26 +53,27 @@ final class LeafTests: XCTestCase {
                 try await req.view.render("../../../../hello")
             }
 
-            try await app.testable().test(.GET, "hello") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
-                XCTAssertEqual(res.body.string, "Hello, world!\n")
+            try await app.test(.GET, "hello") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
+                #expect(res.body.string == "Hello, world!\n")
             }
 
-            try await app.testable().test(.GET, "allowed") { res async in
-                XCTAssertEqual(res.status, .internalServerError)
-                XCTAssert(res.body.string.contains("No template found"))
+            try await app.test(.GET, "allowed") { res async in
+                #expect(res.status == .internalServerError)
+                #expect(res.body.string.contains("No template found"))
             }
 
-            try await app.testable().test(.GET, "sandboxed") { res async in
-                XCTAssertEqual(res.status, .internalServerError)
-                XCTAssert(res.body.string.contains("Attempted to escape sandbox"))
+            try await app.test(.GET, "sandboxed") { res async in
+                #expect(res.status == .internalServerError)
+                #expect(res.body.string.contains("Attempted to escape sandbox"))
             }
         }
     }
     #endif
 
-    func testContextRequest() async throws {
+    @Test("context request")
+    func contextRequest() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
             Hello #(name) @ #source()
@@ -112,21 +103,22 @@ final class LeafTests: XCTestCase {
                 ])
             }
 
-            try await app.testable().test(.GET, "test-file") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
-                XCTAssertEqual(res.body.string, "Hello vapor @ /test-file")
+            try await app.test(.GET, "test-file") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
+                #expect(res.body.string == "Hello vapor @ /test-file")
             }
 
-            try await app.testable().test(.GET, "test-file-with-application-renderer") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
-                XCTAssertEqual(res.body.string, "Hello World @ application")
+            try await app.test(.GET, "test-file-with-application-renderer") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
+                #expect(res.body.string == "Hello World @ application")
             }
         }
     }
-    
-    func testContextUserInfo() async throws {
+
+    @Test("context userInfo")
+    func contextUserInfo() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
             Hello #custom()! @ #source() app nil? #application()
@@ -167,49 +159,56 @@ final class LeafTests: XCTestCase {
                 try await req.application.leaf.renderer.render("foo")
             }
 
-            try await app.testable().test(.GET, "test-file") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
-                XCTAssertEqual(res.body.string, "Hello World! @ /test-file app nil? non-nil app")
+            try await app.test(.GET, "test-file") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
+                #expect(res.body.string == "Hello World! @ /test-file app nil? non-nil app")
             }
 
-            try await app.testable().test(.GET, "test-file-with-application-renderer") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.contentType, .html)
-                XCTAssertEqual(res.body.string, "Hello World! @ application app nil? non-nil app")
+            try await app.test(.GET, "test-file-with-application-renderer") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.contentType == .html)
+                #expect(res.body.string == "Hello World! @ application app nil? non-nil app")
             }
         }
     }
 
-    func testLeafCacheDisabledInDevelopment() async throws {
+    @Test("LeafCache is disabled in development")
+    func leafCacheDisabledInDevelopment() async throws {
         let app = try await Application.make(.development)
 
         app.views.use(.leaf)
 
-        guard let renderer = app.view as? LeafRenderer else {
-            try? await app.asyncShutdown()
-            return XCTFail("app.view is not a LeafRenderer")
-        }
+        do {
+            let renderer = try #require(app.view as? LeafRenderer)
 
-        XCTAssertFalse(renderer.cache.isEnabled)
+            #expect(!renderer.cache.isEnabled)
+        } catch {
+            try? await app.asyncShutdown()
+            throw error
+        }
         try await app.asyncShutdown()
     }
 
-    func testLeafCacheEnabledInProduction() async throws {
+    @Test("LeafCache is enabled in production")
+    func leafCacheEnabledInProduction() async throws {
         let app = try await Application.make(.production)
 
         app.views.use(.leaf)
 
-        guard let renderer = app.view as? LeafRenderer else {
-            try? await app.asyncShutdown()
-            return XCTFail("app.view is not a LeafRenderer")
-        }
+        do {
+            let renderer = try #require(app.view as? LeafRenderer)
 
-        XCTAssertTrue(renderer.cache.isEnabled)
+            #expect(renderer.cache.isEnabled)
+        } catch {
+            try? await app.asyncShutdown()
+            throw error
+        }
         try await app.asyncShutdown()
     }
 
-    func testLeafRendererWithEncodableContext() async throws {
+    @Test("LeafRenderer with Encodable context")
+    func leafRendererWithEncodableContext() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
             Hello #(name)!
@@ -240,15 +239,16 @@ final class LeafTests: XCTestCase {
                 return NotHTML(data: data)
             }
 
-            try await app.testable().test(.GET, "foo") { res async in
-                XCTAssertEqual(res.status, .ok)
-                XCTAssertEqual(res.headers.first(name: "content-type"), "application/not-html")
-                XCTAssertEqual(res.body.string, "Hello World!")
+            try await app.test(.GET, "foo") { res async in
+                #expect(res.status == .ok)
+                #expect(res.headers.first(name: "content-type") == "application/not-html")
+                #expect(res.body.string == "Hello World!")
             }
         }
     }
 
-    func testNoFatalErrorWhenAttemptingToUseArrayAsContext() async throws {
+    @Test("no fatalError() when attempting to use array as context")
+    func noFatalErrorWhenAttemptingToUseArrayAsContext() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
             Hello #(name)!
@@ -269,14 +269,15 @@ final class LeafTests: XCTestCase {
                 return try await req.view.render("foo", context)
             }
 
-            try await app.testable().test(.GET, "noCrash") { res async in
-                XCTAssertEqual(res.status, .internalServerError)
+            try await app.test(.GET, "noCrash") { res async in
+                #expect(res.status == .internalServerError)
             }
         }
     }
     
     // Test for GH Issue #197
-    func testNoFatalErrorWhenAttemptingToUseArrayWithNil() async throws {
+    @Test("no fatalError() when attempting to use array with nil")
+    func noFatalErrorWhenAttemptingToUseArrayWithNil() async throws {
         var test = TestFiles()
         test.files["/foo.leaf"] = """
             #(value)
@@ -300,12 +301,12 @@ final class LeafTests: XCTestCase {
                 return try await req.view.render("foo", context)
             }
 
-            try await app.testable().test(.GET, "noCrash") { res async in
+            try await app.test(.GET, "noCrash") { res async in
                 // Expected result .ok
-                XCTAssertEqual(res.status, .ok)
+                #expect(res.status == .ok)
 
                 // Rendered result should match to all non-nil values
-                XCTAssertEqual(res.body.string, "[&quot;\(id1)&quot;, &quot;\(id2)&quot;]")
+                #expect(res.body.string == "[&quot;\(id1)&quot;, &quot;\(id2)&quot;]")
             }
         }
     }
