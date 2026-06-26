@@ -155,4 +155,29 @@ struct LeafEncoderTests {
             #expect($0.body.string == "0\n0")
         }
     }
+
+    @Test("misbehaving encode method works as expected without fatalError()")
+    func misbehavingEncodeMethodWorksAsExpectedWithoutFatalError() async throws {
+        struct FunkilyEncoded<T: Encodable & Sendable>: Encodable, Sendable {
+            private enum CodingKeys: String, CodingKey { case title }
+
+            let title: String
+            let subobject: T
+
+            func encode(to encoder: any Encoder) throws {
+                var container = encoder.container(keyedBy: Self.CodingKeys.self)
+                try container.encode(self.title, forKey: .title)
+                try subobject.encode(to: encoder)
+            }
+        }
+
+        struct Normal: Encodable {
+            let thing1: String
+            let thing2: String
+        }
+
+        try await self.testRender(of: "#(title) #(thing1) #(thing2)", context: FunkilyEncoded(title: "a", subobject: Normal(thing1: "b", thing2: "c"))) {
+            #expect($0.body.string == "a b c")
+        }
+    }
 }
