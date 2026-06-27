@@ -64,6 +64,10 @@ extension LeafData: LeafEncodingResolvable {
 }
 
 extension LeafEncoder {
+    private protocol TransformableContainer {
+        func transform<NewKey: CodingKey>(to: NewKey.Type) -> KeyedContainerImpl<NewKey>
+    }
+
     /// The ``Encoder`` conformer.
     private final class EncoderImpl: Encoder, LeafEncodingResolvable, SingleValueEncodingContainer {
         // See `Encoder.userinfo`.
@@ -93,11 +97,14 @@ extension LeafEncoder {
         /// Need to expose the ability to access unwrapped keyed container to enable use of nested
         /// keyed containers (see the keyed and unkeyed containers).
         func rawContainer<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedContainerImpl<Key> {
-            guard self.storage == nil else {
-                fatalError("Can't encode to multiple containers at the same encoding level")
+            if self.storage == nil {
+                self.storage = KeyedContainerImpl<Key>(encoder: self)
+            } else if let transformable = self.storage as? any TransformableContainer {
+                self.storage = transformable.transform(to: Key.self)
+            } else {
+                fatalError("Can't change container types at the same encoding level.")
             }
 
-            self.storage = KeyedContainerImpl<Key>(encoder: self)
             return self.storage as! KeyedContainerImpl<Key>
         }
 
@@ -108,11 +115,14 @@ extension LeafEncoder {
 
         // See `Encoder.unkeyedContainer()`.
         func unkeyedContainer() -> any UnkeyedEncodingContainer {
-            guard self.storage == nil else {
-                fatalError("Can't encode to multiple containers at the same encoding level")
+            if self.storage == nil {
+                self.storage = UnkeyedContainerImpl(encoder: self)
+            } else {
+                guard self.storage! is UnkeyedContainerImpl else {
+                    fatalError("Can't change container types at the same encoding level.")
+                }
             }
 
-            self.storage = UnkeyedContainerImpl(encoder: self)
             return self.storage as! UnkeyedContainerImpl
         }
 
@@ -127,6 +137,35 @@ extension LeafEncoder {
 
         // See `SingleValueEncodingContainer.encodeNil()`.
         func encodeNil() throws {}
+
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Bool) throws   { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: String) throws { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Double) throws { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Float) throws  { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Int) throws    { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Int8) throws   { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Int16) throws  { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Int32) throws  { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: Int64) throws  { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt) throws   { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt8) throws  { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt16) throws { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt32) throws { self.storage = try self.encode(value, forKey: nil) }
+        // See `SingleValueEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt64) throws { self.storage = try self.encode(value, forKey: nil) }
 
         // See `SingleValueEncodingContainer.encode(_:)`.
         func encode(_ value: some Encodable) throws {
@@ -150,18 +189,36 @@ extension LeafEncoder {
         }
     }
 
-    private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable where Key: CodingKey {
+    private final class RefWrapper<T> {
+        var value: T
+
+        init(_ value: T) {
+            self.value = value
+        }
+    }
+
+    private final class KeyedContainerImpl<Key>: KeyedEncodingContainerProtocol, LeafEncodingResolvable, TransformableContainer where Key: CodingKey {
         private unowned let encoder: EncoderImpl
-        private var data: [String: any LeafEncodingResolvable] = [:]
-        private var nestedEncoderCaptures: [AnyObject] = []
+        private var data: RefWrapper<[String: any LeafEncodingResolvable]> = .init([:])
+        private var nestedEncoderCaptures: RefWrapper<[AnyObject]> = .init([])
 
         // See `LeafEncodingResolvable.resolvedData`.
         var resolvedData: LeafData? {
-            .dictionary(self.data.compactMapValues { $0.resolvedData })
+            .dictionary(self.data.value.compactMapValues { $0.resolvedData })
         }
 
         init(encoder: EncoderImpl) {
             self.encoder = encoder
+        }
+
+        private init(encoder: EncoderImpl, data: RefWrapper<[String: any LeafEncodingResolvable]>, nestedEncoderCaptures: RefWrapper<[AnyObject]>) {
+            self.encoder = encoder
+            self.data = data
+            self.nestedEncoderCaptures = nestedEncoderCaptures
+        }
+
+        func transform<NewKey: CodingKey>(to: NewKey.Type = NewKey.self) -> KeyedContainerImpl<NewKey> {
+            .init(encoder: self.encoder, data: self.data, nestedEncoderCaptures: self.nestedEncoderCaptures)
         }
 
         // See `KeyedEncodingContainerProtocol.codingPath`.
@@ -173,19 +230,48 @@ extension LeafEncoder {
         func encodeNil(forKey key: Key) throws {}
 
         // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Bool, forKey key: Key) throws   { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: String, forKey key: Key) throws { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Double, forKey key: Key) throws { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Float, forKey key: Key) throws  { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Int, forKey key: Key) throws    { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Int8, forKey key: Key) throws   { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Int16, forKey key: Key) throws  { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Int32, forKey key: Key) throws  { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: Int64, forKey key: Key) throws  { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: UInt, forKey key: Key) throws   { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: UInt8, forKey key: Key) throws  { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: UInt16, forKey key: Key) throws { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: UInt32, forKey key: Key) throws { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
+        func encode(_ value: UInt64, forKey key: Key) throws { (try? self.encoder.encode(value, forKey: key))?.map { self.data.value[key.stringValue] = $0 } }
+
+        // See `KeyedEncodingContainerProtocol.encode(_:forKey:)`.
         func encode(_ value: some Encodable, forKey key: Key) throws {
             guard let encodedValue = try self.encoder.encode(value, forKey: key) else {
                 return
             }
 
-            self.data[key.stringValue] = encodedValue
+            self.data.value[key.stringValue] = encodedValue
         }
 
         // See `KeyedEncodingContainerProtocol.nestedContainer(keyedBy:forKey:)`.
         func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
             let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
 
-            self.nestedEncoderCaptures.append(nestedEncoder)
+            self.nestedEncoderCaptures.value.append(nestedEncoder)
 
             /// Use a subencoder to create a nested container so the coding paths are correctly maintained.
             /// Save the subcontainer in our data so it can be resolved later before returning it.
@@ -200,7 +286,7 @@ extension LeafEncoder {
         func nestedUnkeyedContainer(forKey key: Key) -> any UnkeyedEncodingContainer {
             let nestedEncoder = EncoderImpl(from: self.encoder, withKey: key)
 
-            self.nestedEncoderCaptures.append(nestedEncoder)
+            self.nestedEncoderCaptures.value.append(nestedEncoder)
 
             return self.insert(
                 nestedEncoder.unkeyedContainer() as! UnkeyedContainerImpl,
@@ -224,7 +310,7 @@ extension LeafEncoder {
 
         /// Helper for the encoding methods.
         private func insert<T>(_ value: any LeafEncodingResolvable, forKey key: any CodingKey, as: T.Type = T.self) -> T {
-            self.data[key.stringValue] = value
+            self.data.value[key.stringValue] = value
             return value as! T
         }
     }
@@ -257,11 +343,37 @@ extension LeafEncoder {
         func encodeNil() throws {}
 
         // See `UnkeyedEncodingContainer.encode(_:)`.
-        func encode(_ value: some Encodable) throws {
-            guard let encodedValue = try self.encoder.encode(value, forKey: self.nextCodingKey) else {
-                return
-            }
+        func encode(_ value: Bool) throws   { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: String) throws { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Double) throws { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Float) throws  { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Int) throws    { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Int8) throws   { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Int16) throws  { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Int32) throws  { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: Int64) throws  { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt) throws   { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt8) throws  { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt16) throws { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt32) throws { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: UInt64) throws { (try? self.encoder.encode(value, forKey: self.nextCodingKey))?.map { self.data.append($0) } }
 
+        // See `UnkeyedEncodingContainer.encode(_:)`.
+        func encode(_ value: some Encodable) throws {
+            guard let encodedValue = try self.encoder.encode(value, forKey: self.nextCodingKey) else { return }
             self.data.append(encodedValue)
         }
 
