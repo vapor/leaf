@@ -4,14 +4,12 @@ on:
     branches:
       - main
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 jobs:
   build-and-deploy:
-     uses: vapor/api-docs/.github/workflows/build-and-deploy-docs-workflow.yml@main
+     uses: vapor/api-docs/.github/workflows/deploy.yml@main
      secrets: inherit
      with:
-       package_name: leaf
-       modules: Leaf
-       pathsToInvalidate: /leaf/*
+       package: leaf
